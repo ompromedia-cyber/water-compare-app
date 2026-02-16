@@ -240,55 +240,7 @@ const Slider = ({ value, onValueChange, min, max, step }) => (
   />
 );
 
-// ============== ТИПЫ ==============
-type Category = "Daily" | "Rotate" | "Therapeutic" | "Unknown";
-type Confidence = "high" | "medium" | "low";
-type WaterGroup = "Russia" | "Europe" | "Therapeutic";
-
-type Water = {
-  id: string;
-  brand_name: string;
-  country_code?: string;
-  flag_emoji?: string;
-  group: WaterGroup;
-  category: Category;
-  ph?: number | null;
-  tds_mg_l?: number | null;
-  ca_mg_l?: number | null;
-  mg_mg_l?: number | null;
-  na_mg_l?: number | null;
-  k_mg_l?: number | null;
-  cl_mg_l?: number | null;
-  sparkling?: boolean | null;
-  source_type: "official" | "pickaqua" | "approx" | "seed";
-  confidence_level: Confidence;
-  notes?: string;
-};
-
-type Profile = "Everyday" | "Pressure" | "Sport" | "Sensitive" | "Kid";
-type Lang = "ru" | "en";
-type Mode = "consumer" | "pro";
-type MetricKey = "ca" | "mg" | "k" | "na" | "cl" | "ph" | "tds";
-
-type ScoreResult = {
-  score: number;
-  category: Category;
-  coverageCount: number;
-  coverageTotal: number;
-  hasMin: boolean;
-  topReasons: string[];
-};
-
-type Achievement = "daily" | "therapeutic" | "sport" | "coffee" | "sparkling" | "still";
-
-type AchievementRule = {
-  id: Achievement;
-  when: (w: Water) => boolean;
-  reasonRU: string;
-  reasonEN: string;
-};
-
-const LangCtx = React.createContext<Lang>("ru");
+const LangCtx = React.createContext("ru");
 
 // ============== ТЕМА ==============
 const GLASS = {
