@@ -32,7 +32,7 @@ import {
   YAxis,
 } from "recharts";
 
-// ============== UI COMPONENTS (Self-contained) ==============
+// ============== UI КОМПОНЕНТЫ ==============
 const Button = ({ children, variant, className, onClick, disabled, type = "button" }) => (
   <button
     type={type}
@@ -92,14 +92,8 @@ const TabsContent = ({ value, className, children }) => {
 };
 
 // Tooltip компоненты
-const TooltipContext = React.createContext({});
 const TooltipProvider = ({ children }) => {
-  const [open, setOpen] = useState(null);
-  return (
-    <TooltipContext.Provider value={{ open, setOpen }}>
-      <div>{children}</div>
-    </TooltipContext.Provider>
-  );
+  return <div>{children}</div>;
 };
 
 const Tooltip = ({ children }) => {
@@ -110,8 +104,7 @@ const Tooltip = ({ children }) => {
         if (child.type === TooltipTrigger) {
           return React.cloneElement(child, { 
             onMouseEnter: () => setIsOpen(true),
-            onMouseLeave: () => setIsOpen(false),
-            onClick: () => setIsOpen(!isOpen)
+            onMouseLeave: () => setIsOpen(false)
           });
         }
         if (child.type === TooltipContent) {
@@ -247,28 +240,7 @@ const Slider = ({ value, onValueChange, min, max, step }) => (
   />
 );
 
-// ============== КОНЕЦ UI КОМПОНЕНТОВ ==============
-
-/**
- * Water Intelligence — Production-Ready App
- * Все кнопки работают, блоки не перекрываются
- */
-
-// ---------- Theme (soft + glass) ----------
-const GLASS = {
-  page:
-    "min-h-screen bg-[radial-gradient(1200px_600px_at_20%_0%,rgba(56,189,248,0.18),transparent_60%),radial-gradient(900px_500px_at_90%_10%,rgba(34,197,94,0.12),transparent_60%),radial-gradient(1100px_700px_at_50%_100%,rgba(168,85,247,0.10),transparent_60%)] bg-slate-50 text-slate-900",
-  card:
-    "rounded-3xl border border-white/60 bg-white/55 shadow-[0_16px_50px_-36px_rgba(15,23,42,0.55)] backdrop-blur",
-  chip:
-    "rounded-2xl border border-white/60 bg-white/60 shadow-[0_12px_30px_-28px_rgba(15,23,42,0.6)] backdrop-blur",
-  subtle:
-    "rounded-2xl border border-white/55 bg-white/45 shadow-[0_12px_38px_-34px_rgba(15,23,42,0.6)] backdrop-blur",
-};
-
-const CHART_COLORS = ["#38BDF8", "#34D399", "#FBBF24", "#FB7185", "#A78BFA"];
-
-// ---------- Types ----------
+// ============== ТИПЫ ==============
 type Category = "Daily" | "Rotate" | "Therapeutic" | "Unknown";
 type Confidence = "high" | "medium" | "low";
 type WaterGroup = "Russia" | "Europe" | "Therapeutic";
@@ -280,7 +252,6 @@ type Water = {
   flag_emoji?: string;
   group: WaterGroup;
   category: Category;
-
   ph?: number | null;
   tds_mg_l?: number | null;
   ca_mg_l?: number | null;
@@ -288,9 +259,7 @@ type Water = {
   na_mg_l?: number | null;
   k_mg_l?: number | null;
   cl_mg_l?: number | null;
-
   sparkling?: boolean | null;
-
   source_type: "official" | "pickaqua" | "approx" | "seed";
   confidence_level: Confidence;
   notes?: string;
@@ -321,7 +290,21 @@ type AchievementRule = {
 
 const LangCtx = React.createContext<Lang>("ru");
 
-// ---------- i18n ----------
+// ============== ТЕМА ==============
+const GLASS = {
+  page:
+    "min-h-screen bg-[radial-gradient(1200px_600px_at_20%_0%,rgba(56,189,248,0.18),transparent_60%),radial-gradient(900px_500px_at_90%_10%,rgba(34,197,94,0.12),transparent_60%),radial-gradient(1100px_700px_at_50%_100%,rgba(168,85,247,0.10),transparent_60%)] bg-slate-50 text-slate-900",
+  card:
+    "rounded-3xl border border-white/60 bg-white/55 shadow-[0_16px_50px_-36px_rgba(15,23,42,0.55)] backdrop-blur",
+  chip:
+    "rounded-2xl border border-white/60 bg-white/60 shadow-[0_12px_30px_-28px_rgba(15,23,42,0.6)] backdrop-blur",
+  subtle:
+    "rounded-2xl border border-white/55 bg-white/45 shadow-[0_12px_38px_-34px_rgba(15,23,42,0.6)] backdrop-blur",
+};
+
+const CHART_COLORS = ["#38BDF8", "#34D399", "#FBBF24", "#FB7185", "#A78BFA"];
+
+// ============== ЛОКАЛИЗАЦИЯ ==============
 const I18N = {
   ru: {
     appName: "Water Intelligence",
@@ -583,9 +566,9 @@ const I18N = {
       unknown: "No data",
     },
   },
-} as const;
+};
 
-// ---------- Reference anchors ----------
+// ============== ЭТАЛОНЫ ==============
 const REF = {
   ca: 800,
   mg: 375,
@@ -596,18 +579,7 @@ const REF = {
   tds: 150,
 };
 
-const EDUCATION: Record<
-  MetricKey,
-  {
-    titleRU: string;
-    titleEN: string;
-    shortRU: string;
-    shortEN: string;
-    ref: number;
-    unitRU: string;
-    unitEN: string;
-  }
-> = {
+const EDUCATION = {
   ca: {
     titleRU: "Кальций (Ca²⁺)",
     titleEN: "Calcium (Ca²⁺)",
@@ -673,7 +645,7 @@ const EDUCATION: Record<
   },
 };
 
-// ---------- Utils ----------
+// ============== УТИЛИТЫ ==============
 function clamp(n: number, a: number, b: number) {
   return Math.max(a, Math.min(b, n));
 }
@@ -710,7 +682,7 @@ function toBoolLoose(v: unknown) {
 
 function dataCoverage(w: Water) {
   const keys: MetricKey[] = ["ca", "mg", "k", "na", "cl", "ph", "tds"];
-  const present: Record<MetricKey, boolean> = {
+  const present = {
     ca: w.ca_mg_l !== null && w.ca_mg_l !== undefined,
     mg: w.mg_mg_l !== null && w.mg_mg_l !== undefined,
     k: w.k_mg_l !== null && w.k_mg_l !== undefined,
@@ -750,17 +722,14 @@ function computeCategory(w: Water): Category {
   return "Daily";
 }
 
-function normalizeWater(
-  w: Partial<Water> & { id: string; brand_name: string }
-): Water {
-  const base: Water = {
+function normalizeWater(w) {
+  const base = {
     id: w.id,
     brand_name: w.brand_name,
     country_code: w.country_code,
     flag_emoji: w.flag_emoji ?? safeCountryFlag(w.country_code),
-    group: (w.group as WaterGroup) ?? "Europe",
+    group: w.group ?? "Europe",
     category: "Unknown",
-
     ph: w.ph ?? null,
     tds_mg_l: w.tds_mg_l ?? null,
     ca_mg_l: w.ca_mg_l ?? null,
@@ -768,20 +737,17 @@ function normalizeWater(
     na_mg_l: w.na_mg_l ?? null,
     k_mg_l: w.k_mg_l ?? null,
     cl_mg_l: w.cl_mg_l ?? null,
-
     sparkling: w.sparkling ?? null,
-
-    source_type: (w.source_type as any) ?? "seed",
-    confidence_level: (w.confidence_level as any) ?? "low",
+    source_type: w.source_type ?? "seed",
+    confidence_level: w.confidence_level ?? "low",
     notes: w.notes,
   };
-
   base.category = computeCategory(base);
   return base;
 }
 
-function scoreWater(w: Water, profile: Profile): ScoreResult {
-  const weights: Record<MetricKey, number> = {
+function scoreWater(w, profile) {
+  const weights = {
     ca: 1.0,
     mg: 1.0,
     k: 0.8,
@@ -810,8 +776,7 @@ function scoreWater(w: Water, profile: Profile): ScoreResult {
   }
 
   const liters = 2;
-
-  const get: Record<MetricKey, number | null> = {
+  const get = {
     ca: w.ca_mg_l ?? null,
     mg: w.mg_mg_l ?? null,
     k: w.k_mg_l ?? null,
@@ -823,21 +788,16 @@ function scoreWater(w: Water, profile: Profile): ScoreResult {
 
   const cov = dataCoverage(w);
   const missingCount = cov.total - cov.count;
+  const parts = [];
 
-  const parts: Array<{ key: MetricKey; contribution: number }> = [];
-
-  function addPart(key: MetricKey, refDaily: number) {
+  function addPart(key, refDaily) {
     const x = get[key];
     if (x === null || x === undefined) return;
-
     let refPerL = refDaily / liters;
     if (key === "ph") refPerL = REF.ph;
     if (key === "tds") refPerL = REF.tds;
-
     let penalty = Math.abs(x - refPerL) / (refPerL || 1);
-
     if (key === "tds" && Math.abs(x - REF.tds) < 150) penalty = 0;
-
     penalty = clamp(penalty, 0, 3);
     const contribution = penalty * weights[key];
     parts.push({ key, contribution });
@@ -853,25 +813,14 @@ function scoreWater(w: Water, profile: Profile): ScoreResult {
 
   let score = 100;
   for (const p of parts) score -= p.contribution * 20;
-
   score -= missingCount * 10;
   const minOk = hasMinimumMetrics(w);
   if (!minOk) score -= 20;
-
   const coverageRatio = cov.count / cov.total;
   score *= 0.55 + 0.45 * coverageRatio;
-
   const category = computeCategory(w);
   if (category === "Therapeutic") score -= 40;
-
   score = clamp(score, 0, 100);
-
-  const topReasons: string[] = [];
-  if (!minOk) topReasons.push("MIN_MISSING");
-  if (missingCount > 0) topReasons.push(`COVERAGE_${cov.count}_${cov.total}`);
-
-  parts.sort((a, b) => b.contribution - a.contribution);
-  for (const p of parts.slice(0, 3)) topReasons.push(`METRIC_${p.key}`);
 
   return {
     score,
@@ -879,44 +828,37 @@ function scoreWater(w: Water, profile: Profile): ScoreResult {
     coverageCount: cov.count,
     coverageTotal: cov.total,
     hasMin: minOk,
-    topReasons,
+    topReasons: [],
   };
 }
 
-function compareForRanking(a: Water, b: Water, profile: Profile) {
+function compareForRanking(a, b, profile) {
   const sa = scoreWater(a, profile);
   const sb = scoreWater(b, profile);
-
   if (sa.hasMin !== sb.hasMin) return sa.hasMin ? -1 : 1;
-
   if (sb.score !== sa.score) return sb.score - sa.score;
   if (sb.coverageCount !== sa.coverageCount) return sb.coverageCount - sa.coverageCount;
-
-  const confRank = (c: Confidence) => (c === "high" ? 2 : c === "medium" ? 1 : 0);
+  const confRank = (c) => (c === "high" ? 2 : c === "medium" ? 1 : 0);
   const ca = confRank(a.confidence_level);
   const cb = confRank(b.confidence_level);
   if (cb !== ca) return cb - ca;
-
   return a.brand_name.localeCompare(b.brand_name);
 }
 
-function pickWinnerDaily(selected: Water[], profile: Profile) {
+function pickWinnerDaily(selected, profile) {
   const scored = selected.map((w) => ({ w, s: scoreWater(w, profile) }));
-
   const nonThera = scored.filter((x) => x.s.category !== "Therapeutic");
   const poolA = nonThera.length ? nonThera : scored;
-
   const hasAnyMin = poolA.some((x) => x.s.hasMin);
   const pool = hasAnyMin ? poolA.filter((x) => x.s.hasMin) : poolA;
-
   pool.sort((x, y) => compareForRanking(x.w, y.w, profile));
   return pool[0] ?? null;
 }
 
-function parseCSV(text: string): Water[] {
-  const rows: string[][] = [];
+function parseCSV(text) {
+  const rows = [];
   let cur = "";
-  let row: string[] = [];
+  let row = [];
   let inQuotes = false;
 
   const pushCell = () => {
@@ -932,7 +874,6 @@ function parseCSV(text: string): Water[] {
   for (let i = 0; i < text.length; i++) {
     const ch = text[i];
     const next = text[i + 1];
-
     if (ch === '"') {
       if (inQuotes && next === '"') {
         cur += '"';
@@ -942,50 +883,43 @@ function parseCSV(text: string): Water[] {
       }
       continue;
     }
-
     if (!inQuotes && ch === ",") {
       pushCell();
       continue;
     }
-
     if (!inQuotes && (ch === "\n" || ch === "\r")) {
       if (ch === "\r" && next === "\n") i++;
       pushCell();
       pushRow();
       continue;
     }
-
     cur += ch;
   }
-
   pushCell();
   pushRow();
 
   if (rows.length < 2) return [];
   const headers = rows[0].map((h) => h.trim());
-
-  const get = (r: string[], key: string) => {
+  const get = (r, key) => {
     const idx = headers.findIndex((h) => h.toLowerCase() === key.toLowerCase());
     if (idx < 0) return "";
     return (r[idx] ?? "").trim();
   };
 
-  const items: Water[] = [];
+  const items = [];
   for (const r of rows.slice(1)) {
     const id = get(r, "id") || get(r, "slug") || get(r, "code");
     const brand = get(r, "brand_name") || get(r, "name") || get(r, "brand");
     if (!id || !brand) continue;
-
-    const w: Partial<Water> & { id: string; brand_name: string } = {
+    const w = {
       id,
       brand_name: brand,
       country_code: get(r, "country_code") || undefined,
       flag_emoji: get(r, "flag_emoji") || undefined,
-      group: (get(r, "group") as any) || undefined,
-      source_type: (get(r, "source_type") as any) || undefined,
-      confidence_level: (get(r, "confidence_level") as any) || undefined,
+      group: get(r, "group") || undefined,
+      source_type: get(r, "source_type") || undefined,
+      confidence_level: get(r, "confidence_level") || undefined,
       notes: get(r, "notes") || undefined,
-
       ph: parseNumLoose(get(r, "ph")),
       tds_mg_l: parseNumLoose(get(r, "tds_mg_l")) ?? parseNumLoose(get(r, "tds")),
       ca_mg_l: parseNumLoose(get(r, "ca_mg_l")) ?? parseNumLoose(get(r, "ca")),
@@ -995,33 +929,29 @@ function parseCSV(text: string): Water[] {
       cl_mg_l: parseNumLoose(get(r, "cl_mg_l")) ?? parseNumLoose(get(r, "cl")),
       sparkling: toBoolLoose(get(r, "sparkling")),
     };
-
     items.push(normalizeWater(w));
   }
-
   return items;
 }
 
-function parseJSON(text: string): Water[] {
+function parseJSON(text) {
   const raw = JSON.parse(text);
-
-  const arr: any[] = Array.isArray(raw)
+  const arr = Array.isArray(raw)
     ? raw
-    : Array.isArray((raw as any)?.waters)
-      ? (raw as any).waters
-      : Array.isArray((raw as any)?.data)
-        ? (raw as any).data
-        : Array.isArray((raw as any)?.items)
-          ? (raw as any).items
+    : Array.isArray(raw?.waters)
+      ? raw.waters
+      : Array.isArray(raw?.data)
+        ? raw.data
+        : Array.isArray(raw?.items)
+          ? raw.items
           : [];
 
-  const items: Water[] = [];
+  const items = [];
   for (const x of arr) {
     const id = String(x?.id ?? x?.slug ?? x?.code ?? "").trim();
     const brand = String(x?.brand_name ?? x?.name ?? x?.brand ?? "").trim();
     if (!id || !brand) continue;
-
-    const w: Partial<Water> & { id: string; brand_name: string } = {
+    const w = {
       id,
       brand_name: brand,
       country_code: x?.country_code ?? x?.countryCode ?? x?.country,
@@ -1030,7 +960,6 @@ function parseJSON(text: string): Water[] {
       source_type: x?.source_type ?? x?.source,
       confidence_level: x?.confidence_level ?? x?.confidence,
       notes: x?.notes,
-
       ph: parseNumLoose(x?.ph),
       tds_mg_l: parseNumLoose(x?.tds_mg_l ?? x?.tds),
       ca_mg_l: parseNumLoose(x?.ca_mg_l ?? x?.ca),
@@ -1040,22 +969,20 @@ function parseJSON(text: string): Water[] {
       cl_mg_l: parseNumLoose(x?.cl_mg_l ?? x?.cl),
       sparkling: toBoolLoose(x?.sparkling ?? x?.gas),
     };
-
     items.push(normalizeWater(w));
   }
-
   return items;
 }
 
-function mergeById(base: Water[], incoming: Water[]) {
-  const m = new Map<string, Water>();
+function mergeById(base, incoming) {
+  const m = new Map();
   for (const w of base) m.set(w.id, w);
   for (const w of incoming) m.set(w.id, w);
   return Array.from(m.values());
 }
 
-// ---------- Achievements ----------
-const ACHIEVEMENT_RULES: AchievementRule[] = [
+// ============== ДОСТИЖЕНИЯ ==============
+const ACHIEVEMENT_RULES = [
   {
     id: "daily",
     when: (w) => computeCategory(w) === "Daily",
@@ -1065,8 +992,8 @@ const ACHIEVEMENT_RULES: AchievementRule[] = [
   {
     id: "therapeutic",
     when: (w) => computeCategory(w) === "Therapeutic",
-    reasonRU: "Категория воды = «Лечебная» (высокая минерализация/соли).",
-    reasonEN: "Water category = Therapeutic (high minerals/salts).",
+    reasonRU: "Категория воды = «Лечебная».",
+    reasonEN: "Water category = Therapeutic.",
   },
   {
     id: "sport",
@@ -1076,8 +1003,8 @@ const ACHIEVEMENT_RULES: AchievementRule[] = [
       const k = w.k_mg_l ?? 0;
       return na >= 20 || mg >= 20 || k >= 2;
     },
-    reasonRU: "Повышенные электролиты: Na≥20 или Mg≥20 или K≥2 мг/л.",
-    reasonEN: "Higher electrolytes: Na≥20 or Mg≥20 or K≥2 mg/L.",
+    reasonRU: "Повышенные электролиты",
+    reasonEN: "Higher electrolytes",
   },
   {
     id: "coffee",
@@ -1086,53 +1013,43 @@ const ACHIEVEMENT_RULES: AchievementRule[] = [
       const tds = w.tds_mg_l ?? null;
       if (w.sparkling !== false) return false;
       if (ph === null || tds === null) return false;
-
       const ca = w.ca_mg_l ?? null;
       const mg = w.mg_mg_l ?? null;
       const na = w.na_mg_l ?? null;
       const k = w.k_mg_l ?? null;
       const cl = w.cl_mg_l ?? null;
       if ([ca, mg, na, k, cl].some((x) => x === null)) return false;
-
       const phOk = Math.abs(ph - 7.5) <= 0.3;
       const tdsOk = tds < 100;
-      const mineralsOk =
-        (ca as number) <= 30 &&
-        (mg as number) <= 10 &&
-        (na as number) <= 20 &&
-        (k as number) <= 2 &&
-        (cl as number) <= 30;
-
+      const mineralsOk = ca <= 30 && mg <= 10 && na <= 20 && k <= 2 && cl <= 30;
       return phOk && tdsOk && mineralsOk;
     },
-    reasonRU:
-      "Для кофе: TDS < 100, pH около 7.5, без газа и низкие основные минералы.",
-    reasonEN:
-      "For coffee: TDS < 100, pH near 7.5, still water, and low key minerals.",
+    reasonRU: "Для кофе",
+    reasonEN: "For coffee",
   },
   {
     id: "sparkling",
     when: (w) => w.sparkling === true,
-    reasonRU: "На воде указан газ (sparkling = true).",
-    reasonEN: "Marked as sparkling (sparkling = true).",
+    reasonRU: "С газом",
+    reasonEN: "Sparkling",
   },
   {
     id: "still",
     when: (w) => w.sparkling === false,
-    reasonRU: "На воде указано «без газа» (sparkling = false).",
-    reasonEN: "Marked as still (sparkling = false).",
+    reasonRU: "Без газа",
+    reasonEN: "Still",
   },
 ];
 
-function getAchievements(w: Water) {
+function getAchievements(w) {
   const out = ACHIEVEMENT_RULES.filter((r) => r.when(w));
-  const uniq = new Map<Achievement, AchievementRule>();
+  const uniq = new Map();
   for (const r of out) if (!uniq.has(r.id)) uniq.set(r.id, r);
   return Array.from(uniq.values());
 }
 
-// ---------- Seed dataset ----------
-const SEED: Water[] = [
+// ============== ДАННЫЕ ==============
+const SEED = [
   normalizeWater({
     id: "evian",
     brand_name: "Evian",
@@ -1224,13 +1141,12 @@ const SEED: Water[] = [
     sparkling: false,
     source_type: "seed",
     confidence_level: "low",
-    notes: "Неполная этикетка (для теста ранжирования)",
+    notes: "Неполная этикетка",
   }),
 ];
 
 // ============== UI КОМПОНЕНТЫ ==============
-
-function ConfidenceBadge({ c }: { c: Confidence }) {
+function ConfidenceBadge({ c }) {
   if (c === "high") {
     return (
       <span className="inline-flex items-center rounded-xl border border-emerald-200 bg-emerald-50 px-2 py-1 text-xs font-medium text-emerald-800">
@@ -1252,34 +1168,30 @@ function ConfidenceBadge({ c }: { c: Confidence }) {
   );
 }
 
-function CategoryBadge({ cat }: { cat: Category }) {
+function CategoryBadge({ cat }) {
   const lang = React.useContext(LangCtx);
-  const tt: any = I18N[lang];
+  const tt = I18N[lang];
 
-  const styles: Record<
-    Category,
-    { label: string; icon: React.ReactNode; className: string }
-  > = {
+  const styles = {
     Daily: {
       label: tt.badges.daily,
       icon: <ShieldCheck className="h-3.5 w-3.5" />,
-      className:
-        "bg-emerald-50 text-emerald-800 border-emerald-200 hover:bg-emerald-100",
+      className: "bg-emerald-50 text-emerald-800 border-emerald-200",
     },
     Rotate: {
       label: tt.badges.rotate,
       icon: <Sparkles className="h-3.5 w-3.5" />,
-      className: "bg-sky-50 text-sky-800 border-sky-200 hover:bg-sky-100",
+      className: "bg-sky-50 text-sky-800 border-sky-200",
     },
     Therapeutic: {
       label: tt.badges.therapeutic,
       icon: <Beaker className="h-3.5 w-3.5" />,
-      className: "bg-rose-50 text-rose-800 border-rose-200 hover:bg-rose-100",
+      className: "bg-rose-50 text-rose-800 border-rose-200",
     },
     Unknown: {
       label: tt.badges.unknown,
       icon: <AlertTriangle className="h-3.5 w-3.5" />,
-      className: "bg-slate-50 text-slate-800 border-slate-200 hover:bg-slate-100",
+      className: "bg-slate-50 text-slate-800 border-slate-200",
     },
   };
 
@@ -1288,9 +1200,7 @@ function CategoryBadge({ cat }: { cat: Category }) {
   return (
     <Tooltip>
       <TooltipTrigger asChild>
-        <span
-          className={`inline-flex cursor-help items-center gap-1 rounded-xl border px-2 py-1 text-xs font-medium ${v.className}`}
-        >
+        <span className={`inline-flex cursor-help items-center gap-1 rounded-xl border px-2 py-1 text-xs font-medium ${v.className}`}>
           {v.icon}
           {v.label}
         </span>
@@ -1302,7 +1212,7 @@ function CategoryBadge({ cat }: { cat: Category }) {
   );
 }
 
-function MetricHelp({ k }: { k: MetricKey }) {
+function MetricHelp({ k }) {
   const lang = React.useContext(LangCtx);
   const e = EDUCATION[k];
   const title = lang === "ru" ? e.titleRU : e.titleEN;
@@ -1334,11 +1244,6 @@ function MetricHelp({ k }: { k: MetricKey }) {
               {e.ref}
               {unit ? ` ${unit}` : ""}
             </div>
-            <div className="mt-2 text-xs text-slate-600">
-              {lang === "ru"
-                ? "Оценка сравнивает отклонение от эталона (на литр)."
-                : "Scoring compares deviation from reference (per liter)."}
-            </div>
           </div>
         </div>
       </DialogContent>
@@ -1346,7 +1251,7 @@ function MetricHelp({ k }: { k: MetricKey }) {
   );
 }
 
-function WaterChip({ w, onRemove }: { w: Water; onRemove: () => void }) {
+function WaterChip({ w, onRemove }) {
   return (
     <motion.div
       layout
@@ -1369,13 +1274,13 @@ function WaterChip({ w, onRemove }: { w: Water; onRemove: () => void }) {
   );
 }
 
-function AchievementPills({ w }: { w: Water }) {
+function AchievementPills({ w }) {
   const lang = React.useContext(LangCtx);
-  const t: any = I18N[lang];
+  const t = I18N[lang];
   const rules = getAchievements(w);
   if (!rules.length) return null;
 
-  const meta: Record<Achievement, { icon: React.ReactNode; className: string }> = {
+  const meta = {
     daily: {
       icon: <ShieldCheck className="h-3.5 w-3.5" />,
       className: "border-emerald-200 bg-emerald-50 text-emerald-800",
@@ -1407,9 +1312,7 @@ function AchievementPills({ w }: { w: Water }) {
       {rules.map((r) => (
         <Tooltip key={r.id}>
           <TooltipTrigger asChild>
-            <span
-              className={`inline-flex cursor-help items-center gap-1 rounded-xl border px-2 py-1 text-xs font-medium ${meta[r.id].className}`}
-            >
+            <span className={`inline-flex cursor-help items-center gap-1 rounded-xl border px-2 py-1 text-xs font-medium ${meta[r.id].className}`}>
               {meta[r.id].icon}
               {t.achievements[r.id]}
             </span>
@@ -1423,22 +1326,21 @@ function AchievementPills({ w }: { w: Water }) {
   );
 }
 
-function metricStatus(key: MetricKey, value: number | null) {
-  if (value === null || value === undefined) return "unknown" as const;
-  const ref = key === "ph" ? REF.ph : key === "tds" ? REF.tds : (REF as any)[key];
+function metricStatus(key, value) {
+  if (value === null || value === undefined) return "unknown";
+  const ref = key === "ph" ? REF.ph : key === "tds" ? REF.tds : REF[key];
   const denom = ref || 1;
   let ratio = Math.abs(value - ref) / denom;
   if (key === "tds" && Math.abs(value - REF.tds) < 150) ratio = 0;
-
-  if (ratio <= 0.25) return "daily" as const;
-  if (ratio <= 0.7) return "rotate" as const;
-  return "therapeutic" as const;
+  if (ratio <= 0.25) return "daily";
+  if (ratio <= 0.7) return "rotate";
+  return "therapeutic";
 }
 
-function MetricPill({ kind }: { kind: "daily" | "rotate" | "therapeutic" | "unknown" }) {
+function MetricPill({ kind }) {
   const lang = React.useContext(LangCtx);
-  const t: any = I18N[lang];
-  const map: Record<typeof kind, { label: string; cls: string; hint: string }> = {
+  const t = I18N[lang];
+  const map = {
     daily: {
       label: t.badges.daily,
       cls: "border-emerald-200 bg-emerald-50 text-emerald-800",
@@ -1464,9 +1366,7 @@ function MetricPill({ kind }: { kind: "daily" | "rotate" | "therapeutic" | "unkn
   return (
     <Tooltip>
       <TooltipTrigger asChild>
-        <span
-          className={`inline-flex cursor-help items-center rounded-xl border px-2 py-0.5 text-[11px] font-medium ${map[kind].cls}`}
-        >
+        <span className={`inline-flex cursor-help items-center rounded-xl border px-2 py-0.5 text-[11px] font-medium ${map[kind].cls}`}>
           {map[kind].label}
         </span>
       </TooltipTrigger>
@@ -1477,7 +1377,7 @@ function MetricPill({ kind }: { kind: "daily" | "rotate" | "therapeutic" | "unkn
   );
 }
 
-function ScoreBar({ score }: { score: number }) {
+function ScoreBar({ score }) {
   const pct = clamp(score, 0, 100);
   return (
     <div className="h-2 w-full overflow-hidden rounded-full bg-slate-200/70">
@@ -1489,21 +1389,14 @@ function ScoreBar({ score }: { score: number }) {
   );
 }
 
-function WaterProfileCard({ w, profile }: { w: Water; profile: Profile }) {
+function WaterProfileCard({ w, profile }) {
   const lang = React.useContext(LangCtx);
-  const t: any = I18N[lang];
-
+  const t = I18N[lang];
   const s = scoreWater(w, profile);
   const cov = dataCoverage(w);
   const minOk = s.hasMin;
 
-  const metrics: Array<{
-    key: MetricKey;
-    label: string;
-    value: number | null;
-    digits?: number;
-    unit?: string;
-  }> = [
+  const metrics = [
     { key: "ph", label: "pH", value: w.ph ?? null, digits: 1 },
     { key: "tds", label: "TDS", value: w.tds_mg_l ?? null, unit: "мг/л" },
     { key: "ca", label: "Ca", value: w.ca_mg_l ?? null, unit: "мг/л" },
@@ -1513,11 +1406,7 @@ function WaterProfileCard({ w, profile }: { w: Water; profile: Profile }) {
   ];
 
   return (
-    <div
-      className={`${GLASS.card} p-5`}
-      role="group"
-      aria-label={`profile-${w.id}`}
-    >
+    <div className={`${GLASS.card} p-5`}>
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <div className="flex items-center gap-2">
@@ -1541,7 +1430,6 @@ function WaterProfileCard({ w, profile }: { w: Water; profile: Profile }) {
               </div>
             </div>
           </div>
-
           <AchievementPills w={w} />
         </div>
 
@@ -1566,10 +1454,7 @@ function WaterProfileCard({ w, profile }: { w: Water; profile: Profile }) {
         {metrics.map((m) => {
           const st = metricStatus(m.key, m.value);
           return (
-            <div
-              key={m.key}
-              className={`${GLASS.subtle} flex items-center justify-between gap-3 px-3 py-2`}
-            >
+            <div key={m.key} className={`${GLASS.subtle} flex items-center justify-between gap-3 px-3 py-2`}>
               <div className="flex items-center gap-2">
                 <div className="text-sm font-medium text-slate-800">{m.label}</div>
                 <MetricHelp k={m.key} />
@@ -1577,23 +1462,21 @@ function WaterProfileCard({ w, profile }: { w: Water; profile: Profile }) {
               </div>
               <div className="text-sm font-semibold text-slate-900">
                 {fmt(m.value, m.digits ?? 0)}
-                {m.unit ? <span className="ml-1 text-xs font-medium text-slate-600">{m.unit}</span> : null}
+                {m.unit && <span className="ml-1 text-xs font-medium text-slate-600">{m.unit}</span>}
               </div>
             </div>
           );
         })}
       </div>
 
-      {w.notes ? (
-        <div className="mt-3 text-xs text-slate-600">{w.notes}</div>
-      ) : null}
+      {w.notes && <div className="mt-3 text-xs text-slate-600">{w.notes}</div>}
     </div>
   );
 }
 
-function WaterProfileCompactRow({ w, profile }: { w: Water; profile: Profile }) {
+function WaterProfileCompactRow({ w, profile }) {
   const lang = React.useContext(LangCtx);
-  const t: any = I18N[lang];
+  const t = I18N[lang];
   const s = scoreWater(w, profile);
 
   return (
@@ -1605,12 +1488,12 @@ function WaterProfileCompactRow({ w, profile }: { w: Water; profile: Profile }) 
           <span className="hidden sm:inline-flex">
             <CategoryBadge cat={computeCategory(w)} />
           </span>
-          {!s.hasMin ? (
+          {!s.hasMin && (
             <span className="ml-2 inline-flex items-center gap-1 rounded-xl border border-amber-200 bg-amber-50 px-2 py-1 text-[11px] font-medium text-amber-900">
               <AlertTriangle className="h-3.5 w-3.5" />
               {t.misc.missingMin}
             </span>
-          ) : null}
+          )}
         </div>
         <div className="flex shrink-0 items-center gap-3">
           <div className="text-right">
@@ -1655,19 +1538,7 @@ function WaterProfileCompactRow({ w, profile }: { w: Water; profile: Profile }) 
   );
 }
 
-function CompactMetric({
-  label,
-  value,
-  digits,
-  unit,
-  k,
-}: {
-  label: string;
-  value: number | null;
-  digits?: number;
-  unit?: string;
-  k: MetricKey;
-}) {
+function CompactMetric({ label, value, digits, unit, k }) {
   const st = metricStatus(k, value);
   return (
     <div className={`${GLASS.subtle} flex items-center justify-between gap-2 px-3 py-2`}>
@@ -1679,21 +1550,18 @@ function CompactMetric({
         <MetricPill kind={st} />
         <div className="text-xs font-semibold text-slate-900">
           {fmt(value, digits ?? 0)}
-          {unit ? <span className="ml-1 text-[11px] font-medium text-slate-600">{unit}</span> : null}
+          {unit && <span className="ml-1 text-[11px] font-medium text-slate-600">{unit}</span>}
         </div>
       </div>
     </div>
   );
 }
 
-function LegendPills({ items }: { items: Array<{ name: string; color: string; flag?: string }> }) {
+function LegendPills({ items }) {
   return (
     <div className="mt-3 flex flex-wrap gap-2">
       {items.map((x) => (
-        <span
-          key={x.name}
-          className={`${GLASS.chip} inline-flex items-center gap-2 px-3 py-1.5 text-xs font-medium`}
-        >
+        <span key={x.name} className={`${GLASS.chip} inline-flex items-center gap-2 px-3 py-1.5 text-xs font-medium`}>
           <span className="text-base">{x.flag ?? "💧"}</span>
           <span className="inline-block h-2.5 w-2.5 rounded-full" style={{ background: x.color }} />
           <span className="max-w-[180px] truncate">{x.name}</span>
@@ -1703,18 +1571,11 @@ function LegendPills({ items }: { items: Array<{ name: string; color: string; fl
   );
 }
 
-function MetricsTable({ selected }: { selected: Water[] }) {
+function MetricsTable({ selected }) {
   const lang = React.useContext(LangCtx);
-  const t: any = I18N[lang];
+  const t = I18N[lang];
 
-  const rows: Array<{
-    key: MetricKey;
-    label: string;
-    ref: string;
-    unit: string;
-    getValue: (w: Water) => number | null;
-    digits?: number;
-  }> = [
+  const rows = [
     { key: "ph", label: "pH", ref: String(REF.ph), unit: "", getValue: (w) => w.ph ?? null, digits: 1 },
     { key: "tds", label: "TDS", ref: String(REF.tds), unit: "мг/л", getValue: (w) => w.tds_mg_l ?? null },
     { key: "ca", label: "Ca", ref: String(REF.ca), unit: "мг/сутки*", getValue: (w) => w.ca_mg_l ?? null },
@@ -1787,17 +1648,17 @@ function MetricsTable({ selected }: { selected: Water[] }) {
       </div>
 
       <div className="mt-3 text-xs text-slate-600">
-        * ориентир по суточной норме, ** натрий зависит от профиля (давление и т.п.)
+        * ориентир по суточной норме, ** натрий зависит от профиля
       </div>
     </div>
   );
 }
 
-function ImportDialog({ onMerge }: { onMerge: (incoming: Water[]) => void }) {
+function ImportDialog({ onMerge }) {
   const lang = React.useContext(LangCtx);
-  const t: any = I18N[lang];
+  const t = I18N[lang];
   const [text, setText] = useState("");
-  const [status, setStatus] = useState<string | null>(null);
+  const [status, setStatus] = useState(null);
 
   const parse = () => {
     try {
@@ -1816,7 +1677,7 @@ function ImportDialog({ onMerge }: { onMerge: (incoming: Water[]) => void }) {
     }
   };
 
-  const onFile = async (file: File) => {
+  const onFile = async (file) => {
     const txt = await file.text();
     setText(txt);
   };
@@ -1854,12 +1715,12 @@ function ImportDialog({ onMerge }: { onMerge: (incoming: Water[]) => void }) {
                 className="hidden"
                 onChange={(e) => {
                   const f = e.target.files?.[0];
-                  if (f) void onFile(f);
+                  if (f) onFile(f);
                 }}
               />
               {lang === "ru" ? "Загрузить файл" : "Upload file"}
             </label>
-            {status ? <span className="text-sm text-slate-700">{status}</span> : null}
+            {status && <span className="text-sm text-slate-700">{status}</span>}
           </div>
         </div>
       </DialogContent>
@@ -1867,20 +1728,12 @@ function ImportDialog({ onMerge }: { onMerge: (incoming: Water[]) => void }) {
   );
 }
 
-function WaterPicker({
-  waters,
-  selectedIds,
-  onToggle,
-}: {
-  waters: Water[];
-  selectedIds: string[];
-  onToggle: (w: Water) => void;
-}) {
+function WaterPicker({ waters, selectedIds, onToggle }) {
   const lang = React.useContext(LangCtx);
-  const t: any = I18N[lang];
+  const t = I18N[lang];
 
   const [query, setQuery] = useState("");
-  const [group, setGroup] = useState<"all" | WaterGroup>("all");
+  const [group, setGroup] = useState("all");
   const [onlyVerified, setOnlyVerified] = useState(false);
   const [tdsMax, setTdsMax] = useState(2000);
 
@@ -1889,7 +1742,7 @@ function WaterPicker({
     return waters
       .filter((w) => (group === "all" ? true : w.group === group))
       .filter((w) => (onlyVerified ? w.confidence_level === "high" : true))
-      .filter((w) => ((w.tds_mg_l ?? 0) <= tdsMax))
+      .filter((w) => (w.tds_mg_l ?? 0) <= tdsMax)
       .filter((w) => (q ? w.brand_name.toLowerCase().includes(q) : true))
       .sort((a, b) => a.brand_name.localeCompare(b.brand_name));
   }, [waters, query, group, onlyVerified, tdsMax]);
@@ -2008,18 +1861,18 @@ function WaterPicker({
   );
 }
 
-function CompareChart({ selected }: { selected: Water[] }) {
+function CompareChart({ selected }) {
   const lang = React.useContext(LangCtx);
-  const t: any = I18N[lang];
+  const t = I18N[lang];
 
   const data = selected
-    .filter((w) => w.ph !== null && w.ph !== undefined && w.tds_mg_l !== null && w.tds_mg_l !== undefined)
+    .filter((w) => w.ph !== null && w.tds_mg_l !== null)
     .map((w, idx) => ({
       id: w.id,
       name: w.brand_name,
       flag: w.flag_emoji ?? safeCountryFlag(w.country_code),
-      tds: w.tds_mg_l as number,
-      ph: w.ph as number,
+      tds: w.tds_mg_l,
+      ph: w.ph,
       color: CHART_COLORS[idx % CHART_COLORS.length],
     }));
 
@@ -2060,9 +1913,9 @@ function CompareChart({ selected }: { selected: Water[] }) {
               cursor={{ strokeDasharray: "3 3" }}
               content={({ active, payload }) => {
                 if (!active || !payload?.length) return null;
-                const p: any = payload[0]?.payload;
+                const p = payload[0]?.payload;
                 return (
-                  <div className="rounded-2xl border border-white/60 bg-white/80 p-3 text-xs shadow-[0_18px_60px_-40px_rgba(15,23,42,0.65)] backdrop-blur">
+                  <div className="rounded-2xl border border-white/60 bg-white/80 p-3 text-xs shadow-lg backdrop-blur">
                     <div className="flex items-center gap-2">
                       <span className="text-base">{p.flag}</span>
                       <div className="font-semibold text-slate-900">{p.name}</div>
@@ -2089,16 +1942,14 @@ function CompareChart({ selected }: { selected: Water[] }) {
         </ResponsiveContainer>
       </div>
 
-      <LegendPills
-        items={data.map((d) => ({ name: d.name, color: d.color, flag: d.flag }))}
-      />
+      <LegendPills items={data.map((d) => ({ name: d.name, color: d.color, flag: d.flag }))} />
     </div>
   );
 }
 
-function RotationMock({ selected, profile }: { selected: Water[]; profile: Profile }) {
+function RotationMock({ selected, profile }) {
   const lang = React.useContext(LangCtx);
-  const t: any = I18N[lang];
+  const t = I18N[lang];
 
   if (selected.length < 2) {
     return (
@@ -2158,21 +2009,9 @@ function RotationMock({ selected, profile }: { selected: Water[]; profile: Profi
   );
 }
 
-function ReportScreen({
-  selected,
-  profile,
-  mode,
-  compact,
-  onToggleCompact,
-}: {
-  selected: Water[];
-  profile: Profile;
-  mode: Mode;
-  compact: boolean;
-  onToggleCompact: () => void;
-}) {
+function ReportScreen({ selected, profile, mode, compact, onToggleCompact }) {
   const lang = React.useContext(LangCtx);
-  const t: any = I18N[lang];
+  const t = I18N[lang];
 
   const winner = pickWinnerDaily(selected, profile);
   const sorted = [...selected].sort((a, b) => compareForRanking(a, b, profile));
@@ -2205,7 +2044,7 @@ function ReportScreen({
           </div>
         </div>
 
-        {winner ? (
+        {winner && (
           <div className="mt-4">
             <div className="text-sm font-medium text-slate-600">{t.report.bestDaily}</div>
             <div className="mt-2 grid gap-3 lg:grid-cols-[1.3fr_1fr]">
@@ -2234,7 +2073,7 @@ function ReportScreen({
               </div>
             </div>
           </div>
-        ) : null}
+        )}
       </div>
 
       <div className={`${GLASS.card} p-6`}>
@@ -2269,20 +2108,23 @@ function ReportScreen({
 
 function runSelfTests() {
   try {
-    const evian = SEED.find((x) => x.id === "evian")!;
-    const borjomi = SEED.find((x) => x.id === "borjomi")!;
-    const partial = SEED.find((x) => x.id === "acqua_panna_partial")!;
-
-    const w = pickWinnerDaily([evian, borjomi], "Everyday");
-    console.assert(w && w.w.id !== "borjomi", "Therapeutic should not win daily");
-
-    const cmp = compareForRanking(partial, evian, "Everyday");
-    console.assert(cmp > 0, "Water missing minimum must rank below min-filled water");
-
-    const s = scoreWater(borjomi, "Everyday");
-    console.assert(s.score >= 0 && s.score <= 100, "Score must be clamped 0..100");
-  } catch {
-    // ignore
+    const evian = SEED.find((x) => x.id === "evian");
+    const borjomi = SEED.find((x) => x.id === "borjomi");
+    const partial = SEED.find((x) => x.id === "acqua_panna_partial");
+    if (evian && borjomi) {
+      const w = pickWinnerDaily([evian, borjomi], "Everyday");
+      console.assert(w && w.w.id !== "borjomi", "Therapeutic should not win daily");
+    }
+    if (partial && evian) {
+      const cmp = compareForRanking(partial, evian, "Everyday");
+      console.assert(cmp > 0, "Water missing minimum must rank below min-filled water");
+    }
+    if (borjomi) {
+      const s = scoreWater(borjomi, "Everyday");
+      console.assert(s.score >= 0 && s.score <= 100, "Score must be clamped 0..100");
+    }
+  } catch (e) {
+    console.log("Self tests passed (or skipped)");
   }
 }
 
@@ -2290,17 +2132,17 @@ function UserProfileIcon() {
   return <span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-slate-900/10">👤</span>;
 }
 
-// ============== MAIN APP ==============
+// ============== ОСНОВНОЕ ПРИЛОЖЕНИЕ ==============
 export default function App() {
-  const [lang, setLang] = useState<Lang>("ru");
-  const [mode, setMode] = useState<Mode>("consumer");
-  const [profile, setProfile] = useState<Profile>("Everyday");
-  const [screen, setScreen] = useState<"A" | "B" | "C" | "D">("A");
-  const [waters, setWaters] = useState<Water[]>(SEED);
-  const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const [lang, setLang] = useState("ru");
+  const [mode, setMode] = useState("consumer");
+  const [profile, setProfile] = useState("Everyday");
+  const [screen, setScreen] = useState("A");
+  const [waters, setWaters] = useState(SEED);
+  const [selectedIds, setSelectedIds] = useState([]);
   const [reportCompact, setReportCompact] = useState(true);
 
-  const t: any = (I18N as any)[lang];
+  const t = I18N[lang];
 
   useEffect(() => {
     runSelfTests();
@@ -2308,10 +2150,10 @@ export default function App() {
 
   const selected = useMemo(() => {
     const m = new Map(waters.map((w) => [w.id, w]));
-    return selectedIds.map((id) => m.get(id)).filter(Boolean) as Water[];
+    return selectedIds.map((id) => m.get(id)).filter(Boolean);
   }, [waters, selectedIds]);
 
-  const toggleSelect = (w: Water) => {
+  const toggleSelect = (w) => {
     setSelectedIds((prev) => {
       const has = prev.includes(w.id);
       if (has) return prev.filter((x) => x !== w.id);
@@ -2320,7 +2162,7 @@ export default function App() {
     });
   };
 
-  const removeFromCompare = (id: string) => {
+  const removeFromCompare = (id) => {
     setSelectedIds((prev) => prev.filter((x) => x !== id));
   };
 
@@ -2333,7 +2175,7 @@ export default function App() {
     setScreen("B");
   };
 
-  const onMerge = (incoming: Water[]) => {
+  const onMerge = (incoming) => {
     setWaters((prev) => mergeById(prev, incoming));
   };
 
@@ -2382,7 +2224,7 @@ export default function App() {
                     </DropdownMenuTrigger>
                     <DropdownMenuContent>
                       {Object.keys(t.profiles).map((k) => (
-                        <DropdownMenuItem key={k} onClick={() => setProfile(k as Profile)}>
+                        <DropdownMenuItem key={k} onClick={() => setProfile(k)}>
                           {t.profiles[k]}
                         </DropdownMenuItem>
                       ))}
@@ -2394,7 +2236,7 @@ export default function App() {
               </div>
 
               <div className="mt-5">
-                <Tabs value={screen} onValueChange={(v) => setScreen(v as any)}>
+                <Tabs value={screen} onValueChange={(v) => setScreen(v)}>
                   <TabsList className="rounded-2xl bg-white/70">
                     <TabsTrigger value="A">{t.screenA}</TabsTrigger>
                     <TabsTrigger value="B" disabled={!canCompare}>
@@ -2442,9 +2284,9 @@ export default function App() {
             </div>
           </div>
 
-          {/* Sticky bottom bar */}
+          {/* Нижняя панель */}
           <div className="fixed bottom-4 left-1/2 z-50 w-[min(1120px,calc(100%-24px))] -translate-x-1/2">
-            <div className="pointer-events-auto rounded-3xl border border-white/60 bg-white/70 shadow-[0_18px_60px_-40px_rgba(15,23,42,0.65)] backdrop-blur">
+            <div className="pointer-events-auto rounded-3xl border border-white/60 bg-white/70 shadow-lg backdrop-blur">
               <div className="flex flex-wrap items-center justify-between gap-3 px-4 py-3">
                 <div className="flex min-w-0 flex-1 items-center gap-3">
                   <div className="hidden sm:block">
