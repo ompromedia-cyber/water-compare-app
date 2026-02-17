@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
+import ReactDOM from 'react-dom';
 import {
   AlertTriangle,
   Beaker,
@@ -218,17 +219,20 @@ const DialogContent = ({ className, children }) => {
   const { isOpen, setIsOpen } = React.useContext(DialogContext);
   if (!isOpen) return null;
   
-  return (
+  // Используем портал, чтобы окно было над всем
+  return ReactDOM.createPortal(
     <div 
-      className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm"
+      className="fixed inset-0 z-[9999] flex items-center justify-center"
+      style={{ backgroundColor: 'rgba(0,0,0,0.3)', backdropFilter: 'blur(4px)' }}
       onClick={() => setIsOpen(false)}
     >
       <div 
-        className={`bg-white rounded-3xl border border-white/60 shadow-2xl max-w-2xl w-full max-h-[85vh] flex flex-col ${className}`}
+        className={`relative bg-white rounded-3xl border border-white/60 shadow-2xl w-full max-w-2xl mx-4 ${className}`}
+        style={{ maxHeight: '90vh' }}
         onClick={(e) => e.stopPropagation()}
       >
-        {/* Шапка с крестиком - всегда видима */}
-        <div className="flex justify-between items-center p-6 pb-2 border-b border-white/60 bg-white/95 backdrop-blur-sm rounded-t-3xl">
+        {/* Фиксированная шапка с крестиком */}
+        <div className="sticky top-0 z-10 flex justify-between items-center p-6 border-b border-white/60 bg-white rounded-t-3xl">
           <DialogTitle className="text-xl font-semibold text-slate-900">
             {/* Заголовок будет передан через children */}
           </DialogTitle>
@@ -237,21 +241,19 @@ const DialogContent = ({ className, children }) => {
             className="p-2 hover:bg-slate-100 rounded-full transition-colors"
             aria-label="Закрыть"
           >
-            <X className="h-5 w-5 text-slate-600" />
+            <X className="h-6 w-6 text-slate-600" />
           </button>
         </div>
         
-        {/* Контент с прокруткой */}
-        <div className="flex-1 overflow-y-auto p-6 pt-2">
+        {/* Прокручиваемый контент */}
+        <div className="overflow-y-auto p-6" style={{ maxHeight: 'calc(90vh - 80px)' }}>
           {children}
         </div>
       </div>
-    </div>
+    </div>,
+    document.body // Рендерим в body, чтобы быть над всем
   );
 };
-
-const DialogHeader = ({ children }) => <div className="mb-4">{children}</div>;
-const DialogTitle = ({ children, className }) => <div className={`text-lg font-semibold ${className}`}>{children}</div>;
 
 // Input компоненты
 const Input = ({ className, ...props }) => (
