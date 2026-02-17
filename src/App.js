@@ -1280,12 +1280,31 @@ function AchievementPills({ w }) {
 
 function metricStatus(key, value) {
   if (value === null || value === undefined) return "unknown";
+  
   const ref = key === "ph" ? REF.ph : key === "tds" ? REF.tds : REF[key];
   const denom = ref || 1;
-  let ratio = Math.abs(value - ref) / denom;
-  if (key === "tds" && Math.abs(value - REF.tds) < 150) ratio = 0;
-  if (ratio <= 0.25) return "daily";
-  if (ratio <= 0.7) return "rotate";
+  
+  // Для TDS особая логика (как и было)
+  if (key === "tds" && Math.abs(value - REF.tds) < 150) return "daily";
+  
+  // Вычисляем отклонение
+  const deviation = Math.abs(value - ref) / denom;
+  
+  // Для минералов (Ca, Mg, Na, Cl, K) - "лечебная" ТОЛЬКО если выше эталона
+  if (["ca", "mg", "na", "cl", "k"].includes(key)) {
+    if (value > ref) {
+      if (deviation > 0.7) return "therapeutic";
+      if (deviation > 0.25) return "rotate";
+    }
+    // Если значение ниже эталона - это нормально или daily
+    if (deviation <= 0.25) return "daily";
+    if (deviation <= 0.7) return "rotate";
+    return "rotate"; // Даже сильно ниже - не лечебная
+  }
+  
+  // Для pH и TDS оставляем старую логику (отклонение в любую сторону)
+  if (deviation <= 0.25) return "daily";
+  if (deviation <= 0.7) return "rotate";
   return "therapeutic";
 }
 
