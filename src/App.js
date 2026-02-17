@@ -219,39 +219,83 @@ const DialogContent = ({ className, children }) => {
   const { isOpen, setIsOpen } = React.useContext(DialogContext);
   if (!isOpen) return null;
   
-  // Используем портал, чтобы окно было над всем
+  // Создаём портал в body
   return ReactDOM.createPortal(
     <div 
-      className="fixed inset-0 z-[9999] flex items-center justify-center"
-      style={{ backgroundColor: 'rgba(0,0,0,0.3)', backdropFilter: 'blur(4px)' }}
+      style={{
+        position: 'fixed',
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        backgroundColor: 'rgba(0, 0, 0, 0.5)',
+        backdropFilter: 'blur(4px)',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        zIndex: 999999,
+      }}
       onClick={() => setIsOpen(false)}
     >
       <div 
-        className={`relative bg-white rounded-3xl border border-white/60 shadow-2xl w-full max-w-2xl mx-4 ${className}`}
-        style={{ maxHeight: '90vh' }}
+        style={{
+          backgroundColor: 'white',
+          borderRadius: '24px',
+          border: '1px solid rgba(255,255,255,0.6)',
+          boxShadow: '0 25px 50px -12px rgba(0,0,0,0.25)',
+          width: '90%',
+          maxWidth: '640px',
+          maxHeight: '90vh',
+          display: 'flex',
+          flexDirection: 'column',
+          position: 'relative',
+          margin: '20px',
+        }}
         onClick={(e) => e.stopPropagation()}
       >
-        {/* Фиксированная шапка с крестиком */}
-        <div className="sticky top-0 z-10 flex justify-between items-center p-6 border-b border-white/60 bg-white rounded-t-3xl">
-          <DialogTitle className="text-xl font-semibold text-slate-900">
+        {/* Шапка с крестиком */}
+        <div style={{
+          padding: '20px 24px',
+          borderBottom: '1px solid rgba(0,0,0,0.1)',
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          backgroundColor: 'white',
+          borderRadius: '24px 24px 0 0',
+        }}>
+          <h2 className="text-xl font-semibold text-slate-900">
             {/* Заголовок будет передан через children */}
-          </DialogTitle>
-          <button 
-            onClick={() => setIsOpen(false)} 
-            className="p-2 hover:bg-slate-100 rounded-full transition-colors"
-            aria-label="Закрыть"
+          </h2>
+          <button
+            onClick={() => setIsOpen(false)}
+            style={{
+              padding: '8px',
+              borderRadius: '50%',
+              border: 'none',
+              background: 'transparent',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}
+            onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#f1f5f9'}
+            onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
           >
-            <X className="h-6 w-6 text-slate-600" />
+            <X size={24} color="#475569" />
           </button>
         </div>
         
-        {/* Прокручиваемый контент */}
-        <div className="overflow-y-auto p-6" style={{ maxHeight: 'calc(90vh - 80px)' }}>
+        {/* Контент с прокруткой */}
+        <div style={{
+          padding: '24px',
+          overflowY: 'auto',
+          flex: 1,
+        }}>
           {children}
         </div>
       </div>
     </div>,
-    document.body // Рендерим в body, чтобы быть над всем
+    document.body
   );
 };
 
