@@ -1210,32 +1210,32 @@ function MetricHelp({ k }) {
   // Влияние на здоровье
   const healthEffects = {
     ca: {
-      ru: "⚠️ Недостаток: остеопороз, судороги, ломкость ногтей. Избыток: камни в почках.",
-      en: "⚠️ Deficiency: osteoporosis, cramps, brittle nails. Excess: kidney stones."
+      ru: "Недостаток: остеопороз, судороги, ломкость ногтей. Избыток: камни в почках.",
+      en: "Deficiency: osteoporosis, cramps, brittle nails. Excess: kidney stones."
     },
     mg: {
-      ru: "⚠️ Недостаток: стресс, бессонница, мышечные спазмы. Избыток: диарея, слабость.",
-      en: "⚠️ Deficiency: stress, insomnia, muscle spasms. Excess: diarrhea, weakness."
+      ru: "Недостаток: стресс, бессонница, мышечные спазмы. Избыток: диарея, слабость.",
+      en: "Deficiency: stress, insomnia, muscle spasms. Excess: diarrhea, weakness."
     },
     k: {
-      ru: "⚠️ Недостаток: слабость, аритмия, отёки. Избыток: нарушение сердечного ритма.",
-      en: "⚠️ Deficiency: weakness, arrhythmia, edema. Excess: heart rhythm disorders."
+      ru: "Недостаток: слабость, аритмия, отёки. Избыток: нарушение сердечного ритма.",
+      en: "Deficiency: weakness, arrhythmia, edema. Excess: heart rhythm disorders."
     },
     na: {
-      ru: "⚠️ Недостаток: слабость, судороги. Избыток: гипертония, отёки, нагрузка на сердце.",
-      en: "⚠️ Deficiency: weakness, cramps. Excess: hypertension, edema, heart strain."
+      ru: "Недостаток: слабость, судороги. Избыток: гипертония, отёки, нагрузка на сердце.",
+      en: "Deficiency: weakness, cramps. Excess: hypertension, edema, heart strain."
     },
     cl: {
-      ru: "⚠️ Нарушение баланса хлоридов влияет на кислотно-щелочное равновесие и пищеварение.",
-      en: "⚠️ Chloride imbalance affects acid-base balance and digestion."
+      ru: "Нарушение баланса хлоридов влияет на кислотно-щелочное равновесие и пищеварение.",
+      en: "Chloride imbalance affects acid-base balance and digestion."
     },
     ph: {
-      ru: "⚠️ Сильно кислая вода (<6) может раздражать ЖКТ. Сильно щелочная (>9) — нарушать пищеварение.",
-      en: "⚠️ Too acidic water (<6) may irritate GI tract. Too alkaline (>9) may disrupt digestion."
+      ru: "Сильно кислая вода (<6) может раздражать ЖКТ. Сильно щелочная (>9) — нарушать пищеварение.",
+      en: "Too acidic water (<6) may irritate GI tract. Too alkaline (>9) may disrupt digestion."
     },
     tds: {
-      ru: "⚠️ Высокий TDS (>1000) даёт нагрузку на почки. Низкий TDS (<50) — вода может быть слишком мягкой и невкусной.",
-      en: "⚠️ High TDS (>1000) strains kidneys. Low TDS (<50) — water may be too soft and tasteless."
+      ru: "Высокий TDS (>1000) даёт нагрузку на почки. Низкий TDS (<50) — вода может быть слишком мягкой и невкусной.",
+      en: "High TDS (>1000) strains kidneys. Low TDS (<50) — water may be too soft and tasteless."
     }
   };
 
@@ -1253,65 +1253,91 @@ function MetricHelp({ k }) {
           <Info className="h-3.5 w-3.5" />
         </button>
       </DialogTrigger>
-      <DialogContent className="max-w-[640px]">
-        <DialogHeader>
-          <DialogTitle>{title}</DialogTitle>
-        </DialogHeader>
-        <div className="space-y-4 text-sm text-slate-700 p-6 pt-2">
-          {/* Основное описание */}
-          <div className="bg-sky-50/60 p-4 rounded-xl border border-sky-100">
-            <p className="text-slate-700">{description}</p>
-          </div>
+      <DialogContent className="max-w-[640px] max-h-[90vh] overflow-y-auto">
+        <div className="sticky top-0 z-50 flex justify-end p-4 bg-white/95 backdrop-blur-sm border-b border-white/60">
+          <DialogCloseButton />
+        </div>
+        <div className="px-6 pb-6">
+          <DialogHeader>
+            <DialogTitle className="text-xl font-semibold text-slate-900 mb-4">{title}</DialogTitle>
+          </DialogHeader>
           
-          {/* Краткое описание (короткая версия) */}
-          <div className="text-slate-600">
-            <span className="font-medium text-slate-800">Коротко:</span> {short}
-          </div>
-          
-          {/* Эталон */}
-          <div className="bg-emerald-50/60 p-4 rounded-xl border border-emerald-100">
-            <div className="text-xs text-slate-600 font-medium">
-              {lang === "ru" ? "🥤 Рекомендуемая суточная норма:" : "🥤 Recommended daily intake:"}
+          <div className="space-y-5 text-sm text-slate-700">
+            {/* Основное описание */}
+            <div className="bg-sky-50/60 p-5 rounded-xl border border-sky-100">
+              <p className="text-slate-700 leading-relaxed">{description}</p>
             </div>
-            <div className="text-lg font-semibold text-slate-900 mt-1">
-              {e.ref} {unit}
+            
+            {/* Коротко */}
+            <div className="text-slate-600 bg-white/50 p-4 rounded-xl border border-slate-100">
+              <span className="font-medium text-slate-800 block mb-2">Коротко:</span>
+              <p>{short}</p>
             </div>
-            <div className="text-xs text-slate-500 mt-1">
-              {lang === "ru" 
-                ? "Из расчёта на 2 литра воды в день" 
-                : "Based on 2 liters of water per day"}
-            </div>
-          </div>
-          
-          {/* Влияние на здоровье */}
-          {healthText && (
-            <div className="bg-amber-50/60 p-4 rounded-xl border border-amber-100">
-              <div className="text-xs text-slate-600 font-medium mb-2">
-                {lang === "ru" ? "⚕️ Влияние на здоровье:" : "⚕️ Health effects:"}
+            
+            {/* Эталон */}
+            <div className="bg-emerald-50/60 p-5 rounded-xl border border-emerald-100">
+              <div className="text-xs text-slate-600 font-medium mb-1">
+                {lang === "ru" ? "🥤 Рекомендуемая суточная норма:" : "🥤 Recommended daily intake:"}
               </div>
-              <p className="text-slate-700">{healthText}</p>
+              <div className="text-2xl font-bold text-slate-900 my-2">
+                {e.ref} {unit}
+              </div>
+              <div className="text-xs text-slate-500">
+                {lang === "ru" 
+                  ? "Из расчёта на 2 литра воды в день" 
+                  : "Based on 2 liters of water per day"}
+              </div>
             </div>
-          )}
-          
-          {/* Дополнительная информация для конкретных показателей */}
-          {k === "tds" && (
-            <div className="text-xs text-slate-500 mt-2">
-              {lang === "ru" 
-                ? "💧 TDS < 100 — мягкая вода, 100-300 — оптимальная, 300-500 — жёсткая, >500 — очень жёсткая"
-                : "💧 TDS < 100 — soft water, 100-300 — optimal, 300-500 — hard, >500 — very hard"}
-            </div>
-          )}
-          
-          {k === "ph" && (
-            <div className="text-xs text-slate-500 mt-2">
-              {lang === "ru" 
-                ? "💧 pH < 6.5 — кислая, 6.5-7.5 — нейтральная, 7.5-8.5 — слабощелочная, >8.5 — щелочная"
-                : "💧 pH < 6.5 — acidic, 6.5-7.5 — neutral, 7.5-8.5 — slightly alkaline, >8.5 — alkaline"}
-            </div>
-          )}
+            
+            {/* Влияние на здоровье */}
+            {healthText && (
+              <div className="bg-amber-50/60 p-5 rounded-xl border border-amber-100">
+                <div className="text-xs text-slate-600 font-medium mb-3 flex items-center gap-2">
+                  <span className="text-amber-600">⚠️</span>
+                  {lang === "ru" ? "Влияние на здоровье:" : "Health effects:"}
+                </div>
+                <p className="text-slate-700 leading-relaxed">{healthText}</p>
+              </div>
+            )}
+            
+            {/* Дополнительная информация */}
+            {k === "tds" && (
+              <div className="bg-purple-50/60 p-4 rounded-xl border border-purple-100">
+                <p className="text-xs text-slate-600">
+                  💧 {lang === "ru" 
+                    ? "TDS < 100 — мягкая вода, 100-300 — оптимальная, 300-500 — жёсткая, >500 — очень жёсткая"
+                    : "TDS < 100 — soft water, 100-300 — optimal, 300-500 — hard, >500 — very hard"}
+                </p>
+              </div>
+            )}
+            
+            {k === "ph" && (
+              <div className="bg-purple-50/60 p-4 rounded-xl border border-purple-100">
+                <p className="text-xs text-slate-600">
+                  💧 {lang === "ru" 
+                    ? "pH < 6.5 — кислая, 6.5-7.5 — нейтральная, 7.5-8.5 — слабощелочная, >8.5 — щелочная"
+                    : "pH < 6.5 — acidic, 6.5-7.5 — neutral, 7.5-8.5 — slightly alkaline, >8.5 — alkaline"}
+                </p>
+              </div>
+            )}
+          </div>
         </div>
       </DialogContent>
     </Dialog>
+  );
+}
+
+// Компонент кнопки закрытия
+function DialogCloseButton() {
+  const { setIsOpen } = React.useContext(DialogContext);
+  return (
+    <button 
+      onClick={() => setIsOpen(false)} 
+      className="p-2 hover:bg-slate-100 rounded-full transition-colors"
+      aria-label="Закрыть"
+    >
+      <X className="h-5 w-5 text-slate-600" />
+    </button>
   );
 }
 
