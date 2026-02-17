@@ -2062,28 +2062,66 @@ function ReportScreen({ selected, profile, mode, compact, onToggleCompact }) {
             <div className="text-sm font-medium text-slate-600">{t.report.bestDaily}</div>
             <div className="mt-2 grid gap-3 lg:grid-cols-[1.3fr_1fr]">
               <WaterProfileCard w={winner.w} profile={profile} />
-              <div className={`${GLASS.subtle} p-5`}>
-                <div className="flex items-center gap-2">
-                  <TrendingUp className="h-5 w-5 text-slate-700" />
-                  <div className="font-semibold text-slate-900">{t.report.why}</div>
-                </div>
-                <div className="mt-3 space-y-2 text-sm text-slate-700">
-                  <div>• {t.misc.minRule}</div>
-                  <div>• {t.report.therapeuticNote}</div>
-                  <div>• {t.report.missingMinimum}</div>
-                  {mode === "pro" ? (
-                    <div className="mt-3 inline-flex items-center gap-2 rounded-2xl border border-white/60 bg-white/70 px-3 py-2 text-xs font-medium text-slate-700">
-                      <Lock className="h-4 w-4" />
-                      {t.report.proHidden}
-                    </div>
-                  ) : (
-                    <div className="mt-3 inline-flex items-center gap-2 rounded-2xl border border-white/60 bg-white/70 px-3 py-2 text-xs font-medium text-slate-700">
-                      <Info className="h-4 w-4" />
-                      {t.report.eduHint}
-                    </div>
-                  )}
-                </div>
-              </div>
+            {/* ===== НОВЫЙ БЛОК С ПОНЯТНЫМ ОБЪЯСНЕНИЕМ ===== */}
+<div className={`${GLASS.subtle} p-5`}>
+  <div className="flex items-center gap-2 mb-4">
+    <TrendingUp className="h-5 w-5 text-slate-700" />
+    <div className="font-semibold text-slate-900">
+      {lang === "ru" ? "Почему эта вода лучше?" : "Why is this water better?"}
+    </div>
+  </div>
+  
+  <div className="space-y-4 text-sm text-slate-700">
+    <div className="flex gap-3">
+      <div className="w-6 h-6 rounded-full bg-emerald-100 flex items-center justify-center text-emerald-600 font-bold text-xs flex-shrink-0">1</div>
+      <div>
+        <span className="font-medium text-slate-900">
+          {lang === "ru" ? "Самый сбалансированный состав" : "Most balanced composition"}
+        </span>
+        <p className="text-xs text-slate-600 mt-0.5">
+          {lang === "ru" 
+            ? "Все показатели близки к оптимальным значениям для ежедневного питья" 
+            : "All metrics are close to optimal values for daily drinking"}
+        </p>
+      </div>
+    </div>
+    
+    <div className="flex gap-3">
+      <div className="w-6 h-6 rounded-full bg-emerald-100 flex items-center justify-center text-emerald-600 font-bold text-xs flex-shrink-0">2</div>
+      <div>
+        <span className="font-medium text-slate-900">
+          {lang === "ru" ? "Полные данные" : "Complete data"}
+        </span>
+        <p className="text-xs text-slate-600 mt-0.5">
+          {lang === "ru"
+            ? "У этой воды указаны все ключевые показатели, поэтому оценка точная"
+            : "All key metrics are available, so the rating is accurate"}
+        </p>
+      </div>
+    </div>
+    
+    <div className="flex gap-3">
+      <div className="w-6 h-6 rounded-full bg-emerald-100 flex items-center justify-center text-emerald-600 font-bold text-xs flex-shrink-0">3</div>
+      <div>
+        <span className="font-medium text-slate-900">
+          {lang === "ru" ? "Подходит под ваш профиль" : "Matches your profile"}
+        </span>
+        <p className="text-xs text-slate-600 mt-0.5">
+          {lang === "ru"
+            ? `Учтены особенности профиля "${t.profiles[profile].toLowerCase()}"`
+            : `Takes into account your "${t.profiles[profile].toLowerCase()}" preferences`}
+        </p>
+      </div>
+    </div>
+
+    <div className="mt-4 pt-3 border-t border-white/40 text-xs text-slate-500 italic">
+      {lang === "ru"
+        ? "Оценка учитывает не только пользу, но и безопасность — умеренное содержание солей и минералов"
+        : "Rating considers both benefits and safety — moderate mineral content"}
+    </div>
+  </div>
+</div>
+{/* ===== КОНЕЦ НОВОГО БЛОКА ===== */}
             </div>
           </div>
         )}
