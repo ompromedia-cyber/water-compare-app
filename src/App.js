@@ -2057,38 +2057,98 @@ function ReportScreen({ selected, profile, mode, compact, onToggleCompact }) {
           </div>
         </div>
 
-        {winner && (
-          <div className="mt-4">
-            <div className="text-sm font-medium text-slate-600">{t.report.bestDaily}</div>
-            <div className="mt-2 grid gap-3 lg:grid-cols-[1.3fr_1fr]">
-              <WaterProfileCard w={winner.w} profile={profile} />
-              <div className={`${GLASS.subtle} p-5`}>
-                <div className="flex items-center gap-2">
-                  <TrendingUp className="h-5 w-5 text-slate-700" />
-                  <div className="font-semibold text-slate-900">{t.report.why}</div>
-                </div>
-                <div className="mt-3 space-y-2 text-sm text-slate-700">
-                  <div>• {t.misc.minRule}</div>
-                  <div>• {t.report.therapeuticNote}</div>
-                  <div>• {t.report.missingMinimum}</div>
-                  {mode === "pro" ? (
-                    <div className="mt-3 inline-flex items-center gap-2 rounded-2xl border border-white/60 bg-white/70 px-3 py-2 text-xs font-medium text-slate-700">
-                      <Lock className="h-4 w-4" />
-                      {t.report.proHidden}
-                    </div>
-                  ) : (
-                    <div className="mt-3 inline-flex items-center gap-2 rounded-2xl border border-white/60 bg-white/70 px-3 py-2 text-xs font-medium text-slate-700">
-                      <Info className="h-4 w-4" />
-                      {t.report.eduHint}
-                    </div>
-                  )}
-                </div>
+       {winner && (
+  <div className="mt-4">
+    <div className="text-sm font-medium text-slate-600">{t.report.bestDaily}</div>
+    <div className="mt-2 grid gap-3 lg:grid-cols-[1.3fr_1fr]">
+      <WaterProfileCard w={winner.w} profile={profile} />
+      
+      {/* Новый блок объяснения */}
+      <div className={`${GLASS.subtle} p-5`}>
+        <div className="flex items-center gap-2 mb-4">
+          <TrendingUp className="h-5 w-5 text-slate-700" />
+          <div className="font-semibold text-slate-900">
+            {lang === "ru" ? "Победитель в рейтинге" : "Ranking winner"}
+          </div>
+        </div>
+        
+        {/* Простое объяснение */}
+        <div className="space-y-3 text-sm text-slate-700">
+          <div className="flex items-center gap-2">
+            <div className="w-6 h-6 rounded-full bg-emerald-100 flex items-center justify-center text-emerald-700 font-bold">1</div>
+            <span>{winner.w.brand_name} — {Math.round(winner.s.score)} баллов</span>
+          </div>
+          
+          <div className="border-t border-white/40 my-3"></div>
+          
+          <div className="space-y-2">
+            <div className="text-xs font-medium text-slate-500">
+              {lang === "ru" ? "Как мы выбирали:" : "How we chose:"}
+            </div>
+            <ul className="space-y-2 text-xs">
+              <li className="flex gap-2">
+                <span className="text-emerald-600 font-bold">✓</span>
+                <span>{lang === "ru" 
+                  ? "Проверили, что у воды есть все основные показатели (pH, TDS, Ca, Mg, Na, Cl)" 
+                  : "Checked that water has all key metrics (pH, TDS, Ca, Mg, Na, Cl)"}</span>
+              </li>
+              <li className="flex gap-2">
+                <span className="text-emerald-600 font-bold">✓</span>
+                <span>{lang === "ru"
+                  ? "Сравнили каждый показатель с эталоном для здорового питья"
+                  : "Compared each metric against healthy drinking references"}</span>
+              </li>
+              <li className="flex gap-2">
+                <span className="text-emerald-600 font-bold">✓</span>
+                <span>{lang === "ru"
+                  ? "Учли ваш профиль потребления"
+                  : "Considered your consumption profile"}</span>
+              </li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+)}
+
+  {/* Рейтинг всех выбранных вод */}
+<div className="mt-6">
+  <div className="text-sm font-medium text-slate-600 mb-3">
+    {lang === "ru" ? "Общий рейтинг" : "Overall ranking"}
+  </div>
+  <div className="space-y-2">
+    {[...selected]
+      .sort((a, b) => compareForRanking(a, b, profile))
+      .map((w, idx) => {
+        const score = scoreWater(w, profile).score;
+        return (
+          <div key={w.id} className={`${GLASS.subtle} p-3 flex items-center gap-3`}>
+            <div className={`
+              w-7 h-7 rounded-full flex items-center justify-center text-sm font-bold
+              ${idx === 0 ? 'bg-amber-100 text-amber-700' : 
+                idx === 1 ? 'bg-slate-100 text-slate-600' : 
+                'bg-slate-50 text-slate-400'}
+            `}>
+              {idx + 1}
+            </div>
+            <span className="text-base flex-1">{w.flag_emoji} {w.brand_name}</span>
+            <div className="flex items-center gap-2">
+              <div className="w-20 h-2 bg-slate-200 rounded-full overflow-hidden">
+                <div 
+                  className="h-full bg-slate-900/80 rounded-full"
+                  style={{ width: `${score}%` }}
+                />
               </div>
+              <span className="text-sm font-semibold text-slate-900 w-10">
+                {Math.round(score)}
+              </span>
             </div>
           </div>
-        )}
-      </div>
-
+        );
+    })}
+  </div>
+</div>
       <div className={`${GLASS.card} p-6`}>
         <div className="flex items-center justify-between gap-3">
           <div>
