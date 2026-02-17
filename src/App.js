@@ -198,26 +198,60 @@ const DialogTrigger = ({ asChild, children }) => {
   return <div onClick={() => setIsOpen(true)}>{children}</div>;
 };
 
+// Dialog компоненты
+const DialogContext = React.createContext({});
+const Dialog = ({ children }) => {
+  const [isOpen, setIsOpen] = useState(false);
+  return (
+    <DialogContext.Provider value={{ isOpen, setIsOpen }}>
+      <div>{children}</div>
+    </DialogContext.Provider>
+  );
+};
+
+const DialogTrigger = ({ asChild, children }) => {
+  const { setIsOpen } = React.useContext(DialogContext);
+  return <div onClick={() => setIsOpen(true)}>{children}</div>;
+};
+
 const DialogContent = ({ className, children }) => {
   const { isOpen, setIsOpen } = React.useContext(DialogContext);
   if (!isOpen) return null;
   
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/20 backdrop-blur-sm">
-      <div className={`bg-white rounded-3xl border border-white/60 shadow-xl max-w-2xl w-full max-h-[90vh] overflow-auto ${className}`}>
-        <div className="sticky top-0 flex justify-end p-2 bg-white/80 backdrop-blur">
-          <button onClick={() => setIsOpen(false)} className="p-1 hover:bg-slate-100 rounded-full">
-            <X className="h-5 w-5" />
+    <div 
+      className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm"
+      onClick={() => setIsOpen(false)}
+    >
+      <div 
+        className={`bg-white rounded-3xl border border-white/60 shadow-2xl max-w-2xl w-full max-h-[85vh] flex flex-col ${className}`}
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* Шапка с крестиком - всегда видима */}
+        <div className="flex justify-between items-center p-6 pb-2 border-b border-white/60 bg-white/95 backdrop-blur-sm rounded-t-3xl">
+          <DialogTitle className="text-xl font-semibold text-slate-900">
+            {/* Заголовок будет передан через children */}
+          </DialogTitle>
+          <button 
+            onClick={() => setIsOpen(false)} 
+            className="p-2 hover:bg-slate-100 rounded-full transition-colors"
+            aria-label="Закрыть"
+          >
+            <X className="h-5 w-5 text-slate-600" />
           </button>
         </div>
-        {children}
+        
+        {/* Контент с прокруткой */}
+        <div className="flex-1 overflow-y-auto p-6 pt-2">
+          {children}
+        </div>
       </div>
     </div>
   );
 };
 
-const DialogHeader = ({ children }) => <div className="p-6 pb-2">{children}</div>;
-const DialogTitle = ({ children }) => <div className="text-lg font-semibold">{children}</div>;
+const DialogHeader = ({ children }) => <div className="mb-4">{children}</div>;
+const DialogTitle = ({ children, className }) => <div className={`text-lg font-semibold ${className}`}>{children}</div>;
 
 // Input компоненты
 const Input = ({ className, ...props }) => (
@@ -1170,77 +1204,8 @@ function MetricHelp({ k }) {
   const title = lang === "ru" ? e.titleRU : e.titleEN;
   const short = lang === "ru" ? e.shortRU : e.shortEN;
   const unit = lang === "ru" ? e.unitRU : e.unitEN;
-  const [isOpen, setIsOpen] = useState(false);
 
-  // Расшифровка для каждого показателя
-  const descriptions = {
-    ca: {
-      ru: "Кальций необходим для здоровья костей, зубов, мышц и нервной системы. Влияет на свёртываемость крови. Недостаток может привести к остеопорозу, судорогам.",
-      en: "Calcium is essential for bones, teeth, muscles and nerves. Affects blood clotting. Deficiency may lead to osteoporosis and cramps."
-    },
-    mg: {
-      ru: "Магний участвует в энергетическом обмене, работе мышц и нервной системы, синтезе белка. Помогает бороться со стрессом и улучшает сон.",
-      en: "Magnesium participates in energy metabolism, muscle and nerve function, protein synthesis. Helps with stress and improves sleep."
-    },
-    k: {
-      ru: "Калий регулирует водно-солевой баланс, работу сердца, мышц и нервов. Помогает снижать давление и предотвращает судороги.",
-      en: "Potassium regulates fluid balance, heart, muscle and nerve function. Helps lower blood pressure and prevents cramps."
-    },
-    na: {
-      ru: "Натрий поддерживает водный баланс, передачу нервных импульсов и сокращение мышц. Избыток задерживает жидкость и повышает давление.",
-      en: "Sodium maintains fluid balance, nerve transmission and muscle contraction. Excess retains fluid and raises blood pressure."
-    },
-    cl: {
-      ru: "Хлориды участвуют в поддержании кислотно-щелочного баланса и выработке желудочного сока. Работают в паре с натрием.",
-      en: "Chlorides help maintain acid-base balance and gastric juice production. Work in pair with sodium."
-    },
-    ph: {
-      ru: "pH показывает кислотность или щёлочность воды. Нейтральный pH = 7. Слабощелочная вода (7.2-8.5) считается наиболее физиологичной.",
-      en: "pH indicates acidity or alkalinity. Neutral pH = 7. Slightly alkaline water (7.2-8.5) is considered most physiological."
-    },
-    tds: {
-      ru: "TDS (общая минерализация) — сумма всех растворённых в воде солей и минералов. Влияет на вкус и жёсткость воды.",
-      en: "TDS (Total Dissolved Solids) — sum of all minerals and salts dissolved in water. Affects taste and hardness."
-    }
-  };
-
-  const desc = descriptions[k] || { ru: "", en: "" };
-  const description = lang === "ru" ? desc.ru : desc.en;
-
-  // Влияние на здоровье
-  const healthEffects = {
-    ca: {
-      ru: "Недостаток: остеопороз, судороги, ломкость ногтей. Избыток: камни в почках.",
-      en: "Deficiency: osteoporosis, cramps, brittle nails. Excess: kidney stones."
-    },
-    mg: {
-      ru: "Недостаток: стресс, бессонница, мышечные спазмы. Избыток: диарея, слабость.",
-      en: "Deficiency: stress, insomnia, muscle spasms. Excess: diarrhea, weakness."
-    },
-    k: {
-      ru: "Недостаток: слабость, аритмия, отёки. Избыток: нарушение сердечного ритма.",
-      en: "Deficiency: weakness, arrhythmia, edema. Excess: heart rhythm disorders."
-    },
-    na: {
-      ru: "Недостаток: слабость, судороги. Избыток: гипертония, отёки, нагрузка на сердце.",
-      en: "Deficiency: weakness, cramps. Excess: hypertension, edema, heart strain."
-    },
-    cl: {
-      ru: "Нарушение баланса хлоридов влияет на кислотно-щелочное равновесие и пищеварение.",
-      en: "Chloride imbalance affects acid-base balance and digestion."
-    },
-    ph: {
-      ru: "Сильно кислая вода (<6) может раздражать ЖКТ. Сильно щелочная (>9) — нарушать пищеварение.",
-      en: "Too acidic water (<6) may irritate GI tract. Too alkaline (>9) may disrupt digestion."
-    },
-    tds: {
-      ru: "Высокий TDS (>1000) даёт нагрузку на почки. Низкий TDS (<50) — вода может быть слишком мягкой и невкусной.",
-      en: "High TDS (>1000) strains kidneys. Low TDS (<50) — water may be too soft and tasteless."
-    }
-  };
-
-  const health = healthEffects[k] || { ru: "", en: "" };
-  const healthText = lang === "ru" ? health.ru : health.en;
+  // ... (оставьте все описания и healthEffects как было) ...
 
   return (
     <Dialog>
@@ -1253,91 +1218,65 @@ function MetricHelp({ k }) {
           <Info className="h-3.5 w-3.5" />
         </button>
       </DialogTrigger>
-      <DialogContent className="max-w-[640px] max-h-[90vh] overflow-y-auto">
-        <div className="sticky top-0 z-50 flex justify-end p-4 bg-white/95 backdrop-blur-sm border-b border-white/60">
-          <DialogCloseButton />
-        </div>
-        <div className="px-6 pb-6">
-          <DialogHeader>
-            <DialogTitle className="text-xl font-semibold text-slate-900 mb-4">{title}</DialogTitle>
-          </DialogHeader>
-          
-          <div className="space-y-5 text-sm text-slate-700">
-            {/* Основное описание */}
-            <div className="bg-sky-50/60 p-5 rounded-xl border border-sky-100">
-              <p className="text-slate-700 leading-relaxed">{description}</p>
-            </div>
-            
-            {/* Коротко */}
-            <div className="text-slate-600 bg-white/50 p-4 rounded-xl border border-slate-100">
-              <span className="font-medium text-slate-800 block mb-2">Коротко:</span>
-              <p>{short}</p>
-            </div>
-            
-            {/* Эталон */}
-            <div className="bg-emerald-50/60 p-5 rounded-xl border border-emerald-100">
-              <div className="text-xs text-slate-600 font-medium mb-1">
-                {lang === "ru" ? "🥤 Рекомендуемая суточная норма:" : "🥤 Recommended daily intake:"}
-              </div>
-              <div className="text-2xl font-bold text-slate-900 my-2">
-                {e.ref} {unit}
-              </div>
-              <div className="text-xs text-slate-500">
-                {lang === "ru" 
-                  ? "Из расчёта на 2 литра воды в день" 
-                  : "Based on 2 liters of water per day"}
-              </div>
-            </div>
-            
-            {/* Влияние на здоровье */}
-            {healthText && (
-              <div className="bg-amber-50/60 p-5 rounded-xl border border-amber-100">
-                <div className="text-xs text-slate-600 font-medium mb-3 flex items-center gap-2">
-                  <span className="text-amber-600">⚠️</span>
-                  {lang === "ru" ? "Влияние на здоровье:" : "Health effects:"}
-                </div>
-                <p className="text-slate-700 leading-relaxed">{healthText}</p>
-              </div>
-            )}
-            
-            {/* Дополнительная информация */}
-            {k === "tds" && (
-              <div className="bg-purple-50/60 p-4 rounded-xl border border-purple-100">
-                <p className="text-xs text-slate-600">
-                  💧 {lang === "ru" 
-                    ? "TDS < 100 — мягкая вода, 100-300 — оптимальная, 300-500 — жёсткая, >500 — очень жёсткая"
-                    : "TDS < 100 — soft water, 100-300 — optimal, 300-500 — hard, >500 — very hard"}
-                </p>
-              </div>
-            )}
-            
-            {k === "ph" && (
-              <div className="bg-purple-50/60 p-4 rounded-xl border border-purple-100">
-                <p className="text-xs text-slate-600">
-                  💧 {lang === "ru" 
-                    ? "pH < 6.5 — кислая, 6.5-7.5 — нейтральная, 7.5-8.5 — слабощелочная, >8.5 — щелочная"
-                    : "pH < 6.5 — acidic, 6.5-7.5 — neutral, 7.5-8.5 — slightly alkaline, >8.5 — alkaline"}
-                </p>
-              </div>
-            )}
+      <DialogContent className="max-w-[640px]">
+        <DialogHeader>
+          <DialogTitle>{title}</DialogTitle>
+        </DialogHeader>
+        <div className="space-y-4 text-sm text-slate-700">
+          {/* Основное описание */}
+          <div className="bg-sky-50/60 p-4 rounded-xl border border-sky-100">
+            <p className="text-slate-700">{description}</p>
           </div>
+          
+          {/* Коротко */}
+          <div className="bg-white/50 p-4 rounded-xl border border-slate-100">
+            <span className="font-medium text-slate-800 block mb-1">Коротко:</span>
+            <p>{short}</p>
+          </div>
+          
+          {/* Эталон */}
+          <div className="bg-emerald-50/60 p-4 rounded-xl border border-emerald-100">
+            <div className="text-xs text-slate-600 font-medium mb-1">
+              {lang === "ru" ? "🥤 Рекомендуемая суточная норма:" : "🥤 Recommended daily intake:"}
+            </div>
+            <div className="text-2xl font-bold text-slate-900 my-1">
+              {e.ref} {unit}
+            </div>
+            <div className="text-xs text-slate-500">
+              {lang === "ru" ? "Из расчёта на 2 литра воды в день" : "Based on 2 liters of water per day"}
+            </div>
+          </div>
+          
+          {/* Влияние на здоровье */}
+          {healthText && (
+            <div className="bg-amber-50/60 p-4 rounded-xl border border-amber-100">
+              <div className="text-xs text-slate-600 font-medium mb-2 flex items-center gap-1">
+                <span>⚠️</span>
+                {lang === "ru" ? "Влияние на здоровье:" : "Health effects:"}
+              </div>
+              <p className="text-slate-700">{healthText}</p>
+            </div>
+          )}
+          
+          {/* Дополнительная информация */}
+          {k === "tds" && (
+            <div className="bg-purple-50/60 p-3 rounded-xl border border-purple-100 text-xs">
+              {lang === "ru" 
+                ? "💧 TDS < 100 — мягкая, 100-300 — оптимальная, 300-500 — жёсткая, >500 — очень жёсткая"
+                : "💧 TDS < 100 — soft, 100-300 — optimal, 300-500 — hard, >500 — very hard"}
+            </div>
+          )}
+          
+          {k === "ph" && (
+            <div className="bg-purple-50/60 p-3 rounded-xl border border-purple-100 text-xs">
+              {lang === "ru" 
+                ? "💧 pH < 6.5 — кислая, 6.5-7.5 — нейтральная, 7.5-8.5 — слабощелочная, >8.5 — щелочная"
+                : "💧 pH < 6.5 — acidic, 6.5-7.5 — neutral, 7.5-8.5 — slightly alkaline, >8.5 — alkaline"}
+            </div>
+          )}
         </div>
       </DialogContent>
     </Dialog>
-  );
-}
-
-// Компонент кнопки закрытия
-function DialogCloseButton() {
-  const { setIsOpen } = React.useContext(DialogContext);
-  return (
-    <button 
-      onClick={() => setIsOpen(false)} 
-      className="p-2 hover:bg-slate-100 rounded-full transition-colors"
-      aria-label="Закрыть"
-    >
-      <X className="h-5 w-5 text-slate-600" />
-    </button>
   );
 }
 
