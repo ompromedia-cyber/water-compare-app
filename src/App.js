@@ -1166,10 +1166,42 @@ function CategoryBadge({ cat }) {
 
 function MetricHelp({ k }) {
   const lang = React.useContext(LangCtx);
-  const e = EDUCATION[k];
-  const title = lang === "ru" ? e.titleRU : e.titleEN;
-  const short = lang === "ru" ? e.shortRU : e.shortEN;
-  const unit = lang === "ru" ? e.unitRU : e.unitEN;
+  const t = I18N[lang];
+  
+  // Краткие описания показателей (2-3 строки)
+  const descriptions = {
+    ph: {
+      ru: "Влияет на вкус и усвояемость. Слабощелочная вода (pH 7.5-8.5) считается оптимальной для питья. Кислая вода может раздражать желудок.",
+      en: "Affects taste and absorption. Slightly alkaline (pH 7.5-8.5) is considered optimal for drinking. Acidic water may irritate the stomach."
+    },
+    tds: {
+      ru: "Общая минерализация. Влияет на вкус и нагрузку на почки. Для ежедневного питья рекомендуется до 500 мг/л, выше — лечебные воды.",
+      en: "Total dissolved solids. Affects taste and kidney load. For daily drinking up to 500 mg/L is recommended, higher values indicate therapeutic waters."
+    },
+    ca: {
+      ru: "Кальций. Важен для костей, зубов, свёртываемости крови. Недостаток может влиять на здоровье костей, избыток — риск камней в почках.",
+      en: "Calcium. Essential for bones, teeth, blood clotting. Deficiency affects bone health, excess may increase kidney stone risk."
+    },
+    mg: {
+      ru: "Магний. Участвует в работе нервной системы, мышц, сердца. Недостаток вызывает судороги и утомляемость, избыток — слабительный эффект.",
+      en: "Magnesium. Supports nerves, muscles, heart. Deficiency causes cramps and fatigue, excess has laxative effect."
+    },
+    na: {
+      ru: "Натрий. Регулирует давление и водный баланс. Важен для спортсменов, но при гипертонии нужно ограничивать. Высокие значения — лечебные воды.",
+      en: "Sodium. Regulates blood pressure and fluid balance. Important for athletes, but should be limited for hypertension. High values indicate therapeutic waters."
+    },
+    k: {
+      ru: "Калий. Поддерживает сердце, мышцы, нервную систему. Обычно в воде его мало, но в лечебных водах может быть значительным.",
+      en: "Potassium. Supports heart, muscles, nervous system. Usually low in water, but can be significant in therapeutic waters."
+    },
+    cl: {
+      ru: "Хлориды. Влияют на электролитный баланс и вкус. Высокие значения придают солоноватый привкус и характерны для лечебных вод.",
+      en: "Chloride. Affects electrolyte balance and taste. High levels give a salty taste and are typical for therapeutic waters."
+    }
+  };
+
+  const desc = descriptions[k] || descriptions.tds;
+  const text = lang === "ru" ? desc.ru : desc.en;
 
   return (
     <Dialog>
@@ -1182,19 +1214,29 @@ function MetricHelp({ k }) {
           <Info className="h-3.5 w-3.5" />
         </button>
       </DialogTrigger>
-      <DialogContent className="max-w-[640px]">
+      <DialogContent className="max-w-[400px]">
         <DialogHeader>
-          <DialogTitle>{title}</DialogTitle>
+          <DialogTitle>
+            {k === "ph" && "pH"}
+            {k === "tds" && (lang === "ru" ? "Минерализация (TDS)" : "Mineralization (TDS)")}
+            {k === "ca" && (lang === "ru" ? "Кальций (Ca)" : "Calcium (Ca)")}
+            {k === "mg" && (lang === "ru" ? "Магний (Mg)" : "Magnesium (Mg)")}
+            {k === "na" && (lang === "ru" ? "Натрий (Na)" : "Sodium (Na)")}
+            {k === "k" && (lang === "ru" ? "Калий (K)" : "Potassium (K)")}
+            {k === "cl" && (lang === "ru" ? "Хлориды (Cl)" : "Chloride (Cl)")}
+          </DialogTitle>
         </DialogHeader>
-        <div className="space-y-3 text-sm text-slate-700 p-6 pt-2">
-          <div>{short}</div>
+        <div className="space-y-4 p-6 pt-2">
+          <div className="text-sm text-slate-700 leading-relaxed">
+            {text}
+          </div>
           <div className="rounded-xl border border-sky-100 bg-sky-50/60 p-3">
-            <div className="text-xs text-slate-600">
-              {lang === "ru" ? "Эталон:" : "Reference:"}
+            <div className="text-xs text-slate-600 font-medium mb-1">
+              {lang === "ru" ? "Эталон для daily:" : "Daily reference:"}
             </div>
             <div className="font-medium text-slate-900">
-              {e.ref}
-              {unit ? ` ${unit}` : ""}
+              {EDUCATION[k].ref}
+              {EDUCATION[k].unitRU ? ` ${lang === "ru" ? EDUCATION[k].unitRU : EDUCATION[k].unitEN}` : ""}
             </div>
           </div>
         </div>
