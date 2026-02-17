@@ -184,28 +184,17 @@ const DropdownMenuLabel = ({ children }) => <div className="px-4 py-2 text-sm fo
 const DropdownMenuSeparator = () => <hr className="border-white/60" />;
 
 // Dialog компоненты
+// В начале файла, после других импортов
+import { createPortal } from 'react-dom';
+
+// Перепишите Dialog компоненты полностью
 const DialogContext = React.createContext({});
+
 const Dialog = ({ children }) => {
   const [isOpen, setIsOpen] = useState(false);
   return (
     <DialogContext.Provider value={{ isOpen, setIsOpen }}>
-      <div>{children}</div>
-    </DialogContext.Provider>
-  );
-};
-
-const DialogTrigger = ({ asChild, children }) => {
-  const { setIsOpen } = React.useContext(DialogContext);
-  return <div onClick={() => setIsOpen(true)}>{children}</div>;
-};
-
-// Dialog компоненты
-const DialogContext = React.createContext({});
-const Dialog = ({ children }) => {
-  const [isOpen, setIsOpen] = useState(false);
-  return (
-    <DialogContext.Provider value={{ isOpen, setIsOpen }}>
-      <div>{children}</div>
+      {children}
     </DialogContext.Provider>
   );
 };
@@ -217,10 +206,22 @@ const DialogTrigger = ({ asChild, children }) => {
 
 const DialogContent = ({ className, children }) => {
   const { isOpen, setIsOpen } = React.useContext(DialogContext);
-  if (!isOpen) return null;
+  const portalRef = React.useRef(null);
   
-  // Создаём портал в body
-  return ReactDOM.createPortal(
+  React.useEffect(() => {
+    // Находим или создаем контейнер для портала
+    let portalRoot = document.getElementById('portal-root');
+    if (!portalRoot) {
+      portalRoot = document.createElement('div');
+      portalRoot.id = 'portal-root';
+      document.body.appendChild(portalRoot);
+    }
+    portalRef.current = portalRoot;
+  }, []);
+
+  if (!isOpen || !portalRef.current) return null;
+
+  return createPortal(
     <div 
       style={{
         position: 'fixed',
@@ -228,12 +229,11 @@ const DialogContent = ({ className, children }) => {
         left: 0,
         right: 0,
         bottom: 0,
-        backgroundColor: 'rgba(0, 0, 0, 0.5)',
-        backdropFilter: 'blur(4px)',
+        backgroundColor: 'rgba(0, 0, 0, 0.7)',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        zIndex: 999999,
+        zIndex: 2147483647, // Максимальный z-index
       }}
       onClick={() => setIsOpen(false)}
     >
@@ -241,63 +241,68 @@ const DialogContent = ({ className, children }) => {
         style={{
           backgroundColor: 'white',
           borderRadius: '24px',
-          border: '1px solid rgba(255,255,255,0.6)',
-          boxShadow: '0 25px 50px -12px rgba(0,0,0,0.25)',
           width: '90%',
-          maxWidth: '640px',
+          maxWidth: '800px',
           maxHeight: '90vh',
+          overflow: 'hidden',
           display: 'flex',
           flexDirection: 'column',
+          boxShadow: '0 50px 100px -20px rgba(0,0,0,0.5)',
           position: 'relative',
-          margin: '20px',
         }}
         onClick={(e) => e.stopPropagation()}
       >
         {/* Шапка с крестиком */}
         <div style={{
           padding: '20px 24px',
-          borderBottom: '1px solid rgba(0,0,0,0.1)',
+          borderBottom: '2px solid #e2e8f0',
           display: 'flex',
           justifyContent: 'space-between',
           alignItems: 'center',
-          backgroundColor: 'white',
-          borderRadius: '24px 24px 0 0',
+          backgroundColor: '#ffffff',
+          flexShrink: 0,
         }}>
-          <h2 className="text-xl font-semibold text-slate-900">
-            {/* Заголовок будет передан через children */}
+          <h2 style={{ fontSize: '20px', fontWeight: 600, margin: 0, color: '#0f172a' }}>
+            {/* Заголовок будет внутри children */}
           </h2>
           <button
             onClick={() => setIsOpen(false)}
             style={{
-              padding: '8px',
+              width: '40px',
+              height: '40px',
               borderRadius: '50%',
               border: 'none',
-              background: 'transparent',
+              background: '#f1f5f9',
               cursor: 'pointer',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
+              fontSize: '20px',
+              transition: 'all 0.2s',
             }}
-            onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#f1f5f9'}
-            onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
+            onMouseEnter={(e) => e.currentTarget.style.background = '#e2e8f0'}
+            onMouseLeave={(e) => e.currentTarget.style.background = '#f1f5f9'}
           >
-            <X size={24} color="#475569" />
+            ✕
           </button>
         </div>
         
-        {/* Контент с прокруткой */}
+        {/* Контент */}
         <div style={{
           padding: '24px',
           overflowY: 'auto',
-          flex: 1,
+          backgroundColor: '#ffffff',
         }}>
           {children}
         </div>
       </div>
     </div>,
-    document.body
+    portalRef.current
   );
 };
+
+const DialogHeader = ({ children }) => <>{children}</>;
+const DialogTitle = ({ children, className }) => <h2 className={className}>{children}</h2>;
 
 // Input компоненты
 const Input = ({ className, ...props }) => (
@@ -1251,73 +1256,37 @@ function MetricHelp({ k }) {
   const short = lang === "ru" ? e.shortRU : e.shortEN;
   const unit = lang === "ru" ? e.unitRU : e.unitEN;
 
-  // ... (оставьте все описания и healthEffects как было) ...
+  // ... остальной код с описаниями ...
 
   return (
     <Dialog>
       <DialogTrigger asChild>
-        <button
-          className="inline-flex items-center justify-center rounded-lg border border-sky-100 bg-white/70 px-1.5 py-0.5 text-[11px] text-slate-700 hover:bg-white"
-          aria-label="info"
-          type="button"
-        >
+        <button className="...">
           <Info className="h-3.5 w-3.5" />
         </button>
       </DialogTrigger>
-      <DialogContent className="max-w-[640px]">
+      <DialogContent>
         <DialogHeader>
           <DialogTitle>{title}</DialogTitle>
         </DialogHeader>
-        <div className="space-y-4 text-sm text-slate-700">
-          {/* Основное описание */}
-          <div className="bg-sky-50/60 p-4 rounded-xl border border-sky-100">
-            <p className="text-slate-700">{description}</p>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+          <div style={{ background: '#f0f9ff', padding: '16px', borderRadius: '12px' }}>
+            {description}
           </div>
-          
-          {/* Коротко */}
-          <div className="bg-white/50 p-4 rounded-xl border border-slate-100">
-            <span className="font-medium text-slate-800 block mb-1">Коротко:</span>
-            <p>{short}</p>
+          <div style={{ fontSize: '14px', color: '#334155' }}>
+            <strong>Коротко:</strong> {short}
           </div>
-          
-          {/* Эталон */}
-          <div className="bg-emerald-50/60 p-4 rounded-xl border border-emerald-100">
-            <div className="text-xs text-slate-600 font-medium mb-1">
-              {lang === "ru" ? "🥤 Рекомендуемая суточная норма:" : "🥤 Recommended daily intake:"}
-            </div>
-            <div className="text-2xl font-bold text-slate-900 my-1">
-              {e.ref} {unit}
-            </div>
-            <div className="text-xs text-slate-500">
-              {lang === "ru" ? "Из расчёта на 2 литра воды в день" : "Based on 2 liters of water per day"}
-            </div>
+          <div style={{ background: '#ecfdf5', padding: '16px', borderRadius: '12px' }}>
+            <div style={{ fontSize: '12px', color: '#64748b' }}>Рекомендуемая норма:</div>
+            <div style={{ fontSize: '24px', fontWeight: 'bold' }}>{e.ref} {unit}</div>
+            <div style={{ fontSize: '12px', color: '#94a3b8' }}>на 2 литра воды в день</div>
           </div>
-          
-          {/* Влияние на здоровье */}
           {healthText && (
-            <div className="bg-amber-50/60 p-4 rounded-xl border border-amber-100">
-              <div className="text-xs text-slate-600 font-medium mb-2 flex items-center gap-1">
-                <span>⚠️</span>
-                {lang === "ru" ? "Влияние на здоровье:" : "Health effects:"}
+            <div style={{ background: '#fffbeb', padding: '16px', borderRadius: '12px' }}>
+              <div style={{ fontSize: '12px', color: '#64748b', marginBottom: '8px' }}>
+                ⚠️ Влияние на здоровье:
               </div>
-              <p className="text-slate-700">{healthText}</p>
-            </div>
-          )}
-          
-          {/* Дополнительная информация */}
-          {k === "tds" && (
-            <div className="bg-purple-50/60 p-3 rounded-xl border border-purple-100 text-xs">
-              {lang === "ru" 
-                ? "💧 TDS < 100 — мягкая, 100-300 — оптимальная, 300-500 — жёсткая, >500 — очень жёсткая"
-                : "💧 TDS < 100 — soft, 100-300 — optimal, 300-500 — hard, >500 — very hard"}
-            </div>
-          )}
-          
-          {k === "ph" && (
-            <div className="bg-purple-50/60 p-3 rounded-xl border border-purple-100 text-xs">
-              {lang === "ru" 
-                ? "💧 pH < 6.5 — кислая, 6.5-7.5 — нейтральная, 7.5-8.5 — слабощелочная, >8.5 — щелочная"
-                : "💧 pH < 6.5 — acidic, 6.5-7.5 — neutral, 7.5-8.5 — slightly alkaline, >8.5 — alkaline"}
+              {healthText}
             </div>
           )}
         </div>
