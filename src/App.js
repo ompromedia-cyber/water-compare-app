@@ -2270,6 +2270,72 @@ export default function App() {
     <LangCtx.Provider value={lang}>
       <TooltipProvider>
         <div className={GLASS.page}>
+          <div className="mx-auto max-w-7xl px-4 pb-28 pt-6">
+            <div className={`${GLASS.card} p-6`}>
+              {/* ... остальной код ... */}
+            </div>
+          </div>
+        </div>
+      </TooltipProvider>
+    </LangCtx.Provider>
+  );
+}
+
+function UserProfileIcon() {
+  return <span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-slate-900/10">👤</span>;
+}
+
+// ============== ОСНОВНОЕ ПРИЛОЖЕНИЕ ==============
+export default function App() {
+  const [lang, setLang] = useState("ru");
+  const [mode, setMode] = useState("consumer");
+  const [profile, setProfile] = useState("Everyday");
+  const [screen, setScreen] = useState("A");
+  const [waters, setWaters] = useState(SEED);
+  const [selectedIds, setSelectedIds] = useState([]);
+  const [reportCompact, setReportCompact] = useState(true);
+
+  const t = I18N[lang];
+
+  useEffect(() => {
+    runSelfTests();
+  }, []);
+
+  const selected = useMemo(() => {
+    const m = new Map(waters.map((w) => [w.id, w]));
+    return selectedIds.map((id) => m.get(id)).filter(Boolean);
+  }, [waters, selectedIds]);
+
+  const toggleSelect = (w) => {
+    setSelectedIds((prev) => {
+      const has = prev.includes(w.id);
+      if (has) return prev.filter((x) => x !== w.id);
+      if (prev.length >= 5) return prev;
+      return [...prev, w.id];
+    });
+  };
+
+  const removeFromCompare = (id) => {
+    setSelectedIds((prev) => prev.filter((x) => x !== id));
+  };
+
+  const clear = () => setSelectedIds([]);
+
+  const canCompare = selected.length >= 2;
+
+  const onCompare = () => {
+    if (!canCompare) return;
+    setScreen("B");
+  };
+
+  const onMerge = (incoming) => {
+    setWaters((prev) => mergeById(prev, incoming));
+  };
+
+  return (
+    <LangCtx.Provider value={lang}>
+      <TooltipProvider>
+        <div className={GLASS.page}>
           <div className="mx-auto max-w-6xl px-4 pb-28 pt-6">
             <div className={`${GLASS.card} p-6`}>
               <div className="flex flex-wrap items-center justify-between gap-3">
