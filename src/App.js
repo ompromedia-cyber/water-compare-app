@@ -2057,112 +2057,38 @@ function ReportScreen({ selected, profile, mode, compact, onToggleCompact }) {
           </div>
         </div>
 
-       {winner && (
-  <div className="mt-4">
-    <div className="text-sm font-medium text-slate-600">{t.report.bestDaily}</div>
-    <div className="mt-2 grid gap-3 lg:grid-cols-[1.3fr_1fr]">
-      <WaterProfileCard w={winner.w} profile={profile} />
-      
-    {/* Блок объяснения для пользователя */}
-<div className={`${GLASS.subtle} p-5`}>
-  <div className="flex items-center gap-2 mb-4">
-    <TrendingUp className="h-5 w-5 text-slate-700" />
-    <div className="font-semibold text-slate-900">
-      {lang === "ru" ? "Почему эта вода лучше?" : "Why is this water better?"}
-    </div>
-  </div>
-  
-  <div className="space-y-4 text-sm text-slate-700">
-    {/* Три простых и понятных пункта */}
-    <div className="flex gap-3">
-      <div className="w-6 h-6 rounded-full bg-emerald-100 flex items-center justify-center text-emerald-600 font-bold text-xs flex-shrink-0">1</div>
-      <div>
-        <span className="font-medium text-slate-900">
-          {lang === "ru" ? "Самый сбалансированный состав" : "Most balanced composition"}
-        </span>
-        <p className="text-xs text-slate-600 mt-0.5">
-          {lang === "ru" 
-            ? "Все показатели близки к оптимальным значениям для ежедневного питья" 
-            : "All metrics are close to optimal values for daily drinking"}
-        </p>
-      </div>
-    </div>
-    
-    <div className="flex gap-3">
-      <div className="w-6 h-6 rounded-full bg-emerald-100 flex items-center justify-center text-emerald-600 font-bold text-xs flex-shrink-0">2</div>
-      <div>
-        <span className="font-medium text-slate-900">
-          {lang === "ru" ? "Полные данные" : "Complete data"}
-        </span>
-        <p className="text-xs text-slate-600 mt-0.5">
-          {lang === "ru"
-            ? "У этой воды указаны все ключевые показатели, поэтому оценка точная"
-            : "All key metrics are available, so the rating is accurate"}
-        </p>
-      </div>
-    </div>
-    
-    <div className="flex gap-3">
-      <div className="w-6 h-6 rounded-full bg-emerald-100 flex items-center justify-center text-emerald-600 font-bold text-xs flex-shrink-0">3</div>
-      <div>
-        <span className="font-medium text-slate-900">
-          {lang === "ru" ? "Подходит под ваш профиль" : "Matches your profile"}
-        </span>
-        <p className="text-xs text-slate-600 mt-0.5">
-          {lang === "ru"
-            ? `Учтены особенности профиля "${t.profiles[profile].toLowerCase()}"`
-            : `Takes into account your "${t.profiles[profile].toLowerCase()}" preferences`}
-        </p>
-      </div>
-    </div>
-
-    {/* Дополнительная подсказка в мягком стиле */}
-    <div className="mt-4 pt-3 border-t border-white/40 text-xs text-slate-500 italic">
-      {lang === "ru"
-        ? "Оценка учитывает не только пользу, но и безопасность — умеренное содержание солей и минералов"
-        : "Rating considers both benefits and safety — moderate mineral content"}
-    </div>
-  </div>
-</div>
-)}
-
-  {/* Рейтинг всех выбранных вод */}
-<div className="mt-6">
-  <div className="text-sm font-medium text-slate-600 mb-3">
-    {lang === "ru" ? "Общий рейтинг" : "Overall ranking"}
-  </div>
-  <div className="space-y-2">
-    {[...selected]
-      .sort((a, b) => compareForRanking(a, b, profile))
-      .map((w, idx) => {
-        const score = scoreWater(w, profile).score;
-        return (
-          <div key={w.id} className={`${GLASS.subtle} p-3 flex items-center gap-3`}>
-            <div className={`
-              w-7 h-7 rounded-full flex items-center justify-center text-sm font-bold
-              ${idx === 0 ? 'bg-amber-100 text-amber-700' : 
-                idx === 1 ? 'bg-slate-100 text-slate-600' : 
-                'bg-slate-50 text-slate-400'}
-            `}>
-              {idx + 1}
-            </div>
-            <span className="text-base flex-1">{w.flag_emoji} {w.brand_name}</span>
-            <div className="flex items-center gap-2">
-              <div className="w-20 h-2 bg-slate-200 rounded-full overflow-hidden">
-                <div 
-                  className="h-full bg-slate-900/80 rounded-full"
-                  style={{ width: `${score}%` }}
-                />
+        {winner && (
+          <div className="mt-4">
+            <div className="text-sm font-medium text-slate-600">{t.report.bestDaily}</div>
+            <div className="mt-2 grid gap-3 lg:grid-cols-[1.3fr_1fr]">
+              <WaterProfileCard w={winner.w} profile={profile} />
+              <div className={`${GLASS.subtle} p-5`}>
+                <div className="flex items-center gap-2">
+                  <TrendingUp className="h-5 w-5 text-slate-700" />
+                  <div className="font-semibold text-slate-900">{t.report.why}</div>
+                </div>
+                <div className="mt-3 space-y-2 text-sm text-slate-700">
+                  <div>• {t.misc.minRule}</div>
+                  <div>• {t.report.therapeuticNote}</div>
+                  <div>• {t.report.missingMinimum}</div>
+                  {mode === "pro" ? (
+                    <div className="mt-3 inline-flex items-center gap-2 rounded-2xl border border-white/60 bg-white/70 px-3 py-2 text-xs font-medium text-slate-700">
+                      <Lock className="h-4 w-4" />
+                      {t.report.proHidden}
+                    </div>
+                  ) : (
+                    <div className="mt-3 inline-flex items-center gap-2 rounded-2xl border border-white/60 bg-white/70 px-3 py-2 text-xs font-medium text-slate-700">
+                      <Info className="h-4 w-4" />
+                      {t.report.eduHint}
+                    </div>
+                  )}
+                </div>
               </div>
-              <span className="text-sm font-semibold text-slate-900 w-10">
-                {Math.round(score)}
-              </span>
             </div>
           </div>
-        );
-    })}
-  </div>
-</div>
+        )}
+      </div>
+
       <div className={`${GLASS.card} p-6`}>
         <div className="flex items-center justify-between gap-3">
           <div>
@@ -2213,72 +2139,6 @@ function runSelfTests() {
   } catch (e) {
     console.log("Self tests passed (or skipped)");
   }
-}
-
-function UserProfileIcon() {
-  return <span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-slate-900/10">👤</span>;
-}
-
-// ============== ОСНОВНОЕ ПРИЛОЖЕНИЕ ==============
-export default function App() {
-  const [lang, setLang] = useState("ru");
-  const [mode, setMode] = useState("consumer");
-  const [profile, setProfile] = useState("Everyday");
-  const [screen, setScreen] = useState("A");
-  const [waters, setWaters] = useState(SEED);
-  const [selectedIds, setSelectedIds] = useState([]);
-  const [reportCompact, setReportCompact] = useState(true);
-
-  const t = I18N[lang];
-
-  useEffect(() => {
-    runSelfTests();
-  }, []);
-
-  const selected = useMemo(() => {
-    const m = new Map(waters.map((w) => [w.id, w]));
-    return selectedIds.map((id) => m.get(id)).filter(Boolean);
-  }, [waters, selectedIds]);
-
-  const toggleSelect = (w) => {
-    setSelectedIds((prev) => {
-      const has = prev.includes(w.id);
-      if (has) return prev.filter((x) => x !== w.id);
-      if (prev.length >= 5) return prev;
-      return [...prev, w.id];
-    });
-  };
-
-  const removeFromCompare = (id) => {
-    setSelectedIds((prev) => prev.filter((x) => x !== id));
-  };
-
-  const clear = () => setSelectedIds([]);
-
-  const canCompare = selected.length >= 2;
-
-  const onCompare = () => {
-    if (!canCompare) return;
-    setScreen("B");
-  };
-
-  const onMerge = (incoming) => {
-    setWaters((prev) => mergeById(prev, incoming));
-  };
-
-  return (
-    <LangCtx.Provider value={lang}>
-      <TooltipProvider>
-        <div className={GLASS.page}>
-          <div className="mx-auto max-w-7xl px-4 pb-28 pt-6">
-            <div className={`${GLASS.card} p-6`}>
-              {/* ... остальной код ... */}
-            </div>
-          </div>
-        </div>
-      </TooltipProvider>
-    </LangCtx.Provider>
-  );
 }
 
 function UserProfileIcon() {
