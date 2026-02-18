@@ -1858,6 +1858,339 @@ function ImportDialog({ onMerge }) {
   );
 }
 
+// ============== СИМУЛЯТОР СКАНЕРА OCR ==============
+function ScannerDialog({ onScanComplete }) {
+  const lang = React.useContext(LangCtx);
+  const t = I18N[lang];
+  
+  const [isScanning, setIsScanning] = useState(false);
+  const [scanProgress, setScanProgress] = useState(0);
+  const [scanResult, setScanResult] = useState(null);
+  const [selectedFile, setSelectedFile] = useState(null);
+  const [previewUrl, setPreviewUrl] = useState(null);
+
+  // База данных "распознанных" вод для симуляции
+  const mockWaterDB = [
+    {
+      id: "evian",
+      brand_name: "Evian",
+      country_code: "FR",
+      group: "Europe",
+      ph: 7.2,
+      tds_mg_l: 345,
+      ca_mg_l: 80,
+      mg_mg_l: 26,
+      na_mg_l: 6.5,
+      k_mg_l: 1.0,
+      cl_mg_l: 10,
+      sparkling: false,
+      confidence_level: "high",
+    },
+    {
+      id: "borjomi",
+      brand_name: "Borjomi",
+      country_code: "GE",
+      group: "Therapeutic",
+      ph: 6.6,
+      tds_mg_l: 5500,
+      ca_mg_l: 120,
+      mg_mg_l: 50,
+      na_mg_l: 1200,
+      k_mg_l: 35,
+      cl_mg_l: 600,
+      sparkling: true,
+      confidence_level: "high",
+    },
+    {
+      id: "sanpellegrino",
+      brand_name: "San Pellegrino",
+      country_code: "IT",
+      group: "Europe",
+      ph: 7.8,
+      tds_mg_l: 915,
+      ca_mg_l: 160,
+      mg_mg_l: 50,
+      na_mg_l: 33,
+      k_mg_l: 2.0,
+      cl_mg_l: 49,
+      sparkling: true,
+      confidence_level: "high",
+    },
+    {
+      id: "volvic",
+      brand_name: "Volvic",
+      country_code: "FR",
+      group: "Europe",
+      ph: 7.0,
+      tds_mg_l: 130,
+      ca_mg_l: 12,
+      mg_mg_l: 8,
+      na_mg_l: 12,
+      k_mg_l: 6,
+      cl_mg_l: 15,
+      sparkling: false,
+      confidence_level: "medium",
+    },
+    {
+      id: "baikal",
+      brand_name: "Байкал",
+      country_code: "RU",
+      group: "Russia",
+      ph: 7.2,
+      tds_mg_l: 120,
+      ca_mg_l: 25,
+      mg_mg_l: 8,
+      na_mg_l: 4,
+      k_mg_l: 1,
+      cl_mg_l: 5,
+      sparkling: false,
+      confidence_level: "low",
+    },
+    {
+      id: "aqua_minerale",
+      brand_name: "Aqua Minerale",
+      country_code: "RU",
+      group: "Russia",
+      ph: 7.0,
+      tds_mg_l: 180,
+      ca_mg_l: 35,
+      mg_mg_l: 15,
+      na_mg_l: 8,
+      k_mg_l: 2,
+      cl_mg_l: 12,
+      sparkling: false,
+      confidence_level: "medium",
+    },
+    {
+      id: "perrier",
+      brand_name: "Perrier",
+      country_code: "FR",
+      group: "Europe",
+      ph: 5.7,
+      tds_mg_l: 475,
+      ca_mg_l: 150,
+      mg_mg_l: 4,
+      na_mg_l: 9,
+      k_mg_l: 1,
+      cl_mg_l: 25,
+      sparkling: true,
+      confidence_level: "high",
+    },
+  ];
+
+  // Симуляция загрузки файла
+  const handleFileSelect = (e) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      setSelectedFile(file);
+      const url = URL.createObjectURL(file);
+      setPreviewUrl(url);
+      setScanResult(null);
+    }
+  };
+
+  // Симуляция процесса сканирования
+  const startScan = () => {
+    if (!selectedFile && !previewUrl) return;
+    
+    setIsScanning(true);
+    setScanProgress(0);
+    
+    // Имитируем процесс OCR с прогрессом
+    const interval = setInterval(() => {
+      setScanProgress(prev => {
+        if (prev >= 100) {
+          clearInterval(interval);
+          
+          // Выбираем случайный результат из базы
+          setTimeout(() => {
+            const randomIndex = Math.floor(Math.random() * mockWaterDB.length);
+            const scanned = mockWaterDB[randomIndex];
+            setScanResult(normalizeWater(scanned));
+            setIsScanning(false);
+          }, 500);
+          
+          return 100;
+        }
+        return prev + 10;
+      });
+    }, 200);
+  };
+
+  // Подтверждение сканирования
+  const confirmScan = () => {
+    if (scanResult) {
+      onScanComplete(scanResult);
+      // Сброс состояния
+      setSelectedFile(null);
+      setPreviewUrl(null);
+      setScanResult(null);
+      setScanProgress(0);
+    }
+  };
+
+  // Отмена и закрытие
+  const cancelScan = () => {
+    setSelectedFile(null);
+    setPreviewUrl(null);
+    setScanResult(null);
+    setScanProgress(0);
+    setIsScanning(false);
+  };
+
+  return (
+    <Dialog>
+      <DialogTrigger asChild>
+        <Button variant="outline" className="h-10 rounded-2xl bg-white/70 hover:bg-white">
+          <Camera className="mr-2 h-4 w-4" />
+          {lang === "ru" ? "Сканер" : "Scanner"}
+        </Button>
+      </DialogTrigger>
+      
+      <DialogContent className="max-w-2xl">
+        <DialogHeader>
+          <DialogTitle>
+            {lang === "ru" ? "📸 Сканер этикетки" : "📸 Label Scanner"}
+          </DialogTitle>
+        </DialogHeader>
+        
+        <div className="p-6 pt-2 space-y-4">
+          {/* Пояснение */}
+          <div className="text-sm text-slate-600 bg-sky-50/60 p-3 rounded-xl">
+            {lang === "ru" 
+              ? "Загрузите фото этикетки воды, и мы распознаем состав с помощью OCR (демо-режим)"
+              : "Upload a photo of the water label, and we'll extract the composition using OCR (demo mode)"}
+          </div>
+          
+          {/* Зона загрузки */}
+          {!previewUrl && !isScanning && !scanResult && (
+            <div className="border-2 border-dashed border-sky-200 rounded-2xl p-8 text-center hover:bg-sky-50/30 transition cursor-pointer"
+                 onClick={() => document.getElementById('scan-file-input').click()}>
+              <Camera className="h-12 w-12 mx-auto text-sky-400 mb-3" />
+              <div className="text-sm font-medium text-slate-700 mb-1">
+                {lang === "ru" ? "Нажмите для загрузки фото" : "Click to upload photo"}
+              </div>
+              <div className="text-xs text-slate-500">
+                {lang === "ru" ? "Поддерживаются JPG, PNG" : "JPG, PNG supported"}
+              </div>
+              <input
+                id="scan-file-input"
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={handleFileSelect}
+              />
+            </div>
+          )}
+          
+          {/* Превью изображения */}
+          {previewUrl && !isScanning && !scanResult && (
+            <div className="space-y-3">
+              <div className="relative rounded-2xl overflow-hidden border border-white/60">
+                <img src={previewUrl} alt="Preview" className="w-full h-auto max-h-64 object-contain" />
+              </div>
+              <div className="flex gap-2">
+                <Button onClick={startScan} className="flex-1">
+                  <Scan className="mr-2 h-4 w-4" />
+                  {lang === "ru" ? "Начать сканирование" : "Start scan"}
+                </Button>
+                <Button variant="outline" onClick={cancelScan} className="flex-1">
+                  <X className="mr-2 h-4 w-4" />
+                  {lang === "ru" ? "Отмена" : "Cancel"}
+                </Button>
+              </div>
+            </div>
+          )}
+          
+          {/* Процесс сканирования */}
+          {isScanning && (
+            <div className="space-y-4 py-6">
+              <div className="flex items-center justify-center">
+                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-sky-600"></div>
+              </div>
+              <div className="text-center text-sm text-slate-700">
+                {lang === "ru" ? "Анализируем этикетку..." : "Analyzing label..."}
+              </div>
+              <div className="h-2 bg-slate-200 rounded-full overflow-hidden">
+                <div 
+                  className="h-full bg-sky-500 rounded-full transition-all duration-300"
+                  style={{ width: `${scanProgress}%` }}
+                />
+              </div>
+              <div className="text-center text-xs text-slate-500">
+                {lang === "ru" ? `Распознано ${Math.floor(scanProgress/14)} из 7 показателей` : `${Math.floor(scanProgress/14)} of 7 metrics recognized`}
+              </div>
+            </div>
+          )}
+          
+          {/* Результат сканирования */}
+          {scanResult && !isScanning && (
+            <div className="space-y-4">
+              <div className="bg-emerald-50 border border-emerald-200 rounded-2xl p-4">
+                <div className="flex items-center gap-2 text-emerald-700 mb-3">
+                  <ShieldCheck className="h-5 w-5" />
+                  <span className="font-medium">
+                    {lang === "ru" ? "Этикетка распознана!" : "Label recognized!"}
+                  </span>
+                </div>
+                
+                <div className="flex items-center gap-3 mb-3">
+                  <span className="text-3xl">{scanResult.flag_emoji}</span>
+                  <div>
+                    <div className="font-semibold text-lg">{scanResult.brand_name}</div>
+                    <div className="flex gap-2 mt-1">
+                      <CategoryBadge cat={scanResult.category} />
+                      <ConfidenceBadge c={scanResult.confidence_level} />
+                    </div>
+                  </div>
+                </div>
+                
+                <div className="grid grid-cols-2 gap-2 text-sm">
+                  <div className="bg-white/70 p-2 rounded-xl flex justify-between">
+                    <span className="text-slate-600">pH</span>
+                    <span className="font-semibold">{scanResult.ph}</span>
+                  </div>
+                  <div className="bg-white/70 p-2 rounded-xl flex justify-between">
+                    <span className="text-slate-600">TDS</span>
+                    <span className="font-semibold">{scanResult.tds_mg_l} мг/л</span>
+                  </div>
+                  <div className="bg-white/70 p-2 rounded-xl flex justify-between">
+                    <span className="text-slate-600">Ca</span>
+                    <span className="font-semibold">{scanResult.ca_mg_l} мг/л</span>
+                  </div>
+                  <div className="bg-white/70 p-2 rounded-xl flex justify-between">
+                    <span className="text-slate-600">Mg</span>
+                    <span className="font-semibold">{scanResult.mg_mg_l} мг/л</span>
+                  </div>
+                  <div className="bg-white/70 p-2 rounded-xl flex justify-between">
+                    <span className="text-slate-600">Na</span>
+                    <span className="font-semibold">{scanResult.na_mg_l} мг/л</span>
+                  </div>
+                  <div className="bg-white/70 p-2 rounded-xl flex justify-between">
+                    <span className="text-slate-600">Cl</span>
+                    <span className="font-semibold">{scanResult.cl_mg_l} мг/л</span>
+                  </div>
+                </div>
+              </div>
+              
+              <div className="flex gap-2">
+                <Button onClick={confirmScan} className="flex-1">
+                  <Check className="mr-2 h-4 w-4" />
+                  {lang === "ru" ? "Добавить в список" : "Add to list"}
+                </Button>
+                <Button variant="outline" onClick={cancelScan} className="flex-1">
+                  <RotateCcw className="mr-2 h-4 w-4" />
+                  {lang === "ru" ? "Новое фото" : "New photo"}
+                </Button>
+              </div>
+            </div>
+          )}
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 function WaterPicker({ waters, selectedIds, onToggle }) {
   const lang = React.useContext(LangCtx);
   const t = I18N[lang];
@@ -2400,6 +2733,17 @@ export default function App() {
                   </DropdownMenu>
 
                   <ImportDialog onMerge={onMerge} />
+                        {/* ↑↑↑ ВОТ СЮДА ВСТАВЛЯЕМ НОВУЮ КНОПКУ ↑↑↑ */}
+                  <ScannerDialog onScanComplete={(scannedWater) => {
+                    setWaters(prev => mergeById(prev, [scannedWater]));
+                    setSelectedIds(prev => {
+                      if (prev.length >= 5) return prev;
+                      if (!prev.includes(scannedWater.id)) {
+                        return [...prev, scannedWater.id];
+                      }
+                      return prev;
+                    });
+                  }} />
                 </div>
               </div>
 
