@@ -727,7 +727,8 @@ function scoreWater(w, profile) {
     weights.tds = 0.8;
   }
 
-  const liters = 2;
+  const liters = 2; // Суточная норма потребления воды (2 литра)
+  
   const get = {
     ca: w.ca_mg_l ?? null,
     mg: w.mg_mg_l ?? null,
@@ -740,19 +741,67 @@ function scoreWater(w, profile) {
 
   const cov = dataCoverage(w);
   const missingCount = cov.total - cov.count;
+  
+  let totalScore = 0;
+  let maxPossibleScore = 0;
   const parts = [];
 
   function addPart(key, refDaily) {
     const x = get[key];
     if (x === null || x === undefined) return;
+    
     let refPerL = refDaily / liters;
     if (key === "ph") refPerL = REF.ph;
     if (key === "tds") refPerL = REF.tds;
-    let penalty = Math.abs(x - refPerL) / (refPerL || 1);
-    if (key === "tds" && Math.abs(x - REF.tds) < 150) penalty = 0;
-    penalty = clamp(penalty, 0, 3);
-    const contribution = penalty * weights[key];
-    parts.push({ key, contribution });
+    
+    // Чем ближе к эталону, тем выше балл (максимум 100)
+    const deviation = Math.abs(x - refPerL) / (refPerL || 1);
+    
+    // Бонус за идеальное попадание
+    let score = 100;
+    if (deviation > 0) {
+      // Штраф за отклонение (нелинейный - сильнее штрафуем большие отклонения)
+      score = 100 * Math.exp(-deviation * 1.5);
+    }
+    
+    // Для минералов - особые правила
+    if (["ca", "mg", "na", "cl", "k"].includes(key)) {
+      // Недостаток менее вреден, чем избыток (штрафуем избыток сильнее)
+      if (x > refPerL) {
+        // Избыток - штрафуем сильнее
+        score = 100 * Math.exp(-deviation * 2.0);
+      } else {
+        // Недостаток - штрафуем мягче
+        score = 100 * Math.exp(-deviation * 0.8);
+      }
+    }
+    
+    // Для TDS и pH - любое отклонение одинаково
+    if (key === "tds") {
+      // TDS: оптимальный диапазон 100-300 мг/л
+      if (x >= 100 && x <= 300) score = 100;
+      else if (x < 100) score = 90 * (x / 100); // Плавное снижение
+      else if (x > 300) score = 100 * Math.exp(-(x - 300) / 200);
+    }
+    
+    if (key === "ph") {
+      // pH: оптимальный диапазон 7.0-8.0
+      if (x >= 7.0 && x <= 8.0) score = 100;
+      else if (x < 7.0) score = 90 * (x / 7.0);
+      else if (x > 8.0) score = 100 * Math.exp(-(x - 8.0) * 2);
+    }
+    
+    // Применяем вес показателя
+    const weightedScore = score * weights[key];
+    totalScore += weightedScore;
+    maxPossibleScore += 100 * weights[key];
+    
+    parts.push({ 
+      key, 
+      contribution: weightedScore,
+      rawScore: score,
+      deviation 
+    });
   }
 
   addPart("ca", REF.ca);
@@ -763,24 +812,39 @@ function scoreWater(w, profile) {
   addPart("ph", REF.ph);
   addPart("tds", REF.tds);
 
-  let score = 100;
-  for (const p of parts) score -= p.contribution * 20;
-  score -= missingCount * 10;
-  const minOk = hasMinimumMetrics(w);
-  if (!minOk) score -= 20;
-  const coverageRatio = cov.count / cov.total;
-  score *= 0.55 + 0.45 * coverageRatio;
-  const category = computeCategory(w);
-  if (category === "Therapeutic") score -= 40;
-  score = clamp(score, 0, 100);
+  // Нормализуем к 100
+  let finalScore = maxPossibleScore > 0 ? (totalScore / maxPossibleScore) * 100 : 0;
+  
+  // Штраф за отсутствие данных
+  finalScore = finalScore * (1 - missingCount * 0.1);
+  
+  // Бонус за полные данные
+  if (cov.count === cov.total) {
+    finalScore = Math.min(100, finalScore * 1.1); // +10% за полные данные
+  }
+  
+  // Штраф за Therapeutic категорию (слишком сильная вода)
+  if (computeCategory(w) === "Therapeutic") {
+    finalScore = finalScore * 0.7; // -30% для лечебных вод
+  }
+  
+  // Гарантируем, что у воды с полными данными будет минимум 60 баллов
+  if (cov.count === cov.total && finalScore < 60) {
+    finalScore = 60;
+  }
+  
+  finalScore = clamp(finalScore, 0, 100);
 
   return {
-    score,
-    category,
+    score: finalScore,
+    category: computeCategory(w),
     coverageCount: cov.count,
     coverageTotal: cov.total,
-    hasMin: minOk,
-    topReasons: [],
+    hasMin: cov.count === cov.total,
+    topReasons: parts
+      .sort((a, b) => b.contribution - a.contribution)
+      .slice(0, 3)
+      .map(p => p.key),
   };
 }
 
