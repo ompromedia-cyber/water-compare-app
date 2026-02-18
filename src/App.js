@@ -36,7 +36,7 @@ import {
 const Button = ({ children, variant, className, onClick, disabled, type = "button" }) => (
   <button
     type={type}
-    className={`px-4 py-2 rounded-2xl font-medium transition-all ${
+    className={`px-4 py-2 rounded-2xl font-medium transition-all inline-flex items-center ${
       variant === "outline"
         ? "border border-white/60 bg-white/70 hover:bg-white text-slate-800"
         : "bg-slate-900 text-white hover:bg-slate-800"
