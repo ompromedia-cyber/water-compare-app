@@ -699,39 +699,35 @@ function normalizeWater(w) {
 }
 
 function scoreWater(w, profile) {
-  // Веса показателей (по умолчанию)
   const weights = {
-    ca: 1.2,    // Кальций - важен
-    mg: 1.2,    // Магний - важен
-    k: 0.8,     // Калий - обычно в воде мало
-    na: 1.5,    // Натрий - критичен для давления
-    cl: 1.0,    // Хлориды
-    ph: 0.6,    // pH - менее критично в диапазоне
-    tds: 0.7,   // Общая минерализация
+    ca: 1.0,
+    mg: 1.0,
+    k: 0.8,
+    na: 1.2,
+    cl: 1.0,
+    ph: 0.4,
+    tds: 0.6,
   };
 
-  // Корректировка весов под профиль пользователя
   if (profile === "Pressure") {
-    weights.na = 2.5;     // При давлении натрий очень важен
-    weights.cl = 1.8;
+    weights.na = 1.8;
+    weights.cl = 1.4;
   }
   if (profile === "Sport") {
-    weights.na = 1.2;      // Спортсменам нужен натрий
-    weights.k = 1.5;       // И калий
-    weights.mg = 1.5;      // И магний
+    weights.na = 0.9;
+    weights.k = 1.0;
+    weights.mg = 1.2;
   }
   if (profile === "Kid") {
-    weights.na = 2.0;      // Детям натрий ограничен
-    weights.tds = 1.2;     // Важна низкая минерализация
+    weights.na = 2.0;
+    weights.tds = 1.0;
   }
   if (profile === "Sensitive") {
-    weights.ph = 1.2;      // Чувствительный ЖКТ - важен pH
-    weights.tds = 1.2;
+    weights.ph = 0.6;
+    weights.tds = 0.8;
   }
 
-  // Суточная норма потребления воды (2 литра)
   const liters = 2;
-  
   const get = {
     ca: w.ca_mg_l ?? null,
     mg: w.mg_mg_l ?? null,
@@ -743,158 +739,64 @@ function scoreWater(w, profile) {
   };
 
   const cov = dataCoverage(w);
-  let totalScore = 0;
-  let maxPossibleScore = 0;
-  const deviations = [];
+  const missingCount = cov.total - cov.count;
+  const parts = [];
 
-  // Функция оценки одного показателя
-  function evaluateMetric(key, refDaily) {
+  function addPart(key, refDaily) {
     const x = get[key];
     if (x === null || x === undefined) return;
-
-    // Для минералов: пересчитываем с учетом 2 литров воды в день
-    let valuePerDay = x;
-    if (key !== "ph" && key !== "tds") {
-      valuePerDay = x * liters; // мг/л * 2 литра = мг/сутки
-    }
-
-    let refValue = refDaily;
-    if (key === "ph") refValue = REF.ph;
-    if (key === "tds") refValue = REF.tds;
-
-    // Рассчитываем отклонение от эталона
-    let deviation = 0;
-    if (key === "ph") {
-      // Для pH идеальный диапазон 6.5-7.5
-      if (x >= 6.5 && x <= 7.5) {
-        deviation = 0;
-      } else if (x < 6.5) {
-        deviation = (6.5 - x) / 0.5; // Насколько ниже нормы
-      } else {
-        deviation = (x - 7.5) / 0.5; // Насколько выше нормы
-      }
-    } else if (key === "tds") {
-      // Для TDS оптимальный диапазон 100-500 мг/л
-      if (x >= 100 && x <= 500) {
-        deviation = 0;
-      } else if (x < 100) {
-        deviation = (100 - x) / 100;
-      } else {
-        deviation = (x - 500) / 500;
-      }
-    } else {
-      // Для минералов: чем ближе к эталону, тем лучше
-      // Но учитываем, что недостаток и избыток вредны по-разному
-      const ratio = valuePerDay / refValue;
-      
-      if (ratio >= 0.8 && ratio <= 1.2) {
-        // В пределах 20% от нормы - отлично
-        deviation = 0;
-      } else if (ratio < 0.8) {
-        // Недостаток
-        deviation = (0.8 - ratio) / 0.8;
-        // Недостаток менее вреден, чем избыток (для некоторых минералов)
-        if (key === "na" && profile === "Pressure") {
-          deviation *= 1.5; // Для гипертоников недостаток натрия тоже плохо
-        }
-      } else {
-        // Избыток
-        deviation = (ratio - 1.2) / 1.2;
-        // Избыток натрия и хлоридов вреднее
-        if (key === "na" || key === "cl") {
-          deviation *= 2.0;
-        }
-      }
-      
-      // Ограничиваем максимальное отклонение
-      deviation = Math.min(deviation, 3.0);
-    }
-
-    // Конвертируем отклонение в баллы (100 - это идеал)
-    // Чем меньше deviation, тем выше балл
-    let score = 100 * Math.exp(-deviation * 1.5);
-    
-    // Не даем упасть слишком низко, если есть данные
-    score = Math.max(30, Math.min(100, score));
-    
-    // Запоминаем отклонение для отладки
-    deviations.push({ key, deviation, score, value: x });
-    
-    // Применяем вес
-    const weightedScore = score * weights[key];
-    totalScore += weightedScore;
-    maxPossibleScore += 100 * weights[key];
+    let refPerL = refDaily / liters;
+    if (key === "ph") refPerL = REF.ph;
+    if (key === "tds") refPerL = REF.tds;
+    let penalty = Math.abs(x - refPerL) / (refPerL || 1);
+    if (key === "tds" && Math.abs(x - REF.tds) < 150) penalty = 0;
+    penalty = clamp(penalty, 0, 3);
+    const contribution = penalty * weights[key];
+    parts.push({ key, contribution });
   }
 
-  // Оцениваем все показатели
-  evaluateMetric("ca", REF.ca);
-  evaluateMetric("mg", REF.mg);
-  evaluateMetric("k", REF.k);
-  evaluateMetric("na", REF.na);
-  evaluateMetric("cl", REF.cl);
-  evaluateMetric("ph", REF.ph);
-  evaluateMetric("tds", REF.tds);
+  addPart("ca", REF.ca);
+  addPart("mg", REF.mg);
+  addPart("k", REF.k);
+  addPart("na", REF.na);
+  addPart("cl", REF.cl);
+  addPart("ph", REF.ph);
+  addPart("tds", REF.tds);
 
-  // Нормализуем к 100
-  let finalScore = maxPossibleScore > 0 ? (totalScore / maxPossibleScore) * 100 : 0;
+  let score = 100;
+  for (const p of parts) score -= p.contribution * 20;
+  score -= missingCount * 10;
+  const minOk = hasMinimumMetrics(w);
+  if (!minOk) score -= 20;
+  const coverageRatio = cov.count / cov.total;
+  score *= 0.55 + 0.45 * coverageRatio;
+  const category = computeCategory(w);
+  if (category === "Therapeutic") score -= 40;
+  score = clamp(score, 0, 100);
 
-  // Бонус за полноту данных
-  const coverageBonus = (cov.count / cov.total) * 15; // Максимум +15 баллов
-  finalScore = Math.min(100, finalScore + coverageBonus);
-
-  // Штраф за лечебную категорию (слишком высокая минерализация)
-  if (computeCategory(w) === "Therapeutic") {
-    finalScore *= 0.7; // -30%
-  }
-
-  // Штраф за отсутствие ключевых показателей
-  if (!cov.present.ca || !cov.present.mg || !cov.present.na) {
-    finalScore *= 0.8; // -20% если нет важных минералов
-  }
-
-  finalScore = clamp(finalScore, 0, 100);
-
-  // Сортируем показатели по отклонению (для topReasons)
-  const sortedDeviations = [...deviations].sort((a, b) => a.deviation - b.deviation);
-  
   return {
-    score: finalScore,
-    category: computeCategory(w),
+    score,
+    category,
     coverageCount: cov.count,
     coverageTotal: cov.total,
-    hasMin: cov.count === cov.total,
-    topReasons: sortedDeviations.slice(0, 3).map(d => d.key),
-    deviations: deviations, // Для отладки
+    hasMin: minOk,
+    topReasons: [],
   };
 }
 
 function compareForRanking(a, b, profile) {
   const sa = scoreWater(a, profile);
   const sb = scoreWater(b, profile);
-
-  // 1. Сначала сравниваем по баллам (чем ближе к эталону, тем выше)
-  if (Math.abs(sb.score - sa.score) > 1) {
-    return sb.score - sa.score;
-  }
-  
-  // 2. При равных баллах - у кого больше показателей
-  if (sb.coverageCount !== sa.coverageCount) {
-    return sb.coverageCount - sa.coverageCount;
-  }
-  
-  // 3. При равных баллах и покрытии - у кого меньше отклонений по важным показателям
-  const aNa = a.na_mg_l ?? 0;
-  const bNa = b.na_mg_l ?? 0;
-  const aNaDev = Math.abs(aNa * 2 - REF.na) / REF.na;
-  const bNaDev = Math.abs(bNa * 2 - REF.na) / REF.na;
-  
-  if (Math.abs(bNaDev - aNaDev) > 0.1) {
-    return aNaDev - bNaDev;
-  }
-  
-  // 4. По алфавиту
+  if (sa.hasMin !== sb.hasMin) return sa.hasMin ? -1 : 1;
+  if (sb.score !== sa.score) return sb.score - sa.score;
+  if (sb.coverageCount !== sa.coverageCount) return sb.coverageCount - sa.coverageCount;
+  const confRank = (c) => (c === "high" ? 2 : c === "medium" ? 1 : 0);
+  const ca = confRank(a.confidence_level);
+  const cb = confRank(b.confidence_level);
+  if (cb !== ca) return cb - ca;
   return a.brand_name.localeCompare(b.brand_name);
 }
+
 function pickWinnerDaily(selected, profile) {
   const scored = selected.map((w) => ({ w, s: scoreWater(w, profile) }));
   const nonThera = scored.filter((x) => x.s.category !== "Therapeutic");
