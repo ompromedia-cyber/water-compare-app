@@ -699,37 +699,37 @@ function normalizeWater(w) {
 }
 
 function scoreWater(w, profile) {
-  // Базовые веса показателей (по умолчанию)
+  // Базовые веса показателей
   const weights = {
-    ca: 1.0,   // Кальций
-    mg: 1.0,   // Магний
-    k: 0.8,    // Калий
-    na: 1.2,   // Натрий
-    cl: 1.0,   // Хлориды
-    ph: 0.4,   // pH
-    tds: 0.6,  // Общая минерализация
+    ca: 1.2,   // Кальций — повышенный вес
+    mg: 1.2,   // Магний
+    k: 0.8,
+    na: 1.3,   // Натрий — важный маркер
+    cl: 1.0,
+    ph: 0.5,
+    tds: 0.7,
   };
 
-  // Корректировка весов под выбранный профиль
+  // Корректировка под профиль
   if (profile === "Pressure") {
-    weights.na = 2.5;     // Натрий критичен при давлении
-    weights.cl = 1.8;     // Хлориды тоже важны
+    weights.na = 2.5;
+    weights.cl = 1.8;
   }
   if (profile === "Sport") {
-    weights.na = 1.5;     // Спортсменам нужен натрий
-    weights.k = 1.5;      // И калий
-    weights.mg = 1.5;     // И магний
+    weights.na = 1.8;
+    weights.k = 1.5;
+    weights.mg = 1.5;
   }
   if (profile === "Kid") {
-    weights.na = 2.0;     // Детям натрий ограничен
-    weights.tds = 1.2;    // Важна низкая минерализация
+    weights.na = 2.2;
+    weights.tds = 1.3;
   }
   if (profile === "Sensitive") {
-    weights.ph = 1.2;     // Чувствительный ЖКТ – важен pH
-    weights.tds = 1.2;    // И общая минерализация
+    weights.ph = 1.5;
+    weights.tds = 1.3;
   }
 
-  const liters = 2; // Суточное потребление воды (литры)
+  const liters = 2;
   
   const get = {
     ca: w.ca_mg_l ?? null,
@@ -743,15 +743,13 @@ function scoreWater(w, profile) {
 
   const cov = dataCoverage(w);
   
-  // Функция расчёта отклонения для одного показателя (возвращает число от 0 до 100)
   function calculateDeviation(key, refDaily) {
     const x = get[key];
     if (x === null || x === undefined) return null;
 
-    // Для минералов пересчитываем в суточное потребление
     let valuePerDay = x;
     if (key !== "ph" && key !== "tds") {
-      valuePerDay = x * liters; // мг/л * 2 литра = мг/сутки
+      valuePerDay = x * liters;
     }
 
     let refValue = refDaily;
@@ -761,36 +759,28 @@ function scoreWater(w, profile) {
     let deviation = 0;
 
     if (key === "ph") {
-      // Идеальный диапазон pH 6.5–7.5
-      if (x >= 6.5 && x <= 7.5) {
-        deviation = 0;
-      } else if (x < 6.5) {
-        deviation = (6.5 - x) * 20;
-      } else {
-        deviation = (x - 7.5) * 20;
-      }
+      if (x >= 6.5 && x <= 7.5) deviation = 0;
+      else if (x < 6.5) deviation = (6.5 - x) * 25;
+      else deviation = (x - 7.5) * 25;
     } 
     else if (key === "tds") {
-      // Идеальный диапазон TDS 100–500 мг/л
-      if (x >= 100 && x <= 500) {
-        deviation = 0;
-      } else if (x < 100) {
-        deviation = (100 - x) * 0.5;
-      } else {
-        deviation = (x - 500) * 0.3;
-      }
+      if (x >= 100 && x <= 500) deviation = 0;
+      else if (x < 100) deviation = (100 - x) * 0.6;
+      else deviation = (x - 500) * 0.35;
     } 
     else {
       const ratio = valuePerDay / refValue;
+      // Нелинейный штраф: чем дальше от нормы, тем резче падение
       if (ratio >= 0.9 && ratio <= 1.1) {
         deviation = 0;
       } else if (ratio < 0.9) {
-        deviation = (0.9 - ratio) * 100;
-        // Усиливаем штраф для важных минералов
+        // Степенной штраф за недостаток (квадратичный)
+        deviation = Math.pow((0.9 - ratio) * 1.5, 1.5) * 100;
         if (key === "ca" || key === "mg") deviation *= 1.2;
         if (key === "na" && profile === "Sport") deviation *= 1.5;
       } else {
-        deviation = (ratio - 1.1) * 150;
+        // Штраф за избыток (ещё более крутой)
+        deviation = Math.pow((ratio - 1.1) * 2, 1.8) * 100;
         if (key === "na" || key === "cl") deviation *= 1.5;
         if (key === "na" && profile === "Pressure") deviation *= 2.0;
       }
@@ -799,7 +789,6 @@ function scoreWater(w, profile) {
     return Math.min(deviation, 100);
   }
 
-  // Считаем отклонения
   const deviations = {
     ca: calculateDeviation("ca", REF.ca),
     mg: calculateDeviation("mg", REF.mg),
@@ -810,42 +799,55 @@ function scoreWater(w, profile) {
     tds: calculateDeviation("tds", REF.tds),
   };
 
-  // Взвешенная сумма штрафов
+  // Взвешенная сумма с нелинейным усилением
   let totalWeightedPenalty = 0;
   let totalWeight = 0;
 
   for (const [key, dev] of Object.entries(deviations)) {
     if (dev !== null) {
-      totalWeightedPenalty += dev * weights[key];
+      // Усиливаем влияние больших отклонений (возводим в квадрат)
+      const enhancedDev = Math.pow(dev / 100, 1.5) * 100;
+      totalWeightedPenalty += enhancedDev * weights[key];
       totalWeight += weights[key];
     }
   }
 
-  // Средневзвешенный штраф
   const avgPenalty = totalWeight > 0 ? totalWeightedPenalty / totalWeight : 0;
   let score = 100 - avgPenalty;
 
   // Штраф за отсутствие данных
   const missingCount = cov.total - cov.count;
-  score -= missingCount * 8;
+  score -= missingCount * 10;
 
-  // Бонус за полные данные
-  if (cov.count === cov.total) score += 5;
+  // Бонус за полноту данных
+  if (cov.count === cov.total) score += 8;
 
-  // Штраф для лечебных вод
-  if (computeCategory(w) === "Therapeutic") score -= 25;
+  // Штраф за лечебную категорию
+  if (computeCategory(w) === "Therapeutic") score -= 30;
+
+  // Добавляем небольшой бонус за сбалансированность (чем меньше разброс отклонений, тем лучше)
+  const devValues = Object.values(deviations).filter(d => d !== null);
+  if (devValues.length > 1) {
+    const avg = devValues.reduce((a, b) => a + b, 0) / devValues.length;
+    const variance = devValues.reduce((a, b) => a + Math.pow(b - avg, 2), 0) / devValues.length;
+    score -= variance * 0.05; // Штраф за неравномерность
+  }
 
   score = clamp(score, 0, 100);
 
+  // Оставляем три знака после запятой для точности
+  const rawScore = score;
+  const roundedScore = Math.round(rawScore * 1000) / 1000;
+
   // Топ-3 показателя с наибольшими отклонениями
   const topReasons = Object.entries(deviations)
-    .filter(([_, d]) => d !== null && d > 10)
+    .filter(([_, d]) => d !== null && d > 5)
     .sort((a, b) => b[1] - a[1])
     .slice(0, 3)
     .map(([key]) => key);
 
   return {
-    score: Math.round(score * 10) / 10,
+    score: roundedScore,
     category: computeCategory(w),
     coverageCount: cov.count,
     coverageTotal: cov.total,
