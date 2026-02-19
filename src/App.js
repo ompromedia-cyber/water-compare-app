@@ -1216,25 +1216,7 @@ const SEED = [
 
 // ============== UI КОМПОНЕНТЫ ==============
 function ConfidenceBadge({ c }) {
-  if (c === "high") {
-    return (
-      <span className="inline-flex items-center rounded-xl border border-emerald-200 bg-emerald-50 px-2 py-1 text-xs font-medium text-emerald-800">
-        Verified
-      </span>
-    );
-  }
-  if (c === "medium") {
-    return (
-      <span className="inline-flex items-center rounded-xl border border-sky-200 bg-sky-50 px-2 py-1 text-xs font-medium text-sky-800">
-        PickAqua
-      </span>
-    );
-  }
-  return (
-    <span className="inline-flex items-center rounded-xl border border-slate-200 bg-white px-2 py-1 text-xs font-medium text-slate-700">
-      Approx
-    </span>
-  );
+  return null;
 }
 
 function CategoryBadge({ cat }) {
