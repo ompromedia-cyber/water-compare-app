@@ -699,12 +699,12 @@ function normalizeWater(w) {
 }
 
 function scoreWater(w, profile) {
-  // Базовые веса показателей
+  // Веса показателей
   const weights = {
-    ca: 1.2,   // Кальций — повышенный вес
-    mg: 1.2,   // Магний
+    ca: 1.2,
+    mg: 1.2,
     k: 0.8,
-    na: 1.3,   // Натрий — важный маркер
+    na: 1.3,
     cl: 1.0,
     ph: 0.5,
     tds: 0.7,
@@ -730,7 +730,6 @@ function scoreWater(w, profile) {
   }
 
   const liters = 2;
-  
   const get = {
     ca: w.ca_mg_l ?? null,
     mg: w.mg_mg_l ?? null,
@@ -740,10 +739,10 @@ function scoreWater(w, profile) {
     ph: w.ph ?? null,
     tds: w.tds_mg_l ?? null,
   };
-
   const cov = dataCoverage(w);
-  
-  function calculateDeviation(key, refDaily) {
+
+  // Оценка одного показателя от 0 до 100
+  function evaluateMetric(key, refDaily) {
     const x = get[key];
     if (x === null || x === undefined) return null;
 
@@ -756,103 +755,92 @@ function scoreWater(w, profile) {
     if (key === "ph") refValue = REF.ph;
     if (key === "tds") refValue = REF.tds;
 
-    let deviation = 0;
+    let score = 100;
 
     if (key === "ph") {
-      if (x >= 6.5 && x <= 7.5) deviation = 0;
-      else if (x < 6.5) deviation = (6.5 - x) * 25;
-      else deviation = (x - 7.5) * 25;
-    } 
-    else if (key === "tds") {
-      if (x >= 100 && x <= 500) deviation = 0;
-      else if (x < 100) deviation = (100 - x) * 0.6;
-      else deviation = (x - 500) * 0.35;
-    } 
-    else {
-      const ratio = valuePerDay / refValue;
-      // Нелинейный штраф: чем дальше от нормы, тем резче падение
-      if (ratio >= 0.9 && ratio <= 1.1) {
-        deviation = 0;
-      } else if (ratio < 0.9) {
-        // Степенной штраф за недостаток (квадратичный)
-        deviation = Math.pow((0.9 - ratio) * 1.5, 1.5) * 100;
-        if (key === "ca" || key === "mg") deviation *= 1.2;
-        if (key === "na" && profile === "Sport") deviation *= 1.5;
+      if (x >= 6.5 && x <= 7.5) score = 100;
+      else if (x < 6.5) {
+        score = Math.max(0, 100 - (6.5 - x) * 25);
       } else {
-        // Штраф за избыток (ещё более крутой)
-        deviation = Math.pow((ratio - 1.1) * 2, 1.8) * 100;
-        if (key === "na" || key === "cl") deviation *= 1.5;
-        if (key === "na" && profile === "Pressure") deviation *= 2.0;
+        score = Math.max(0, 100 - (x - 7.5) * 25);
+      }
+    } else if (key === "tds") {
+      if (x >= 100 && x <= 500) score = 100;
+      else if (x < 100) {
+        score = Math.max(0, 100 - (100 - x) * 0.6);
+      } else {
+        score = Math.max(0, 100 - (x - 500) * 0.35);
+      }
+    } else {
+      const ratio = valuePerDay / refValue;
+      if (ratio >= 0.9 && ratio <= 1.1) {
+        score = 100;
+      } else if (ratio < 0.9) {
+        let deficit = (0.9 - ratio) * 1.5;
+        let penalty = Math.min(100, Math.pow(deficit, 1.5) * 100);
+        if (key === "ca" || key === "mg") penalty *= 1.2;
+        if (key === "na" && profile === "Sport") penalty *= 1.5;
+        score = Math.max(0, 100 - penalty);
+      } else {
+        let excess = (ratio - 1.1) * 2;
+        let penalty = Math.min(100, Math.pow(excess, 1.8) * 100);
+        if (key === "na" || key === "cl") penalty *= 1.5;
+        if (key === "na" && profile === "Pressure") penalty *= 2.0;
+        score = Math.max(0, 100 - penalty);
       }
     }
-
-    return Math.min(deviation, 100);
+    return score;
   }
 
-  const deviations = {
-    ca: calculateDeviation("ca", REF.ca),
-    mg: calculateDeviation("mg", REF.mg),
-    k: calculateDeviation("k", REF.k),
-    na: calculateDeviation("na", REF.na),
-    cl: calculateDeviation("cl", REF.cl),
-    ph: calculateDeviation("ph", REF.ph),
-    tds: calculateDeviation("tds", REF.tds),
+  const scores = {
+    ca: evaluateMetric("ca", REF.ca),
+    mg: evaluateMetric("mg", REF.mg),
+    k: evaluateMetric("k", REF.k),
+    na: evaluateMetric("na", REF.na),
+    cl: evaluateMetric("cl", REF.cl),
+    ph: evaluateMetric("ph", REF.ph),
+    tds: evaluateMetric("tds", REF.tds),
   };
 
-  // Взвешенная сумма с нелинейным усилением
-  let totalWeightedPenalty = 0;
+  // Взвешенное среднее
   let totalWeight = 0;
-
-  for (const [key, dev] of Object.entries(deviations)) {
-    if (dev !== null) {
-      // Усиливаем влияние больших отклонений (возводим в квадрат)
-      const enhancedDev = Math.pow(dev / 100, 1.5) * 100;
-      totalWeightedPenalty += enhancedDev * weights[key];
+  let weightedSum = 0;
+  for (const [key, s] of Object.entries(scores)) {
+    if (s !== null) {
+      weightedSum += s * weights[key];
       totalWeight += weights[key];
     }
   }
 
-  const avgPenalty = totalWeight > 0 ? totalWeightedPenalty / totalWeight : 0;
-  let score = 100 - avgPenalty;
+  let finalScore = totalWeight > 0 ? weightedSum / totalWeight : 0;
 
   // Штраф за отсутствие данных
   const missingCount = cov.total - cov.count;
-  score -= missingCount * 10;
+  finalScore -= missingCount * 3;
 
   // Бонус за полноту данных
-  if (cov.count === cov.total) score += 8;
+  if (cov.count === cov.total) finalScore += 5;
 
   // Штраф за лечебную категорию
-  if (computeCategory(w) === "Therapeutic") score -= 30;
+  if (computeCategory(w) === "Therapeutic") finalScore *= 0.7;
 
-  // Добавляем небольшой бонус за сбалансированность (чем меньше разброс отклонений, тем лучше)
-  const devValues = Object.values(deviations).filter(d => d !== null);
-  if (devValues.length > 1) {
-    const avg = devValues.reduce((a, b) => a + b, 0) / devValues.length;
-    const variance = devValues.reduce((a, b) => a + Math.pow(b - avg, 2), 0) / devValues.length;
-    score -= variance * 0.05; // Штраф за неравномерность
-  }
+  finalScore = clamp(finalScore, 0, 100);
 
-  score = clamp(score, 0, 100);
-
-  // Оставляем три знака после запятой для точности
-  const rawScore = score;
-  const roundedScore = Math.round(rawScore * 1000) / 1000;
-
-  // Топ-3 показателя с наибольшими отклонениями
-  const topReasons = Object.entries(deviations)
-    .filter(([_, d]) => d !== null && d > 5)
-    .sort((a, b) => b[1] - a[1])
+  // Топ-3 показателя с наихудшими оценками
+  const worstScores = Object.entries(scores)
+    .filter(([_, s]) => s !== null)
+    .map(([key, s]) => ({ key, score: s }))
+    .sort((a, b) => a.score - b.score)
     .slice(0, 3)
-    .map(([key]) => key);
+    .map(item => item.key);
 
   return {
-    score: roundedScore,
+    score: finalScore,
     category: computeCategory(w),
     coverageCount: cov.count,
     coverageTotal: cov.total,
     hasMin: cov.count === cov.total,
-    topReasons,
+    topReasons: worstScores,
   };
 }
 
