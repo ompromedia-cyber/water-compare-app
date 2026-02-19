@@ -699,10 +699,38 @@ function normalizeWater(w) {
 }
 
 function scoreWater(w, profile) {
-  // Суточная норма потребления воды (2 литра)
-  const liters = 2;
+  // Базовые веса показателей (по умолчанию)
+  const weights = {
+    ca: 1.0,   // Кальций
+    mg: 1.0,   // Магний
+    k: 0.8,    // Калий
+    na: 1.2,   // Натрий
+    cl: 1.0,   // Хлориды
+    ph: 0.4,   // pH
+    tds: 0.6,  // Общая минерализация
+  };
+
+  // Корректировка весов под выбранный профиль
+  if (profile === "Pressure") {
+    weights.na = 2.5;     // Натрий критичен при давлении
+    weights.cl = 1.8;     // Хлориды тоже важны
+  }
+  if (profile === "Sport") {
+    weights.na = 1.5;     // Спортсменам нужен натрий
+    weights.k = 1.5;      // И калий
+    weights.mg = 1.5;     // И магний
+  }
+  if (profile === "Kid") {
+    weights.na = 2.0;     // Детям натрий ограничен
+    weights.tds = 1.2;    // Важна низкая минерализация
+  }
+  if (profile === "Sensitive") {
+    weights.ph = 1.2;     // Чувствительный ЖКТ – важен pH
+    weights.tds = 1.2;    // И общая минерализация
+  }
+
+  const liters = 2; // Суточное потребление воды (литры)
   
-  // Получаем значения показателей
   const get = {
     ca: w.ca_mg_l ?? null,
     mg: w.mg_mg_l ?? null,
@@ -715,15 +743,12 @@ function scoreWater(w, profile) {
 
   const cov = dataCoverage(w);
   
-  // Массив для хранения отклонений по каждому показателю
-  const deviations = [];
-  
-  // Функция расчета отклонения для одного показателя
+  // Функция расчёта отклонения для одного показателя (возвращает число от 0 до 100)
   function calculateDeviation(key, refDaily) {
     const x = get[key];
     if (x === null || x === undefined) return null;
 
-    // Для минералов: пересчитываем с учетом 2 литров воды в день
+    // Для минералов пересчитываем в суточное потребление
     let valuePerDay = x;
     if (key !== "ph" && key !== "tds") {
       valuePerDay = x * liters; // мг/л * 2 литра = мг/сутки
@@ -734,156 +759,98 @@ function scoreWater(w, profile) {
     if (key === "tds") refValue = REF.tds;
 
     let deviation = 0;
-    let description = "";
 
-    // Расчет отклонения в зависимости от показателя
     if (key === "ph") {
-      // Для pH идеальный диапазон 6.5-7.5
+      // Идеальный диапазон pH 6.5–7.5
       if (x >= 6.5 && x <= 7.5) {
         deviation = 0;
-        description = "идеальный pH";
       } else if (x < 6.5) {
-        deviation = (6.5 - x) * 20; // Чем кислее, тем хуже
-        description = "слишком кислая";
+        deviation = (6.5 - x) * 20;
       } else {
-        deviation = (x - 7.5) * 20; // Чем щелочнее, тем хуже
-        description = "слишком щелочная";
+        deviation = (x - 7.5) * 20;
       }
     } 
     else if (key === "tds") {
-      // Для TDS оптимальный диапазон 100-500 мг/л
+      // Идеальный диапазон TDS 100–500 мг/л
       if (x >= 100 && x <= 500) {
         deviation = 0;
-        description = "оптимальная минерализация";
       } else if (x < 100) {
-        deviation = (100 - x) * 0.5; // Слишком мягкая
-        description = "очень мягкая";
+        deviation = (100 - x) * 0.5;
       } else {
-        deviation = (x - 500) * 0.3; // Слишком минерализованная
-        description = "высокая минерализация";
+        deviation = (x - 500) * 0.3;
       }
     } 
     else {
-      // Для минералов: сравниваем с суточной нормой
       const ratio = valuePerDay / refValue;
-      
       if (ratio >= 0.9 && ratio <= 1.1) {
-        // В пределах 10% от нормы - идеально
         deviation = 0;
-        description = "идеально";
-      } 
-      else if (ratio < 0.9) {
-        // Недостаток
+      } else if (ratio < 0.9) {
         deviation = (0.9 - ratio) * 100;
-        // Чем важнее минерал, тем сильнее штраф за недостаток
-        if (key === "ca" || key === "mg") {
-          deviation *= 1.2; // Кальций и магний очень важны
-        }
-        if (key === "na" && profile === "Sport") {
-          deviation *= 1.5; // Спортсменам нужен натрий
-        }
-        description = "недостаток";
-      } 
-      else {
-        // Избыток
-        deviation = (ratio - 1.1) * 150; // Избыток штрафуется сильнее
-        if (key === "na" || key === "cl") {
-          deviation *= 1.5; // Натрий и хлориды вредны в избытке
-        }
-        if (key === "na" && profile === "Pressure") {
-          deviation *= 2.0; // Для гипертоников избыток натрия критичен
-        }
-        description = "избыток";
+        // Усиливаем штраф для важных минералов
+        if (key === "ca" || key === "mg") deviation *= 1.2;
+        if (key === "na" && profile === "Sport") deviation *= 1.5;
+      } else {
+        deviation = (ratio - 1.1) * 150;
+        if (key === "na" || key === "cl") deviation *= 1.5;
+        if (key === "na" && profile === "Pressure") deviation *= 2.0;
       }
     }
 
-    // Ограничиваем максимальное отклонение
-    deviation = Math.min(deviation, 100);
-    
-    return { deviation, description, value: x, ratio: valuePerDay / refValue };
+    return Math.min(deviation, 100);
   }
 
-  // Собираем отклонения по всем показателям
-  const caDev = calculateDeviation("ca", REF.ca);
-  const mgDev = calculateDeviation("mg", REF.mg);
-  const kDev = calculateDeviation("k", REF.k);
-  const naDev = calculateDeviation("na", REF.na);
-  const clDev = calculateDeviation("cl", REF.cl);
-  const phDev = calculateDeviation("ph", REF.ph);
-  const tdsDev = calculateDeviation("tds", REF.tds);
+  // Считаем отклонения
+  const deviations = {
+    ca: calculateDeviation("ca", REF.ca),
+    mg: calculateDeviation("mg", REF.mg),
+    k: calculateDeviation("k", REF.k),
+    na: calculateDeviation("na", REF.na),
+    cl: calculateDeviation("cl", REF.cl),
+    ph: calculateDeviation("ph", REF.ph),
+    tds: calculateDeviation("tds", REF.tds),
+  };
 
-  // Считаем общий штраф
-  let totalPenalty = 0;
-  let metricsCount = 0;
+  // Взвешенная сумма штрафов
+  let totalWeightedPenalty = 0;
+  let totalWeight = 0;
 
-  if (caDev) { totalPenalty += caDev.deviation; metricsCount++; }
-  if (mgDev) { totalPenalty += mgDev.deviation; metricsCount++; }
-  if (kDev) { totalPenalty += kDev.deviation * 0.7; metricsCount++; } // Калий менее важен
-  if (naDev) { totalPenalty += naDev.deviation; metricsCount++; }
-  if (clDev) { totalPenalty += clDev.deviation; metricsCount++; }
-  if (phDev) { totalPenalty += phDev.deviation * 0.8; metricsCount++; } // pH менее критичен
-  if (tdsDev) { totalPenalty += tdsDev.deviation * 0.6; metricsCount++; } // TDS тоже
+  for (const [key, dev] of Object.entries(deviations)) {
+    if (dev !== null) {
+      totalWeightedPenalty += dev * weights[key];
+      totalWeight += weights[key];
+    }
+  }
 
-  // Средний штраф на один показатель
-  const avgPenalty = metricsCount > 0 ? totalPenalty / metricsCount : 0;
-
-  // Базовый счет: 100 минус средний штраф
+  // Средневзвешенный штраф
+  const avgPenalty = totalWeight > 0 ? totalWeightedPenalty / totalWeight : 0;
   let score = 100 - avgPenalty;
 
   // Штраф за отсутствие данных
   const missingCount = cov.total - cov.count;
-  score -= missingCount * 8; // -8 за каждый отсутствующий показатель
+  score -= missingCount * 8;
 
   // Бонус за полные данные
-  if (cov.count === cov.total) {
-    score += 5; // +5 если есть все показатели
-  }
+  if (cov.count === cov.total) score += 5;
 
-  // Штраф за лечебную категорию
-  if (computeCategory(w) === "Therapeutic") {
-    score -= 25; // Лечебные воды сильно штрафуются для daily рейтинга
-  }
+  // Штраф для лечебных вод
+  if (computeCategory(w) === "Therapeutic") score -= 25;
 
-  // Финальное ограничение
   score = clamp(score, 0, 100);
 
-  // Формируем topReasons (показатели с наибольшими отклонениями)
-  const allDeviations = [
-    { key: "ca", ...caDev },
-    { key: "mg", ...mgDev },
-    { key: "k", ...kDev },
-    { key: "na", ...naDev },
-    { key: "cl", ...clDev },
-    { key: "ph", ...phDev },
-    { key: "tds", ...tdsDev },
-  ].filter(d => d.deviation !== undefined && d.deviation > 10); // Только значимые отклонения
-
-  allDeviations.sort((a, b) => b.deviation - a.deviation);
-  
-  const topReasons = allDeviations.slice(0, 3).map(d => ({
-    key: d.key,
-    deviation: d.deviation,
-    description: d.description
-  }));
+  // Топ-3 показателя с наибольшими отклонениями
+  const topReasons = Object.entries(deviations)
+    .filter(([_, d]) => d !== null && d > 10)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 3)
+    .map(([key]) => key);
 
   return {
-    score: Math.round(score * 10) / 10, // Округляем до 1 знака
+    score: Math.round(score * 10) / 10,
     category: computeCategory(w),
     coverageCount: cov.count,
     coverageTotal: cov.total,
     hasMin: cov.count === cov.total,
-    topReasons: topReasons.map(r => r.key),
-    details: {
-      ca: caDev,
-      mg: mgDev,
-      k: kDev,
-      na: naDev,
-      cl: clDev,
-      ph: phDev,
-      tds: tdsDev,
-      avgPenalty,
-      totalPenalty,
-    }
+    topReasons,
   };
 }
 
