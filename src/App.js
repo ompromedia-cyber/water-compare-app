@@ -826,6 +826,15 @@ function scoreWater(w, profile) {
 
   finalScore = clamp(finalScore, 0, 100);
 
+  // *** УНИКАЛИЗАЦИЯ БАЛЛОВ ***
+  // Добавляем микро-коррекцию на основе id воды, чтобы избежать одинаковых значений
+  const hash = w.id.split('').reduce((acc, c) => acc + c.charCodeAt(0), 0);
+  const micro = (hash % 100) / 1000; // от 0 до 0.099
+  let uniqueScore = finalScore + micro;
+  if (uniqueScore > 100) uniqueScore = 100;
+  // Округляем до двух знаков после запятой для читаемости
+  uniqueScore = Math.round(uniqueScore * 100) / 100;
+
   // Топ-3 показателя с наихудшими оценками
   const worstScores = Object.entries(scores)
     .filter(([_, s]) => s !== null)
@@ -835,7 +844,7 @@ function scoreWater(w, profile) {
     .map(item => item.key);
 
   return {
-    score: finalScore,
+    score: uniqueScore,
     category: computeCategory(w),
     coverageCount: cov.count,
     coverageTotal: cov.total,
