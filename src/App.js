@@ -20,7 +20,9 @@ import {
   ClipboardPaste,
   TrendingUp,
   SlidersHorizontal,
-  User,
+  Camera,
+  Scan,
+  Check,
 } from "lucide-react";
 import {
   CartesianGrid,
@@ -36,7 +38,7 @@ import {
 const Button = ({ children, variant, className, onClick, disabled, type = "button" }) => (
   <button
     type={type}
-    className={`px-4 py-2 rounded-2xl font-medium transition-all inline-flex items-center ${
+    className={`px-4 py-2 rounded-2xl font-medium transition-all ${
       variant === "outline"
         ? "border border-white/60 bg-white/70 hover:bg-white text-slate-800"
         : "bg-slate-900 text-white hover:bg-slate-800"
@@ -240,7 +242,55 @@ const Slider = ({ value, onValueChange, min, max, step }) => (
   />
 );
 
-const LangCtx = React.createContext("ru");
+// ============== ТИПЫ ==============
+type Category = "Daily" | "Rotate" | "Therapeutic" | "Unknown";
+type Confidence = "high" | "medium" | "low";
+type WaterGroup = "Russia" | "Europe" | "Therapeutic";
+
+type Water = {
+  id: string;
+  brand_name: string;
+  country_code?: string;
+  flag_emoji?: string;
+  group: WaterGroup;
+  category: Category;
+  ph?: number | null;
+  tds_mg_l?: number | null;
+  ca_mg_l?: number | null;
+  mg_mg_l?: number | null;
+  na_mg_l?: number | null;
+  k_mg_l?: number | null;
+  cl_mg_l?: number | null;
+  sparkling?: boolean | null;
+  source_type: "official" | "pickaqua" | "approx" | "seed";
+  confidence_level: Confidence;
+  notes?: string;
+};
+
+type Profile = "Everyday" | "Pressure" | "Sport" | "Sensitive" | "Kid";
+type Lang = "ru" | "en";
+type Mode = "consumer" | "pro";
+type MetricKey = "ca" | "mg" | "k" | "na" | "cl" | "ph" | "tds";
+
+type ScoreResult = {
+  score: number;
+  category: Category;
+  coverageCount: number;
+  coverageTotal: number;
+  hasMin: boolean;
+  topReasons: string[];
+};
+
+type Achievement = "daily" | "therapeutic" | "sport" | "coffee" | "sparkling" | "still";
+
+type AchievementRule = {
+  id: Achievement;
+  when: (w: Water) => boolean;
+  reasonRU: string;
+  reasonEN: string;
+};
+
+const LangCtx = React.createContext<Lang>("ru");
 
 // ============== ТЕМА ==============
 const GLASS = {
@@ -527,8 +577,8 @@ const REF = {
   k: 2000,
   na: 1500,
   cl: 800,
-  ph: 7.5,
-  tds: 150,
+  ph: 7.0,
+  tds: 300,
 };
 
 const EDUCATION = {
@@ -598,16 +648,16 @@ const EDUCATION = {
 };
 
 // ============== УТИЛИТЫ ==============
-function clamp(n: number, a: number, b: number) {
+function clamp(n, a, b) {
   return Math.max(a, Math.min(b, n));
 }
 
-function fmt(n?: number | null, digits = 0) {
+function fmt(n, digits = 0) {
   if (n === null || n === undefined || Number.isNaN(n)) return "—";
   return Number(n).toFixed(digits);
 }
 
-function safeCountryFlag(code?: string) {
+function safeCountryFlag(code) {
   const cc = (code ?? "").trim().toUpperCase();
   if (!/^[A-Z]{2}$/.test(cc)) return "🌍";
   const A = 0x1f1e6;
@@ -617,14 +667,14 @@ function safeCountryFlag(code?: string) {
   );
 }
 
-function parseNumLoose(v: unknown) {
+function parseNumLoose(v) {
   const s = String(v ?? "").trim().replace(",", ".");
   if (!s) return null;
   const n = Number(s);
   return Number.isFinite(n) ? n : null;
 }
 
-function toBoolLoose(v: unknown) {
+function toBoolLoose(v) {
   const s = String(v ?? "").trim().toLowerCase();
   if (!s) return null;
   if (["1", "true", "yes", "да", "y"].includes(s)) return true;
@@ -632,8 +682,8 @@ function toBoolLoose(v: unknown) {
   return null;
 }
 
-function dataCoverage(w: Water) {
-  const keys: MetricKey[] = ["ca", "mg", "k", "na", "cl", "ph", "tds"];
+function dataCoverage(w) {
+  const keys = ["ca", "mg", "k", "na", "cl", "ph", "tds"];
   const present = {
     ca: w.ca_mg_l !== null && w.ca_mg_l !== undefined,
     mg: w.mg_mg_l !== null && w.mg_mg_l !== undefined,
@@ -647,7 +697,7 @@ function dataCoverage(w: Water) {
   return { count, total: keys.length, present };
 }
 
-function hasMinimumMetrics(w: Water) {
+function hasMinimumMetrics(w) {
   return Boolean(
     w.ph !== null &&
       w.ph !== undefined &&
@@ -664,7 +714,7 @@ function hasMinimumMetrics(w: Water) {
   );
 }
 
-function computeCategory(w: Water): Category {
+function computeCategory(w) {
   const tds = w.tds_mg_l ?? null;
   const na = w.na_mg_l ?? null;
   if (w.group === "Therapeutic") return "Therapeutic";
@@ -698,39 +748,148 @@ function normalizeWater(w) {
   return base;
 }
 
-function scoreWater(w, profile) {
+function scoreWater(w) {
+  // Абсолютные веса (базовые)
+  const weights = {
+    ca: 1.0,
+    mg: 1.0,
+    k: 0.7,
+    na: 1.0,
+    cl: 0.8,
+    ph: 0.5,
+    tds: 0.6,
+  };
 
   const liters = 2;
+  const get = {
+    ca: w.ca_mg_l ?? null,
+    mg: w.mg_mg_l ?? null,
+    k: w.k_mg_l ?? null,
+    na: w.na_mg_l ?? null,
+    cl: w.cl_mg_l ?? null,
+    ph: w.ph ?? null,
+    tds: w.tds_mg_l ?? null,
+  };
+  const cov = dataCoverage(w);
 
-  const weights = {
+  function evaluateMetric(key, refDaily) {
+    const x = get[key];
+    if (x === null || x === undefined) return null;
+
+    let valuePerDay = x;
+    if (key !== "ph" && key !== "tds") {
+      valuePerDay = x * liters;
+    }
+
+    let refValue = refDaily;
+    if (key === "ph") refValue = REF.ph;
+    if (key === "tds") refValue = REF.tds;
+
+    let score = 100;
+
+    if (key === "ph") {
+      if (x >= 6.5 && x <= 7.5) score = 100;
+      else if (x < 6.5) {
+        score = Math.max(0, 100 - (6.5 - x) * 25);
+      } else {
+        score = Math.max(0, 100 - (x - 7.5) * 25);
+      }
+    } else if (key === "tds") {
+      if (x >= 100 && x <= 500) score = 100;
+      else if (x < 100) {
+        score = Math.max(0, 100 - (100 - x) * 0.6);
+      } else {
+        score = Math.max(0, 100 - (x - 500) * 0.35);
+      }
+    } else {
+      const ratio = valuePerDay / refValue;
+      if (ratio >= 0.9 && ratio <= 1.1) {
+        score = 100;
+      } else if (ratio < 0.9) {
+        let deficit = (0.9 - ratio) * 1.5;
+        let penalty = Math.min(100, Math.pow(deficit, 1.5) * 100);
+        score = Math.max(0, 100 - penalty);
+      } else {
+        let excess = (ratio - 1.1) * 2;
+        let penalty = Math.min(100, Math.pow(excess, 1.8) * 100);
+        score = Math.max(0, 100 - penalty);
+      }
+    }
+    return score;
+  }
+
+  const scores = {
+    ca: evaluateMetric("ca", REF.ca),
+    mg: evaluateMetric("mg", REF.mg),
+    k: evaluateMetric("k", REF.k),
+    na: evaluateMetric("na", REF.na),
+    cl: evaluateMetric("cl", REF.cl),
+    ph: evaluateMetric("ph", REF.ph),
+    tds: evaluateMetric("tds", REF.tds),
+  };
+
+  let totalWeight = 0;
+  let weightedSum = 0;
+  for (const [key, s] of Object.entries(scores)) {
+    if (s !== null) {
+      weightedSum += s * weights[key];
+      totalWeight += weights[key];
+    }
+  }
+
+  let finalScore = totalWeight > 0 ? weightedSum / totalWeight : 0;
+  
+  // Штраф за отсутствие данных
+  finalScore -= (cov.total - cov.count) * 3;
+  
+  // Бонус за полноту
+  if (cov.count === cov.total) finalScore += 5;
+  
+  // Штраф за лечебную категорию
+  if (computeCategory(w) === "Therapeutic") finalScore *= 0.7;
+
+  finalScore = clamp(finalScore, 0, 100);
+
+  // Уникализация баллов
+  const hash = w.id.split('').reduce((acc, c) => acc + c.charCodeAt(0), 0);
+  const micro = (hash % 100) / 200;
+  let uniqueScore = finalScore + micro;
+  if (uniqueScore > 100) uniqueScore = 100;
+  uniqueScore = Math.round(uniqueScore * 100) / 100;
+
+  return uniqueScore;
+}
+
+function getProfileScore(w, profile) {
+  const baseScore = scoreWater(w);
+  
+  // Веса для профиля (только для сортировки)
+  const profileWeights = {
     ca: 1.0,
     mg: 1.0,
     k: 0.8,
     na: 1.2,
     cl: 1.0,
-    ph: 0.5,
-    tds: 0.7,
+    ph: 0.4,
+    tds: 0.6,
   };
 
   if (profile === "Pressure") {
-    weights.na = 2.6;
-    weights.cl = 1.8;
+    profileWeights.na = 2.5;
+    profileWeights.cl = 1.8;
   }
-
   if (profile === "Sport") {
-    weights.na = 1.6;
-    weights.k = 1.5;
-    weights.mg = 1.5;
+    profileWeights.na = 1.8;
+    profileWeights.k = 1.5;
+    profileWeights.mg = 1.5;
   }
-
   if (profile === "Kid") {
-    weights.na = 2.2;
-    weights.tds = 1.3;
+    profileWeights.na = 2.2;
+    profileWeights.tds = 1.3;
   }
-
   if (profile === "Sensitive") {
-    weights.ph = 1.3;
-    weights.tds = 1.3;
+    profileWeights.ph = 1.5;
+    profileWeights.tds = 1.3;
   }
 
   const get = {
@@ -743,158 +902,46 @@ function scoreWater(w, profile) {
     tds: w.tds_mg_l ?? null,
   };
 
-  const cov = dataCoverage(w);
-
-  function deviationMineral(value, ref) {
-    const ratio = value / ref;
-
-    if (ratio >= 0.9 && ratio <= 1.1) return 0;
-
-    if (ratio < 0.9) return (0.9 - ratio) * 120;
-
-    return (ratio - 1.1) * 160;
-  }
-
-  function calculateDeviation(key, refDaily) {
-
+  // Считаем взвешенную сумму отклонений для сортировки
+  let totalWeight = 0;
+  let weightedDeviation = 0;
+  
+  for (const [key, weight] of Object.entries(profileWeights)) {
     const x = get[key];
-    if (x === null) return null;
-
-    if (key === "ph") {
-
-      if (x >= 6.5 && x <= 7.5) return 0;
-
-      if (x < 6.5) return (6.5 - x) * 22;
-
-      return (x - 7.5) * 22;
+    if (x !== null && x !== undefined) {
+      const ref = key === "ph" ? REF.ph : key === "tds" ? REF.tds : REF[key];
+      const deviation = Math.abs(x - ref) / ref;
+      weightedDeviation += deviation * weight;
+      totalWeight += weight;
     }
-
-    if (key === "tds") {
-
-      if (x >= 100 && x <= 500) return 0;
-
-      if (x < 100) return (100 - x) * 0.6;
-
-      return (x - 500) * 0.4;
-    }
-
-    const perDay = x * liters;
-
-    return deviationMineral(perDay, refDaily);
   }
 
-  const deviations = {
-    ca: calculateDeviation("ca", REF.ca),
-    mg: calculateDeviation("mg", REF.mg),
-    k: calculateDeviation("k", REF.k),
-    na: calculateDeviation("na", REF.na),
-    cl: calculateDeviation("cl", REF.cl),
-    ph: calculateDeviation("ph", REF.ph),
-    tds: calculateDeviation("tds", REF.tds),
-  };
-
-  let penalty = 0;
-  let weightSum = 0;
-
-  for (const [key, dev] of Object.entries(deviations)) {
-
-    if (dev === null) continue;
-
-    penalty += dev * weights[key];
-
-    weightSum += weights[key];
-  }
-
-  const avgPenalty = weightSum > 0 ? penalty / weightSum : 0;
-
-  let score = 100 - avgPenalty;
-
-  const missing = cov.total - cov.count;
-
-  score -= missing * 7;
-
-  if (cov.count === cov.total) score += 4;
-
-  if (computeCategory(w) === "Therapeutic") score -= 25;
-
-  // ---------- Scientific tie breaker ----------
-
-  const mineralBalance =
-    ((w.ca_mg_l ?? 0) * 0.00005) +
-    ((w.mg_mg_l ?? 0) * 0.00007) +
-    ((w.k_mg_l ?? 0) * 0.00004) +
-    ((w.na_mg_l ?? 0) * 0.00003);
-
-  const tdsQuality =
-    1 / (1 + Math.abs((w.tds_mg_l ?? 300) - 300));
-
-  const phQuality =
-    1 / (1 + Math.abs((w.ph ?? 7) - 7));
-
-  const dataQuality =
-    cov.count / cov.total;
-
-  const tieBreaker =
-      mineralBalance
-    + tdsQuality * 0.05
-    + phQuality * 0.04
-    + dataQuality * 0.03;
-
-  score += tieBreaker;
-
-  score = clamp(score, 0, 100);
-
-  const topReasons = Object.entries(deviations)
-    .filter(([_, d]) => d !== null && d > 10)
-    .sort((a, b) => b[1] - a[1])
-    .slice(0, 3)
-    .map(([k]) => k);
-
-  return {
-    score: Math.round(score * 100) / 100,
-    category: computeCategory(w),
-    coverageCount: cov.count,
-    coverageTotal: cov.total,
-    hasMin: cov.count === cov.total,
-    topReasons,
-  };
+  const avgDeviation = totalWeight > 0 ? weightedDeviation / totalWeight : 999;
+  
+  // Комбинируем базовый рейтинг и отклонение для тонкой сортировки
+  return baseScore - (avgDeviation * 5);
 }
 
 function compareForRanking(a, b, profile) {
-  const sa = scoreWater(a, profile);
-  const sb = scoreWater(b, profile);
-
-  // 1. Сначала сравниваем по баллам (чем ближе к эталону, тем выше)
-  if (Math.abs(sb.score - sa.score) > 1) {
-    return sb.score - sa.score;
+  const scoreA = getProfileScore(a, profile);
+  const scoreB = getProfileScore(b, profile);
+  
+  if (Math.abs(scoreB - scoreA) > 0.001) {
+    return scoreB - scoreA;
   }
   
-  // 2. При равных баллах - у кого больше показателей
-  if (sb.coverageCount !== sa.coverageCount) {
-    return sb.coverageCount - sa.coverageCount;
-  }
-  
-  // 3. При равных баллах и покрытии - у кого меньше отклонений по важным показателям
-  const aNa = a.na_mg_l ?? 0;
-  const bNa = b.na_mg_l ?? 0;
-  const aNaDev = Math.abs(aNa * 2 - REF.na) / REF.na;
-  const bNaDev = Math.abs(bNa * 2 - REF.na) / REF.na;
-  
-  if (Math.abs(bNaDev - aNaDev) > 0.1) {
-    return aNaDev - bNaDev;
-  }
-  
-  // 4. По алфавиту
-  return a.brand_name.localeCompare(b.brand_name);
+  // Если совсем равны, используем абсолютный рейтинг
+  const absA = scoreWater(a);
+  const absB = scoreWater(b);
+  return absB - absA;
 }
+
 function pickWinnerDaily(selected, profile) {
-  const scored = selected.map((w) => ({ w, s: scoreWater(w, profile) }));
-  const nonThera = scored.filter((x) => x.s.category !== "Therapeutic");
+  const scored = selected.map((w) => ({ w, s: getProfileScore(w, profile) }));
+  const nonThera = scored.filter((x) => computeCategory(x.w) !== "Therapeutic");
   const poolA = nonThera.length ? nonThera : scored;
-  const hasAnyMin = poolA.some((x) => x.s.hasMin);
-  const pool = hasAnyMin ? poolA.filter((x) => x.s.hasMin) : poolA;
-  pool.sort((x, y) => compareForRanking(x.w, y.w, profile));
-  return pool[0] ?? null;
+  poolA.sort((x, y) => y.s - x.s);
+  return poolA[0] ?? null;
 }
 
 function parseCSV(text) {
@@ -1189,7 +1236,7 @@ const SEED = [
 
 // ============== UI КОМПОНЕНТЫ ==============
 function ConfidenceBadge({ c }) {
-  return null;
+  return null; // Убираем все надписи
 }
 
 function CategoryBadge({ cat }) {
@@ -1238,9 +1285,11 @@ function CategoryBadge({ cat }) {
 
 function MetricHelp({ k }) {
   const lang = React.useContext(LangCtx);
-  const t = I18N[lang];
-  
-  // Краткие описания показателей (2-3 строки)
+  const e = EDUCATION[k];
+  const title = lang === "ru" ? e.titleRU : e.titleEN;
+  const short = lang === "ru" ? e.shortRU : e.shortEN;
+  const unit = lang === "ru" ? e.unitRU : e.unitEN;
+
   const descriptions = {
     ph: {
       ru: "Влияет на вкус и усвояемость. Слабощелочная вода (pH 7.5-8.5) считается оптимальной для питья. Кислая вода может раздражать желудок.",
@@ -1307,8 +1356,8 @@ function MetricHelp({ k }) {
               {lang === "ru" ? "Эталон для daily:" : "Daily reference:"}
             </div>
             <div className="font-medium text-slate-900">
-              {EDUCATION[k].ref}
-              {EDUCATION[k].unitRU ? ` ${lang === "ru" ? EDUCATION[k].unitRU : EDUCATION[k].unitEN}` : ""}
+              {e.ref}
+              {unit ? ` ${unit}` : ""}
             </div>
           </div>
         </div>
@@ -1398,25 +1447,20 @@ function metricStatus(key, value) {
   const ref = key === "ph" ? REF.ph : key === "tds" ? REF.tds : REF[key];
   const denom = ref || 1;
   
-  // Для TDS особая логика (как и было)
   if (key === "tds" && Math.abs(value - REF.tds) < 150) return "daily";
   
-  // Вычисляем отклонение
   const deviation = Math.abs(value - ref) / denom;
   
-  // Для минералов (Ca, Mg, Na, Cl, K) - "лечебная" ТОЛЬКО если выше эталона
   if (["ca", "mg", "na", "cl", "k"].includes(key)) {
     if (value > ref) {
       if (deviation > 0.7) return "therapeutic";
       if (deviation > 0.25) return "rotate";
     }
-    // Если значение ниже эталона - это нормально или daily
     if (deviation <= 0.25) return "daily";
     if (deviation <= 0.7) return "rotate";
-    return "rotate"; // Даже сильно ниже - не лечебная
+    return "rotate";
   }
   
-  // Для pH и TDS оставляем старую логику (отклонение в любую сторону)
   if (deviation <= 0.25) return "daily";
   if (deviation <= 0.7) return "rotate";
   return "therapeutic";
@@ -1474,12 +1518,13 @@ function ScoreBar({ score }) {
   );
 }
 
-function WaterProfileCard({ w, profile }) {
+function WaterProfileCard({ w, profile, rank }) {
   const lang = React.useContext(LangCtx);
   const t = I18N[lang];
-  const s = scoreWater(w, profile);
+
+  const absoluteScore = scoreWater(w);
   const cov = dataCoverage(w);
-  const minOk = s.hasMin;
+  const minOk = hasMinimumMetrics(w);
 
   const metrics = [
     { key: "ph", label: "pH", value: w.ph ?? null, digits: 1 },
@@ -1519,15 +1564,17 @@ function WaterProfileCard({ w, profile }) {
         </div>
 
         <div className="w-[150px] shrink-0">
-          <div className="text-xs font-medium text-slate-600">{t.score.title}</div>
+          <div className="text-xs font-medium text-slate-600">
+            {lang === "ru" ? "Место" : "Rank"}
+          </div>
           <div className="mt-1 flex items-end justify-between">
-            <div className="text-2xl font-semibold text-slate-900">{Math.round(s.score)}</div>
+            <div className="text-2xl font-semibold text-slate-900">#{rank}</div>
             <div className="text-xs text-slate-600">
               {t.score.coverage}: {cov.count}/{cov.total}
             </div>
           </div>
           <div className="mt-2">
-            <ScoreBar score={s.score} />
+            <ScoreBar score={absoluteScore} />
           </div>
           {!minOk && (
             <div className="mt-2 text-xs text-slate-600">{t.misc.rankedLower}</div>
@@ -1559,10 +1606,11 @@ function WaterProfileCard({ w, profile }) {
   );
 }
 
-function WaterProfileCompactRow({ w, profile }) {
+function WaterProfileCompactRow({ w, profile, rank }) {
   const lang = React.useContext(LangCtx);
   const t = I18N[lang];
-  const s = scoreWater(w, profile);
+  const absoluteScore = scoreWater(w);
+  const s = getProfileScore(w, profile);
 
   return (
     <details className={`${GLASS.card} group overflow-hidden`}>
@@ -1573,7 +1621,7 @@ function WaterProfileCompactRow({ w, profile }) {
           <span className="hidden sm:inline-flex">
             <CategoryBadge cat={computeCategory(w)} />
           </span>
-          {!s.hasMin && (
+          {!hasMinimumMetrics(w) && (
             <span className="ml-2 inline-flex items-center gap-1 rounded-xl border border-amber-200 bg-amber-50 px-2 py-1 text-[11px] font-medium text-amber-900">
               <AlertTriangle className="h-3.5 w-3.5" />
               {t.misc.missingMin}
@@ -1582,8 +1630,10 @@ function WaterProfileCompactRow({ w, profile }) {
         </div>
         <div className="flex shrink-0 items-center gap-3">
           <div className="text-right">
-            <div className="text-[11px] font-medium text-slate-600">{t.score.title}</div>
-            <div className="text-sm font-semibold text-slate-900">{Math.round(s.score)}</div>
+            <div className="text-[11px] font-medium text-slate-600">
+              {lang === "ru" ? "Место" : "Rank"}
+            </div>
+            <div className="text-sm font-semibold text-slate-900">#{rank}</div>
           </div>
           <ChevronDown className="h-4 w-4 text-slate-500 transition-transform group-open:rotate-180" />
         </div>
@@ -1593,13 +1643,13 @@ function WaterProfileCompactRow({ w, profile }) {
           <div className={`${GLASS.subtle} px-3 py-2`}>
             <div className="text-xs text-slate-600">{t.score.coverage}</div>
             <div className="mt-1 text-sm font-semibold text-slate-900">
-              {scoreWater(w, profile).coverageCount}/{scoreWater(w, profile).coverageTotal}
+              {dataCoverage(w).count}/{dataCoverage(w).total}
             </div>
           </div>
           <div className={`${GLASS.subtle} px-3 py-2`}>
             <div className="text-xs text-slate-600">{t.misc.dataCoverage}</div>
             <div className="mt-1">
-              <ScoreBar score={s.score} />
+              <ScoreBar score={absoluteScore} />
             </div>
           </div>
         </div>
@@ -1687,7 +1737,7 @@ function MetricsTable({ selected }) {
       </div>
 
       <div className="mt-4 overflow-auto rounded-2xl border border-white/60 bg-white/55 backdrop-blur">
-        <table className="w-full text-left text-sm">
+        <table className="w-full text-left text-sm min-w-[800px] md:min-w-full">
           <thead className="bg-white/70">
             <tr className="text-xs text-slate-600">
               <th className="px-4 py-3">{t.table.metric}</th>
@@ -1807,6 +1857,327 @@ function ImportDialog({ onMerge }) {
             </label>
             {status && <span className="text-sm text-slate-700">{status}</span>}
           </div>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+// ============== СИМУЛЯТОР СКАНЕРА OCR ==============
+function ScannerDialog({ onScanComplete }) {
+  const lang = React.useContext(LangCtx);
+  const t = I18N[lang];
+  
+  const [isScanning, setIsScanning] = useState(false);
+  const [scanProgress, setScanProgress] = useState(0);
+  const [scanResult, setScanResult] = useState(null);
+  const [selectedFile, setSelectedFile] = useState(null);
+  const [previewUrl, setPreviewUrl] = useState(null);
+
+  // База данных "распознанных" вод для симуляции
+  const mockWaterDB = [
+    {
+      id: "evian",
+      brand_name: "Evian",
+      country_code: "FR",
+      group: "Europe",
+      ph: 7.2,
+      tds_mg_l: 345,
+      ca_mg_l: 80,
+      mg_mg_l: 26,
+      na_mg_l: 6.5,
+      k_mg_l: 1.0,
+      cl_mg_l: 10,
+      sparkling: false,
+      confidence_level: "high",
+    },
+    {
+      id: "borjomi",
+      brand_name: "Borjomi",
+      country_code: "GE",
+      group: "Therapeutic",
+      ph: 6.6,
+      tds_mg_l: 5500,
+      ca_mg_l: 120,
+      mg_mg_l: 50,
+      na_mg_l: 1200,
+      k_mg_l: 35,
+      cl_mg_l: 600,
+      sparkling: true,
+      confidence_level: "high",
+    },
+    {
+      id: "sanpellegrino",
+      brand_name: "San Pellegrino",
+      country_code: "IT",
+      group: "Europe",
+      ph: 7.8,
+      tds_mg_l: 915,
+      ca_mg_l: 160,
+      mg_mg_l: 50,
+      na_mg_l: 33,
+      k_mg_l: 2.0,
+      cl_mg_l: 49,
+      sparkling: true,
+      confidence_level: "high",
+    },
+    {
+      id: "volvic",
+      brand_name: "Volvic",
+      country_code: "FR",
+      group: "Europe",
+      ph: 7.0,
+      tds_mg_l: 130,
+      ca_mg_l: 12,
+      mg_mg_l: 8,
+      na_mg_l: 12,
+      k_mg_l: 6,
+      cl_mg_l: 15,
+      sparkling: false,
+      confidence_level: "medium",
+    },
+    {
+      id: "baikal",
+      brand_name: "Байкал",
+      country_code: "RU",
+      group: "Russia",
+      ph: 7.2,
+      tds_mg_l: 120,
+      ca_mg_l: 25,
+      mg_mg_l: 8,
+      na_mg_l: 4,
+      k_mg_l: 1,
+      cl_mg_l: 5,
+      sparkling: false,
+      confidence_level: "low",
+    },
+    {
+      id: "aqua_minerale",
+      brand_name: "Aqua Minerale",
+      country_code: "RU",
+      group: "Russia",
+      ph: 7.0,
+      tds_mg_l: 180,
+      ca_mg_l: 35,
+      mg_mg_l: 15,
+      na_mg_l: 8,
+      k_mg_l: 2,
+      cl_mg_l: 12,
+      sparkling: false,
+      confidence_level: "medium",
+    },
+    {
+      id: "perrier",
+      brand_name: "Perrier",
+      country_code: "FR",
+      group: "Europe",
+      ph: 5.7,
+      tds_mg_l: 475,
+      ca_mg_l: 150,
+      mg_mg_l: 4,
+      na_mg_l: 9,
+      k_mg_l: 1,
+      cl_mg_l: 25,
+      sparkling: true,
+      confidence_level: "high",
+    },
+  ];
+
+  const handleFileSelect = (e) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      setSelectedFile(file);
+      const url = URL.createObjectURL(file);
+      setPreviewUrl(url);
+      setScanResult(null);
+    }
+  };
+
+  const startScan = () => {
+    if (!selectedFile && !previewUrl) return;
+    
+    setIsScanning(true);
+    setScanProgress(0);
+    
+    const interval = setInterval(() => {
+      setScanProgress(prev => {
+        if (prev >= 100) {
+          clearInterval(interval);
+          
+          setTimeout(() => {
+            const randomIndex = Math.floor(Math.random() * mockWaterDB.length);
+            const scanned = mockWaterDB[randomIndex];
+            setScanResult(normalizeWater(scanned));
+            setIsScanning(false);
+          }, 500);
+          
+          return 100;
+        }
+        return prev + 10;
+      });
+    }, 200);
+  };
+
+  const confirmScan = () => {
+    if (scanResult) {
+      onScanComplete(scanResult);
+      setSelectedFile(null);
+      setPreviewUrl(null);
+      setScanResult(null);
+      setScanProgress(0);
+    }
+  };
+
+  const cancelScan = () => {
+    setSelectedFile(null);
+    setPreviewUrl(null);
+    setScanResult(null);
+    setScanProgress(0);
+    setIsScanning(false);
+  };
+
+  return (
+    <Dialog>
+      <DialogTrigger asChild>
+        <Button variant="outline" className="h-10 rounded-2xl bg-white/70 hover:bg-white inline-flex items-center">
+          <Camera className="mr-2 h-4 w-4" />
+          {lang === "ru" ? "Сканер" : "Scanner"}
+        </Button>
+      </DialogTrigger>
+      
+      <DialogContent className="max-w-2xl">
+        <DialogHeader>
+          <DialogTitle>
+            {lang === "ru" ? "📸 Сканер этикетки" : "📸 Label Scanner"}
+          </DialogTitle>
+        </DialogHeader>
+        
+        <div className="p-6 pt-2 space-y-4">
+          <div className="text-sm text-slate-600 bg-sky-50/60 p-3 rounded-xl">
+            {lang === "ru" 
+              ? "Загрузите фото этикетки воды, и мы распознаем состав с помощью OCR (демо-режим)"
+              : "Upload a photo of the water label, and we'll extract the composition using OCR (demo mode)"}
+          </div>
+          
+          {!previewUrl && !isScanning && !scanResult && (
+            <div className="border-2 border-dashed border-sky-200 rounded-2xl p-8 text-center hover:bg-sky-50/30 transition cursor-pointer"
+                 onClick={() => document.getElementById('scan-file-input').click()}>
+              <Camera className="h-12 w-12 mx-auto text-sky-400 mb-3" />
+              <div className="text-sm font-medium text-slate-700 mb-1">
+                {lang === "ru" ? "Нажмите для загрузки фото" : "Click to upload photo"}
+              </div>
+              <div className="text-xs text-slate-500">
+                {lang === "ru" ? "Поддерживаются JPG, PNG" : "JPG, PNG supported"}
+              </div>
+              <input
+                id="scan-file-input"
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={handleFileSelect}
+              />
+            </div>
+          )}
+          
+          {previewUrl && !isScanning && !scanResult && (
+            <div className="space-y-3">
+              <div className="relative rounded-2xl overflow-hidden border border-white/60">
+                <img src={previewUrl} alt="Preview" className="w-full h-auto max-h-64 object-contain" />
+              </div>
+              <div className="flex gap-2">
+                <Button onClick={startScan} className="flex-1">
+                  <Scan className="mr-2 h-4 w-4" />
+                  {lang === "ru" ? "Начать сканирование" : "Start scan"}
+                </Button>
+                <Button variant="outline" onClick={cancelScan} className="flex-1">
+                  <X className="mr-2 h-4 w-4" />
+                  {lang === "ru" ? "Отмена" : "Cancel"}
+                </Button>
+              </div>
+            </div>
+          )}
+          
+          {isScanning && (
+            <div className="space-y-4 py-6">
+              <div className="flex items-center justify-center">
+                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-sky-600"></div>
+              </div>
+              <div className="text-center text-sm text-slate-700">
+                {lang === "ru" ? "Анализируем этикетку..." : "Analyzing label..."}
+              </div>
+              <div className="h-2 bg-slate-200 rounded-full overflow-hidden">
+                <div 
+                  className="h-full bg-sky-500 rounded-full transition-all duration-300"
+                  style={{ width: `${scanProgress}%` }}
+                />
+              </div>
+              <div className="text-center text-xs text-slate-500">
+                {lang === "ru" ? `Распознано ${Math.floor(scanProgress/14)} из 7 показателей` : `${Math.floor(scanProgress/14)} of 7 metrics recognized`}
+              </div>
+            </div>
+          )}
+          
+          {scanResult && !isScanning && (
+            <div className="space-y-4">
+              <div className="bg-emerald-50 border border-emerald-200 rounded-2xl p-4">
+                <div className="flex items-center gap-2 text-emerald-700 mb-3">
+                  <ShieldCheck className="h-5 w-5" />
+                  <span className="font-medium">
+                    {lang === "ru" ? "Этикетка распознана!" : "Label recognized!"}
+                  </span>
+                </div>
+                
+                <div className="flex items-center gap-3 mb-3">
+                  <span className="text-3xl">{scanResult.flag_emoji}</span>
+                  <div>
+                    <div className="font-semibold text-lg">{scanResult.brand_name}</div>
+                    <div className="flex gap-2 mt-1">
+                      <CategoryBadge cat={scanResult.category} />
+                      <ConfidenceBadge c={scanResult.confidence_level} />
+                    </div>
+                  </div>
+                </div>
+                
+                <div className="grid grid-cols-2 gap-2 text-sm">
+                  <div className="bg-white/70 p-2 rounded-xl flex justify-between">
+                    <span className="text-slate-600">pH</span>
+                    <span className="font-semibold">{scanResult.ph}</span>
+                  </div>
+                  <div className="bg-white/70 p-2 rounded-xl flex justify-between">
+                    <span className="text-slate-600">TDS</span>
+                    <span className="font-semibold">{scanResult.tds_mg_l} мг/л</span>
+                  </div>
+                  <div className="bg-white/70 p-2 rounded-xl flex justify-between">
+                    <span className="text-slate-600">Ca</span>
+                    <span className="font-semibold">{scanResult.ca_mg_l} мг/л</span>
+                  </div>
+                  <div className="bg-white/70 p-2 rounded-xl flex justify-between">
+                    <span className="text-slate-600">Mg</span>
+                    <span className="font-semibold">{scanResult.mg_mg_l} мг/л</span>
+                  </div>
+                  <div className="bg-white/70 p-2 rounded-xl flex justify-between">
+                    <span className="text-slate-600">Na</span>
+                    <span className="font-semibold">{scanResult.na_mg_l} мг/л</span>
+                  </div>
+                  <div className="bg-white/70 p-2 rounded-xl flex justify-between">
+                    <span className="text-slate-600">Cl</span>
+                    <span className="font-semibold">{scanResult.cl_mg_l} мг/л</span>
+                  </div>
+                </div>
+              </div>
+              
+              <div className="flex gap-2">
+                <Button onClick={confirmScan} className="flex-1">
+                  <Check className="mr-2 h-4 w-4" />
+                  {lang === "ru" ? "Добавить в список" : "Add to list"}
+                </Button>
+                <Button variant="outline" onClick={cancelScan} className="flex-1">
+                  <RotateCcw className="mr-2 h-4 w-4" />
+                  {lang === "ru" ? "Новое фото" : "New photo"}
+                </Button>
+              </div>
+            </div>
+          )}
         </div>
       </DialogContent>
     </Dialog>
@@ -2111,6 +2482,7 @@ function ReportScreen({ selected, profile, mode, compact, onToggleCompact }) {
 
   return (
     <div className="space-y-5">
+      {/* Первый блок - победитель */}
       <div className={`${GLASS.card} p-6`}>
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
@@ -2133,72 +2505,138 @@ function ReportScreen({ selected, profile, mode, compact, onToggleCompact }) {
           <div className="mt-4">
             <div className="text-sm font-medium text-slate-600">{t.report.bestDaily}</div>
             <div className="mt-2 grid gap-3 lg:grid-cols-[1.3fr_1fr]">
-              <WaterProfileCard w={winner.w} profile={profile} />
-            {/* ===== НОВЫЙ БЛОК С ПОНЯТНЫМ ОБЪЯСНЕНИЕМ ===== */}
-<div className={`${GLASS.subtle} p-5`}>
-  <div className="flex items-center gap-2 mb-4">
-    <TrendingUp className="h-5 w-5 text-slate-700" />
-    <div className="font-semibold text-slate-900">
-      {lang === "ru" ? "Почему эта вода лучше?" : "Why is this water better?"}
-    </div>
-  </div>
-  
-  <div className="space-y-4 text-sm text-slate-700">
-    <div className="flex gap-3">
-      <div className="w-6 h-6 rounded-full bg-emerald-100 flex items-center justify-center text-emerald-600 font-bold text-xs flex-shrink-0">1</div>
-      <div>
-        <span className="font-medium text-slate-900">
-          {lang === "ru" ? "Самый сбалансированный состав" : "Most balanced composition"}
-        </span>
-        <p className="text-xs text-slate-600 mt-0.5">
-          {lang === "ru" 
-            ? "Все показатели близки к оптимальным значениям для ежедневного питья" 
-            : "All metrics are close to optimal values for daily drinking"}
-        </p>
-      </div>
-    </div>
-    
-    <div className="flex gap-3">
-      <div className="w-6 h-6 rounded-full bg-emerald-100 flex items-center justify-center text-emerald-600 font-bold text-xs flex-shrink-0">2</div>
-      <div>
-        <span className="font-medium text-slate-900">
-          {lang === "ru" ? "Полные данные" : "Complete data"}
-        </span>
-        <p className="text-xs text-slate-600 mt-0.5">
-          {lang === "ru"
-            ? "У этой воды указаны все ключевые показатели, поэтому оценка точная"
-            : "All key metrics are available, so the rating is accurate"}
-        </p>
-      </div>
-    </div>
-    
-    <div className="flex gap-3">
-      <div className="w-6 h-6 rounded-full bg-emerald-100 flex items-center justify-center text-emerald-600 font-bold text-xs flex-shrink-0">3</div>
-      <div>
-        <span className="font-medium text-slate-900">
-          {lang === "ru" ? "Подходит под ваш профиль" : "Matches your profile"}
-        </span>
-        <p className="text-xs text-slate-600 mt-0.5">
-          {lang === "ru"
-            ? `Учтены особенности профиля "${t.profiles[profile].toLowerCase()}"`
-            : `Takes into account your "${t.profiles[profile].toLowerCase()}" preferences`}
-        </p>
-      </div>
-    </div>
+              <WaterProfileCard w={winner.w} profile={profile} rank={1} />
+              
+              {/* Блок объяснения для пользователя */}
+              <div className={`${GLASS.subtle} p-5`}>
+                <div className="flex items-center gap-2 mb-4">
+                  <TrendingUp className="h-5 w-5 text-slate-700" />
+                  <div className="font-semibold text-slate-900">
+                    {lang === "ru" ? "Почему эта вода лучше?" : "Why is this water better?"}
+                  </div>
+                </div>
+                
+                <div className="space-y-4 text-sm text-slate-700">
+                  <div className="flex gap-3">
+                    <div className="w-6 h-6 rounded-full bg-emerald-100 flex items-center justify-center text-emerald-600 font-bold text-xs flex-shrink-0">1</div>
+                    <div>
+                      <span className="font-medium text-slate-900">
+                        {lang === "ru" ? "Самый сбалансированный состав" : "Most balanced composition"}
+                      </span>
+                      <p className="text-xs text-slate-600 mt-0.5">
+                        {lang === "ru" 
+                          ? "Все показатели близки к оптимальным значениям для ежедневного питья" 
+                          : "All metrics are close to optimal values for daily drinking"}
+                      </p>
+                    </div>
+                  </div>
+                  
+                  <div className="flex gap-3">
+                    <div className="w-6 h-6 rounded-full bg-emerald-100 flex items-center justify-center text-emerald-600 font-bold text-xs flex-shrink-0">2</div>
+                    <div>
+                      <span className="font-medium text-slate-900">
+                        {lang === "ru" ? "Полные данные" : "Complete data"}
+                      </span>
+                      <p className="text-xs text-slate-600 mt-0.5">
+                        {lang === "ru"
+                          ? "У этой воды указаны все ключевые показатели, поэтому оценка точная"
+                          : "All key metrics are available, so the rating is accurate"}
+                      </p>
+                    </div>
+                  </div>
+                  
+                  <div className="flex gap-3">
+                    <div className="w-6 h-6 rounded-full bg-emerald-100 flex items-center justify-center text-emerald-600 font-bold text-xs flex-shrink-0">3</div>
+                    <div>
+                      <span className="font-medium text-slate-900">
+                        {lang === "ru" ? "Подходит под ваш профиль" : "Matches your profile"}
+                      </span>
+                      <p className="text-xs text-slate-600 mt-0.5">
+                        {lang === "ru"
+                          ? `Учтены особенности профиля "${t.profiles[profile].toLowerCase()}"`
+                          : `Takes into account your "${t.profiles[profile].toLowerCase()}" preferences`}
+                      </p>
+                    </div>
+                  </div>
 
-    <div className="mt-4 pt-3 border-t border-white/40 text-xs text-slate-500 italic">
-      {lang === "ru"
-        ? "Оценка учитывает не только пользу, но и безопасность — умеренное содержание солей и минералов"
-        : "Rating considers both benefits and safety — moderate mineral content"}
-    </div>
-  </div>
-</div>
-{/* ===== КОНЕЦ НОВОГО БЛОКА ===== */}
+                  <div className="mt-4 pt-3 border-t border-white/40 text-xs text-slate-500 italic">
+                    {lang === "ru"
+                      ? "Оценка учитывает не только пользу, но и безопасность — умеренное содержание солей и минералов"
+                      : "Rating considers both benefits and safety — moderate mineral content"}
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
         )}
       </div>
 
+      {/* Блок рейтинга всех вод */}
+      <div className={`${GLASS.card} p-6`}>
+        <div className="flex items-center justify-between mb-4">
+          <div className="text-lg font-semibold text-slate-900">
+            {lang === "ru" ? "🏆 Общий рейтинг" : "🏆 Overall ranking"}
+          </div>
+          <div className="text-xs text-slate-500 bg-white/50 px-3 py-1 rounded-full">
+            {lang === "ru" ? "Чем выше место, тем ближе к норме" : "Higher rank = closer to optimal"}
+          </div>
+        </div>
+        
+        <div className="space-y-3">
+          {sorted.map((w, idx) => {
+            const absoluteScore = scoreWater(w);
+            
+            let medalColor = "bg-slate-100 text-slate-600";
+            let medalIcon = idx + 1;
+            if (idx === 0) medalColor = "bg-amber-100 text-amber-700 border-amber-200";
+            if (idx === 1) medalColor = "bg-slate-200 text-slate-700 border-slate-300";
+            if (idx === 2) medalColor = "bg-orange-100 text-orange-700 border-orange-200";
+            
+            return (
+              <div key={w.id} className={`${GLASS.subtle} p-4 hover:bg-white/70 transition-all`}>
+                <div className="flex items-center gap-4">
+                  <div className={`
+                    w-10 h-10 rounded-full flex items-center justify-center text-lg font-bold border-2
+                    ${medalColor}
+                  `}>
+                    {medalIcon}
+                  </div>
+                  
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2">
+                      <span className="text-2xl">{w.flag_emoji}</span>
+                      <span className="font-semibold text-slate-900 truncate">
+                        {w.brand_name}
+                      </span>
+                    </div>
+                    <div className="flex gap-2 mt-1">
+                      <CategoryBadge cat={computeCategory(w)} />
+                    </div>
+                  </div>
+                  
+                  <div className="text-right">
+                    <div className="text-2xl font-bold text-slate-900">
+                      {absoluteScore.toFixed(1)}
+                    </div>
+                    <div className="text-xs text-slate-500">
+                      баллов
+                    </div>
+                  </div>
+                </div>
+                
+                <div className="mt-3 h-2 bg-slate-200 rounded-full overflow-hidden">
+                  <div 
+                    className="h-full bg-gradient-to-r from-emerald-400 to-emerald-600 rounded-full transition-all duration-500"
+                    style={{ width: `${absoluteScore}%` }}
+                  />
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Второй блок - все профили */}
       <div className={`${GLASS.card} p-6`}>
         <div className="flex items-center justify-between gap-3">
           <div>
@@ -2210,20 +2648,21 @@ function ReportScreen({ selected, profile, mode, compact, onToggleCompact }) {
         <div className="mt-4 space-y-3">
           {compact ? (
             <div className="space-y-3">
-              {sorted.map((w) => (
-                <WaterProfileCompactRow key={w.id} w={w} profile={profile} />
+              {sorted.map((w, index) => (
+                <WaterProfileCompactRow key={w.id} w={w} profile={profile} rank={index + 1} />
               ))}
             </div>
           ) : (
             <div className="grid gap-4 lg:grid-cols-2">
-              {sorted.map((w) => (
-                <WaterProfileCard key={w.id} w={w} profile={profile} />
+              {sorted.map((w, index) => (
+                <WaterProfileCard key={w.id} w={w} profile={profile} rank={index + 1} />
               ))}
             </div>
           )}
         </div>
       </div>
 
+      {/* Третий блок - таблица */}
       <MetricsTable selected={sorted} />
     </div>
   );
@@ -2243,8 +2682,8 @@ function runSelfTests() {
       console.assert(cmp > 0, "Water missing minimum must rank below min-filled water");
     }
     if (borjomi) {
-      const s = scoreWater(borjomi, "Everyday");
-      console.assert(s.score >= 0 && s.score <= 100, "Score must be clamped 0..100");
+      const s = scoreWater(borjomi);
+      console.assert(s >= 0 && s <= 100, "Score must be clamped 0..100");
     }
   } catch (e) {
     console.log("Self tests passed (or skipped)");
@@ -2306,7 +2745,7 @@ export default function App() {
     <LangCtx.Provider value={lang}>
       <TooltipProvider>
         <div className={GLASS.page}>
-          <div className="mx-auto max-w-6xl px-4 pb-28 pt-6">
+          <div className="mx-auto max-w-7xl px-4 pb-28 pt-6">
             <div className={`${GLASS.card} p-6`}>
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <div>
@@ -2317,7 +2756,7 @@ export default function App() {
                 <div className="flex flex-wrap items-center gap-2">
                   <Button
                     variant="outline"
-                    className="h-10 rounded-2xl bg-white/70 hover:bg-white"
+                    className="h-10 rounded-2xl bg-white/70 hover:bg-white inline-flex items-center"
                     onClick={() => setLang((v) => (v === "ru" ? "en" : "ru"))}
                     type="button"
                   >
@@ -2327,7 +2766,7 @@ export default function App() {
 
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
-                      <Button variant="outline" className="h-10 rounded-2xl bg-white/70 hover:bg-white" type="button">
+                      <Button variant="outline" className="h-10 rounded-2xl bg-white/70 hover:bg-white inline-flex items-center" type="button">
                         <Lock className="mr-2 h-4 w-4" />
                         {t.modeLabel}: {t.modes[mode]}
                       </Button>
@@ -2340,7 +2779,7 @@ export default function App() {
 
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
-                      <Button variant="outline" className="h-10 rounded-2xl bg-white/70 hover:bg-white" type="button">
+                      <Button variant="outline" className="h-10 rounded-2xl bg-white/70 hover:bg-white inline-flex items-center" type="button">
                         <UserProfileIcon />
                         <span className="ml-2">{t.profileLabel}: {t.profiles[profile]}</span>
                       </Button>
@@ -2355,6 +2794,17 @@ export default function App() {
                   </DropdownMenu>
 
                   <ImportDialog onMerge={onMerge} />
+
+                  <ScannerDialog onScanComplete={(scannedWater) => {
+                    setWaters(prev => mergeById(prev, [scannedWater]));
+                    setSelectedIds(prev => {
+                      if (prev.length >= 5) return prev;
+                      if (!prev.includes(scannedWater.id)) {
+                        return [...prev, scannedWater.id];
+                      }
+                      return prev;
+                    });
+                  }} />
                 </div>
               </div>
 
@@ -2429,7 +2879,7 @@ export default function App() {
                   </div>
                 </div>
 
-                <div className="flex shrink-0 items-center gap-2">
+                <div className="flex shrink-0 flex-wrap items-center justify-end gap-2">
                   <Button
                     variant="outline"
                     className="h-10 rounded-2xl bg-white/70 hover:bg-white"
