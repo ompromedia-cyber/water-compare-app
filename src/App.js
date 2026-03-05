@@ -794,24 +794,45 @@ function scoreWater(w) {
 
   let finalScore = totalWeight > 0 ? weightedSum / totalWeight : 0;
   
-  // Штраф за отсутствие данных (ПРОПОРЦИОНАЛЬНЫЙ)
+  // ===== ЖЁСТКИЙ ШТРАФ ЗА ОТСУТСТВИЕ ДАННЫХ =====
   const missingCount = cov.total - cov.count;
-  const coveragePenalty = (missingCount / cov.total) * 40; // Максимальный штраф 40 баллов
-  finalScore -= coveragePenalty;
   
-  // Бонус за полноту данных (небольшой поощрительный)
-  if (cov.count === cov.total) {
-    finalScore += 5;
+  // Прогрессивный штраф: каждый отсутствующий показатель снижает рейтинг всё сильнее
+  if (missingCount === 1) {
+    finalScore *= 0.7; // -30% за 1 пропуск
+  } else if (missingCount === 2) {
+    finalScore *= 0.5; // -50% за 2 пропуска
+  } else if (missingCount === 3) {
+    finalScore *= 0.3; // -70% за 3 пропуска
+  } else if (missingCount === 4) {
+    finalScore *= 0.15; // -85% за 4 пропуска
+  } else if (missingCount >= 5) {
+    finalScore *= 0.05; // -95% за 5+ пропусков (практически обнуление)
+  }
+  
+  // Дополнительный штраф за отсутствие ключевых показателей
+  const hasKeyMetrics = scores.ca !== null && scores.mg !== null && scores.na !== null;
+  if (!hasKeyMetrics && missingCount > 0) {
+    finalScore *= 0.5; // Ещё -50% если нет Ca, Mg или Na
+  }
+  
+  // Абсолютный потолок: вода с 2 показателями НИКОГДА не получит больше 30 баллов
+  if (presentCount <= 2) {
+    finalScore = Math.min(finalScore, 30);
+  } else if (presentCount === 3) {
+    finalScore = Math.min(finalScore, 50);
+  } else if (presentCount === 4) {
+    finalScore = Math.min(finalScore, 70);
   }
 
   finalScore = clamp(finalScore, 0, 100);
 
-  // Уникализация баллов
+  // Уникализация баллов (очень маленькая, чтобы не влияла на порядок)
   const hash = w.id.split('').reduce((acc, c) => acc + c.charCodeAt(0), 0);
-  const micro = (hash % 100) / 200;
+  const micro = (hash % 100) / 1000; // Уменьшил влияние
   let uniqueScore = finalScore + micro;
   if (uniqueScore > 100) uniqueScore = 100;
-  uniqueScore = Math.round(uniqueScore * 100) / 100;
+  uniqueScore = Math.round(uniqueScore * 10) / 10; // Один знак после запятой
 
   return {
     score: uniqueScore,
@@ -820,6 +841,7 @@ function scoreWater(w) {
     coverageTotal: cov.total,
     hasMin: cov.count === cov.total,
     missingCount: missingCount,
+    presentCount: presentCount,
   };
 }
 
@@ -883,16 +905,24 @@ function getProfileScore(w, profile) {
 }
 
 function compareForRanking(a, b, profile) {
-  const scoreA = getProfileScore(a, profile);
-  const scoreB = getProfileScore(b, profile);
+  const scoreA = scoreWater(a);
+  const scoreB = scoreWater(b);
   
-  if (Math.abs(scoreB - scoreA) > 0.001) {
-    return scoreB - scoreA;
+  // 1. Сначала сравниваем по количеству показателей
+  if (scoreA.presentCount !== scoreB.presentCount) {
+    return scoreB.presentCount - scoreA.presentCount;
   }
   
-  const absA = scoreWater(a).score;
-  const absB = scoreWater(b).score;
-  return absB - absA;
+  // 2. Затем по профильному рейтингу
+  const profileScoreA = getProfileScore(a, profile);
+  const profileScoreB = getProfileScore(b, profile);
+  
+  if (Math.abs(profileScoreB - profileScoreA) > 0.01) {
+    return profileScoreB - profileScoreA;
+  }
+  
+  // 3. Затем по абсолютному рейтингу
+  return scoreB.score - scoreA.score;
 }
 
 function pickWinnerDaily(selected, profile) {
@@ -1703,61 +1733,105 @@ function MetricsTable({ selected, profile }) {
         </div>
       </div>
 
-      <div className="mt-4 overflow-auto rounded-2xl border-2 border-slate-200 bg-white/55 backdrop-blur">
+      <div className="mt-4 overflow-auto rounded-2xl border-2 border-slate-300 bg-white/55 backdrop-blur">
         <table className="w-full text-left text-sm border-collapse">
-          <thead className="bg-slate-100">
-            <tr className="text-xs text-slate-600">
-              <th className="px-4 py-3 border-r border-slate-200">{t.table.metric}</th>
-              <th className="px-4 py-3 border-r border-slate-200">{t.table.ref}</th>
-              <th className="px-4 py-3 border-r border-slate-200">{t.table.unit}</th>
+          {/* Заголовок таблицы */}
+          <thead>
+            <tr className="bg-slate-100">
+              <th className="px-4 py-3 border border-slate-300 font-medium">{t.table.metric}</th>
+              <th className="px-4 py-3 border border-slate-300 font-medium">{t.table.ref}</th>
+              <th className="px-4 py-3 border border-slate-300 font-medium">{t.table.unit}</th>
               {selected.map((w) => (
-                <th key={w.id} className={`px-4 py-3 border-r border-slate-200 last:border-r-0 ${w.id === winnerId ? 'bg-amber-50' : ''}`}>
+                <th 
+                  key={w.id} 
+                  className={`px-4 py-3 border border-slate-300 font-medium ${w.id === winnerId ? 'bg-amber-100' : ''}`}
+                >
                   <div className="flex items-center gap-2">
                     <span className="text-base">{w.flag_emoji ?? safeCountryFlag(w.country_code)}</span>
-                    <span className="max-w-[160px] truncate font-medium text-slate-900">{w.brand_name}</span>
+                    <span className="max-w-[160px] truncate text-slate-900">{w.brand_name}</span>
                     {w.id === winnerId && (
-                      <span className="ml-1 text-amber-600">🏆</span>
+                      <span className="ml-1 text-amber-600" title="Победитель по профилю">🏆</span>
                     )}
                   </div>
                 </th>
               ))}
             </tr>
           </thead>
+          
+          {/* Тело таблицы - строки с показателями */}
           <tbody>
-            {rows.map((r, idx) => (
-              <tr key={r.key} className={idx % 2 ? "bg-white/40" : "bg-white/60"}>
-                <td className="px-4 py-3 border-r border-slate-200">
+            {rows.map((r, rowIdx) => (
+              <tr key={r.key} className={rowIdx % 2 === 0 ? 'bg-white/60' : 'bg-white/40'}>
+                {/* Название показателя */}
+                <td className="px-4 py-3 border border-slate-300">
                   <div className="flex items-center gap-2">
                     <span className="font-medium text-slate-900">{r.label}</span>
                     <MetricHelp k={r.key} />
                   </div>
                 </td>
-                <td className="px-4 py-3 text-slate-700 border-r border-slate-200">{r.ref}</td>
-                <td className="px-4 py-3 text-slate-700 border-r border-slate-200">{r.unit}</td>
+                
+                {/* Эталон */}
+                <td className="px-4 py-3 border border-slate-300 text-slate-700">
+                  {r.ref}
+                </td>
+                
+                {/* Единица измерения */}
+                <td className="px-4 py-3 border border-slate-300 text-slate-700">
+                  {r.unit}
+                </td>
+                
+                {/* Значения для каждой выбранной воды */}
                 {selected.map((w) => {
                   const v = r.getValue(w);
                   const st = metricStatus(r.key, v);
-                  const scoreData = scoreWater(w);
                   return (
-                    <td key={w.id + r.key} className={`px-4 py-3 border-r border-slate-200 last:border-r-0 ${w.id === winnerId ? 'bg-amber-50/50' : ''}`}>
+                    <td 
+                      key={w.id + r.key} 
+                      className={`px-4 py-3 border border-slate-300 ${w.id === winnerId ? 'bg-amber-50/30' : ''}`}
+                    >
                       <div className="flex items-center justify-between gap-2">
                         <span className="font-semibold text-slate-900">{fmt(v, r.digits ?? 0)}</span>
                         <MetricPill kind={st} />
                       </div>
-                      {idx === rows.length - 1 && (
-                        <div className="mt-2 text-xs flex items-center justify-between border-t border-slate-200 pt-2">
-                          <span className="text-slate-500">Рейтинг:</span>
-                          <span className={`font-bold ${scoreData.missingCount > 0 ? 'text-amber-600' : 'text-emerald-600'}`}>
-                            {scoreData.score.toFixed(1)}
-                            {scoreData.missingCount > 0 && ' ⚠️'}
-                          </span>
-                        </div>
-                      )}
                     </td>
                   );
                 })}
               </tr>
             ))}
+            
+            {/* Дополнительная строка с рейтингами */}
+            <tr className="bg-slate-50/80">
+              <td className="px-4 py-3 border border-slate-300 font-medium" colSpan={3}>
+                Рейтинг
+              </td>
+              {selected.map((w) => {
+                const scoreData = scoreWater(w);
+                return (
+                  <td 
+                    key={`rating-${w.id}`} 
+                    className={`px-4 py-3 border border-slate-300 ${w.id === winnerId ? 'bg-amber-100 font-bold' : ''}`}
+                  >
+                    <div className="flex items-center justify-between">
+                      <span>{scoreData.score.toFixed(1)}</span>
+                      {scoreData.missingCount > 0 && (
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <span className="ml-1 text-amber-600 cursor-help">⚠️</span>
+                          </TooltipTrigger>
+                          <TooltipContent>
+                            <div className="text-xs">
+                              {lang === "ru" 
+                                ? `Нет данных по ${scoreData.missingCount} показателям` 
+                                : `Missing ${scoreData.missingCount} metrics`}
+                            </div>
+                          </TooltipContent>
+                        </Tooltip>
+                      )}
+                    </div>
+                  </td>
+                );
+              })}
+            </tr>
           </tbody>
         </table>
       </div>
