@@ -699,37 +699,40 @@ function normalizeWater(w) {
 }
 
 function scoreWater(w, profile) {
-  // Веса показателей
+
+  const liters = 2;
+
   const weights = {
-    ca: 1.2,
-    mg: 1.2,
+    ca: 1.0,
+    mg: 1.0,
     k: 0.8,
-    na: 1.3,
+    na: 1.2,
     cl: 1.0,
     ph: 0.5,
     tds: 0.7,
   };
 
-  // Корректировка под профиль
   if (profile === "Pressure") {
-    weights.na = 2.5;
+    weights.na = 2.6;
     weights.cl = 1.8;
   }
+
   if (profile === "Sport") {
-    weights.na = 1.8;
+    weights.na = 1.6;
     weights.k = 1.5;
     weights.mg = 1.5;
   }
+
   if (profile === "Kid") {
     weights.na = 2.2;
     weights.tds = 1.3;
   }
+
   if (profile === "Sensitive") {
-    weights.ph = 1.5;
+    weights.ph = 1.3;
     weights.tds = 1.3;
   }
 
-  const liters = 2;
   const get = {
     ca: w.ca_mg_l ?? null,
     mg: w.mg_mg_l ?? null,
@@ -739,117 +742,121 @@ function scoreWater(w, profile) {
     ph: w.ph ?? null,
     tds: w.tds_mg_l ?? null,
   };
+
   const cov = dataCoverage(w);
 
-  // Оценка одного показателя от 0 до 100
-  function evaluateMetric(key, refDaily) {
+  function deviationMineral(value, ref) {
+    const ratio = value / ref;
+
+    if (ratio >= 0.9 && ratio <= 1.1) return 0;
+
+    if (ratio < 0.9) return (0.9 - ratio) * 120;
+
+    return (ratio - 1.1) * 160;
+  }
+
+  function calculateDeviation(key, refDaily) {
+
     const x = get[key];
-    if (x === null || x === undefined) return null;
-
-    let valuePerDay = x;
-    if (key !== "ph" && key !== "tds") {
-      valuePerDay = x * liters;
-    }
-
-    let refValue = refDaily;
-    if (key === "ph") refValue = REF.ph;
-    if (key === "tds") refValue = REF.tds;
-
-    let score = 100;
+    if (x === null) return null;
 
     if (key === "ph") {
-      if (x >= 6.5 && x <= 7.5) score = 100;
-      else if (x < 6.5) {
-        score = Math.max(0, 100 - (6.5 - x) * 25);
-      } else {
-        score = Math.max(0, 100 - (x - 7.5) * 25);
-      }
-    } else if (key === "tds") {
-      if (x >= 100 && x <= 500) score = 100;
-      else if (x < 100) {
-        score = Math.max(0, 100 - (100 - x) * 0.6);
-      } else {
-        score = Math.max(0, 100 - (x - 500) * 0.35);
-      }
-    } else {
-      const ratio = valuePerDay / refValue;
-      if (ratio >= 0.9 && ratio <= 1.1) {
-        score = 100;
-      } else if (ratio < 0.9) {
-        let deficit = (0.9 - ratio) * 1.5;
-        let penalty = Math.min(100, Math.pow(deficit, 1.5) * 100);
-        if (key === "ca" || key === "mg") penalty *= 1.2;
-        if (key === "na" && profile === "Sport") penalty *= 1.5;
-        score = Math.max(0, 100 - penalty);
-      } else {
-        let excess = (ratio - 1.1) * 2;
-        let penalty = Math.min(100, Math.pow(excess, 1.8) * 100);
-        if (key === "na" || key === "cl") penalty *= 1.5;
-        if (key === "na" && profile === "Pressure") penalty *= 2.0;
-        score = Math.max(0, 100 - penalty);
-      }
+
+      if (x >= 6.5 && x <= 7.5) return 0;
+
+      if (x < 6.5) return (6.5 - x) * 22;
+
+      return (x - 7.5) * 22;
     }
-    return score;
+
+    if (key === "tds") {
+
+      if (x >= 100 && x <= 500) return 0;
+
+      if (x < 100) return (100 - x) * 0.6;
+
+      return (x - 500) * 0.4;
+    }
+
+    const perDay = x * liters;
+
+    return deviationMineral(perDay, refDaily);
   }
 
-  const scores = {
-    ca: evaluateMetric("ca", REF.ca),
-    mg: evaluateMetric("mg", REF.mg),
-    k: evaluateMetric("k", REF.k),
-    na: evaluateMetric("na", REF.na),
-    cl: evaluateMetric("cl", REF.cl),
-    ph: evaluateMetric("ph", REF.ph),
-    tds: evaluateMetric("tds", REF.tds),
+  const deviations = {
+    ca: calculateDeviation("ca", REF.ca),
+    mg: calculateDeviation("mg", REF.mg),
+    k: calculateDeviation("k", REF.k),
+    na: calculateDeviation("na", REF.na),
+    cl: calculateDeviation("cl", REF.cl),
+    ph: calculateDeviation("ph", REF.ph),
+    tds: calculateDeviation("tds", REF.tds),
   };
 
-  // Взвешенное среднее
-  let totalWeight = 0;
-  let weightedSum = 0;
-  for (const [key, s] of Object.entries(scores)) {
-    if (s !== null) {
-      weightedSum += s * weights[key];
-      totalWeight += weights[key];
-    }
+  let penalty = 0;
+  let weightSum = 0;
+
+  for (const [key, dev] of Object.entries(deviations)) {
+
+    if (dev === null) continue;
+
+    penalty += dev * weights[key];
+
+    weightSum += weights[key];
   }
 
-  let finalScore = totalWeight > 0 ? weightedSum / totalWeight : 0;
+  const avgPenalty = weightSum > 0 ? penalty / weightSum : 0;
 
-  // Штраф за отсутствие данных
-  const missingCount = cov.total - cov.count;
-  finalScore -= missingCount * 3;
+  let score = 100 - avgPenalty;
 
-  // Бонус за полноту данных
-  if (cov.count === cov.total) finalScore += 5;
+  const missing = cov.total - cov.count;
 
-  // Штраф за лечебную категорию
-  if (computeCategory(w) === "Therapeutic") finalScore *= 0.7;
+  score -= missing * 7;
 
-  finalScore = clamp(finalScore, 0, 100);
+  if (cov.count === cov.total) score += 4;
 
-  // *** УНИКАЛИЗАЦИЯ БАЛЛОВ ***
-  // Добавляем микро-коррекцию на основе id воды, чтобы избежать одинаковых значений
-  const hash = w.id.split('').reduce((acc, c) => acc + c.charCodeAt(0), 0);
-  const micro = (hash % 100) / 1000; // от 0 до 0.099
-  let uniqueScore = finalScore + micro;
-  if (uniqueScore > 100) uniqueScore = 100;
-  // Округляем до двух знаков после запятой для читаемости
-  uniqueScore = Math.round(uniqueScore * 100) / 100;
+  if (computeCategory(w) === "Therapeutic") score -= 25;
 
-  // Топ-3 показателя с наихудшими оценками
-  const worstScores = Object.entries(scores)
-    .filter(([_, s]) => s !== null)
-    .map(([key, s]) => ({ key, score: s }))
-    .sort((a, b) => a.score - b.score)
+  // ---------- Scientific tie breaker ----------
+
+  const mineralBalance =
+    ((w.ca_mg_l ?? 0) * 0.00005) +
+    ((w.mg_mg_l ?? 0) * 0.00007) +
+    ((w.k_mg_l ?? 0) * 0.00004) +
+    ((w.na_mg_l ?? 0) * 0.00003);
+
+  const tdsQuality =
+    1 / (1 + Math.abs((w.tds_mg_l ?? 300) - 300));
+
+  const phQuality =
+    1 / (1 + Math.abs((w.ph ?? 7) - 7));
+
+  const dataQuality =
+    cov.count / cov.total;
+
+  const tieBreaker =
+      mineralBalance
+    + tdsQuality * 0.05
+    + phQuality * 0.04
+    + dataQuality * 0.03;
+
+  score += tieBreaker;
+
+  score = clamp(score, 0, 100);
+
+  const topReasons = Object.entries(deviations)
+    .filter(([_, d]) => d !== null && d > 10)
+    .sort((a, b) => b[1] - a[1])
     .slice(0, 3)
-    .map(item => item.key);
+    .map(([k]) => k);
 
   return {
-    score: uniqueScore,
+    score: Math.round(score * 100) / 100,
     category: computeCategory(w),
     coverageCount: cov.count,
     coverageTotal: cov.total,
     hasMin: cov.count === cov.total,
-    topReasons: worstScores,
+    topReasons,
   };
 }
 
