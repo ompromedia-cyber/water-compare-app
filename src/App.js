@@ -23,6 +23,7 @@ import {
   Camera,
   Scan,
   Check,
+  ChevronUp,
 } from "lucide-react";
 import {
   CartesianGrid,
@@ -242,8 +243,6 @@ const Slider = ({ value, onValueChange, min, max, step }) => (
   />
 );
 
-const LangCtx = React.createContext("ru");
-
 // ============== ТЕМА ==============
 const GLASS = {
   page:
@@ -257,6 +256,8 @@ const GLASS = {
 };
 
 const CHART_COLORS = ["#38BDF8", "#34D399", "#FBBF24", "#FB7185", "#A78BFA"];
+
+const LangCtx = React.createContext("ru");
 
 // ============== ЛОКАЛИЗАЦИЯ ==============
 const I18N = {
@@ -529,7 +530,7 @@ const REF = {
   k: 2000,
   na: 1500,
   cl: 800,
-  ph: 7.0,
+  ph: 7.4, // Изменено на 7.4 (среднее между 7.3 и 7.5)
   tds: 300,
 };
 
@@ -701,15 +702,14 @@ function normalizeWater(w) {
 }
 
 function scoreWater(w) {
-  // Абсолютные веса (базовые)
   const weights = {
-    ca: 1.0,
-    mg: 1.0,
-    k: 0.7,
-    na: 1.0,
-    cl: 0.8,
+    ca: 1.2,
+    mg: 1.2,
+    k: 0.8,
+    na: 1.3,
+    cl: 1.0,
     ph: 0.5,
-    tds: 0.6,
+    tds: 0.7,
   };
 
   const liters = 2;
@@ -755,14 +755,14 @@ function scoreWater(w) {
       }
     } else {
       const ratio = valuePerDay / refValue;
-      if (ratio >= 0.9 && ratio <= 1.1) {
+      if (ratio >= 0.8 && ratio <= 1.2) {
         score = 100;
-      } else if (ratio < 0.9) {
-        let deficit = (0.9 - ratio) * 1.5;
+      } else if (ratio < 0.8) {
+        let deficit = (0.8 - ratio) * 2;
         let penalty = Math.min(100, Math.pow(deficit, 1.5) * 100);
         score = Math.max(0, 100 - penalty);
       } else {
-        let excess = (ratio - 1.1) * 2;
+        let excess = (ratio - 1.2) * 2.5;
         let penalty = Math.min(100, Math.pow(excess, 1.8) * 100);
         score = Math.max(0, 100 - penalty);
       }
@@ -782,23 +782,27 @@ function scoreWater(w) {
 
   let totalWeight = 0;
   let weightedSum = 0;
+  let presentCount = 0;
+  
   for (const [key, s] of Object.entries(scores)) {
     if (s !== null) {
       weightedSum += s * weights[key];
       totalWeight += weights[key];
+      presentCount++;
     }
   }
 
   let finalScore = totalWeight > 0 ? weightedSum / totalWeight : 0;
   
-  // Штраф за отсутствие данных
-  finalScore -= (cov.total - cov.count) * 3;
+  // Штраф за отсутствие данных (ПРОПОРЦИОНАЛЬНЫЙ)
+  const missingCount = cov.total - cov.count;
+  const coveragePenalty = (missingCount / cov.total) * 40; // Максимальный штраф 40 баллов
+  finalScore -= coveragePenalty;
   
-  // Бонус за полноту
-  if (cov.count === cov.total) finalScore += 5;
-  
-  // Штраф за лечебную категорию
-  if (computeCategory(w) === "Therapeutic") finalScore *= 0.7;
+  // Бонус за полноту данных (небольшой поощрительный)
+  if (cov.count === cov.total) {
+    finalScore += 5;
+  }
 
   finalScore = clamp(finalScore, 0, 100);
 
@@ -809,13 +813,19 @@ function scoreWater(w) {
   if (uniqueScore > 100) uniqueScore = 100;
   uniqueScore = Math.round(uniqueScore * 100) / 100;
 
-  return uniqueScore;
+  return {
+    score: uniqueScore,
+    category: computeCategory(w),
+    coverageCount: cov.count,
+    coverageTotal: cov.total,
+    hasMin: cov.count === cov.total,
+    missingCount: missingCount,
+  };
 }
 
 function getProfileScore(w, profile) {
-  const baseScore = scoreWater(w);
+  const baseScore = scoreWater(w).score;
   
-  // Веса для профиля (только для сортировки)
   const profileWeights = {
     ca: 1.0,
     mg: 1.0,
@@ -854,7 +864,6 @@ function getProfileScore(w, profile) {
     tds: w.tds_mg_l ?? null,
   };
 
-  // Считаем взвешенную сумму отклонений для сортировки
   let totalWeight = 0;
   let weightedDeviation = 0;
   
@@ -870,8 +879,7 @@ function getProfileScore(w, profile) {
 
   const avgDeviation = totalWeight > 0 ? weightedDeviation / totalWeight : 999;
   
-  // Комбинируем базовый рейтинг и отклонение для тонкой сортировки
-  return baseScore - (avgDeviation * 5);
+  return baseScore - (avgDeviation * 3);
 }
 
 function compareForRanking(a, b, profile) {
@@ -882,9 +890,8 @@ function compareForRanking(a, b, profile) {
     return scoreB - scoreA;
   }
   
-  // Если совсем равны, используем абсолютный рейтинг
-  const absA = scoreWater(a);
-  const absB = scoreWater(b);
+  const absA = scoreWater(a).score;
+  const absB = scoreWater(b).score;
   return absB - absA;
 }
 
@@ -1188,7 +1195,7 @@ const SEED = [
 
 // ============== UI КОМПОНЕНТЫ ==============
 function ConfidenceBadge({ c }) {
-  return null; // Убираем все надписи
+  return null;
 }
 
 function CategoryBadge({ cat }) {
@@ -1244,8 +1251,8 @@ function MetricHelp({ k }) {
 
   const descriptions = {
     ph: {
-      ru: "Влияет на вкус и усвояемость. Слабощелочная вода (pH 7.5-8.5) считается оптимальной для питья. Кислая вода может раздражать желудок.",
-      en: "Affects taste and absorption. Slightly alkaline (pH 7.5-8.5) is considered optimal for drinking. Acidic water may irritate the stomach."
+      ru: "Влияет на вкус и усвояемость. Слабощелочная вода (pH 7.3-7.5) считается оптимальной для питья. Кислая вода может раздражать желудок.",
+      en: "Affects taste and absorption. Slightly alkaline (pH 7.3-7.5) is considered optimal for drinking. Acidic water may irritate the stomach."
     },
     tds: {
       ru: "Общая минерализация. Влияет на вкус и нагрузку на почки. Для ежедневного питья рекомендуется до 500 мг/л, выше — лечебные воды.",
@@ -1470,11 +1477,12 @@ function ScoreBar({ score }) {
   );
 }
 
-function WaterProfileCard({ w, profile, rank }) {
+function WaterProfileCard({ w, profile, rank, isWinner }) {
   const lang = React.useContext(LangCtx);
   const t = I18N[lang];
 
-  const absoluteScore = scoreWater(w);
+  const scoreData = scoreWater(w);
+  const absoluteScore = scoreData.score;
   const cov = dataCoverage(w);
   const minOk = hasMinimumMetrics(w);
 
@@ -1488,7 +1496,7 @@ function WaterProfileCard({ w, profile, rank }) {
   ];
 
   return (
-    <div className={`${GLASS.card} p-5`}>
+    <div className={`${GLASS.card} p-5 ${isWinner ? 'ring-2 ring-amber-400' : ''}`}>
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <div className="flex items-center gap-2">
@@ -1498,17 +1506,6 @@ function WaterProfileCard({ w, profile, rank }) {
               <div className="mt-1 flex flex-wrap items-center gap-2">
                 <CategoryBadge cat={computeCategory(w)} />
                 <ConfidenceBadge c={w.confidence_level} />
-                {!minOk ? (
-                  <span className="inline-flex items-center gap-1 rounded-xl border border-amber-200 bg-amber-50 px-2 py-1 text-xs font-medium text-amber-900">
-                    <AlertTriangle className="h-3.5 w-3.5" />
-                    {t.misc.missingMin}
-                  </span>
-                ) : (
-                  <span className="inline-flex items-center gap-1 rounded-xl border border-emerald-200 bg-emerald-50 px-2 py-1 text-xs font-medium text-emerald-800">
-                    <ShieldCheck className="h-3.5 w-3.5" />
-                    {t.misc.okMin}
-                  </span>
-                )}
               </div>
             </div>
           </div>
@@ -1522,14 +1519,28 @@ function WaterProfileCard({ w, profile, rank }) {
           <div className="mt-1 flex items-end justify-between">
             <div className="text-2xl font-semibold text-slate-900">#{rank}</div>
             <div className="text-xs text-slate-600">
-              {t.score.coverage}: {cov.count}/{cov.total}
+              {cov.count}/{cov.total}
             </div>
           </div>
           <div className="mt-2">
             <ScoreBar score={absoluteScore} />
           </div>
-          {!minOk && (
-            <div className="mt-2 text-xs text-slate-600">{t.misc.rankedLower}</div>
+          {scoreData.missingCount > 0 && (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <div className="mt-2 text-xs flex items-center gap-1 text-amber-600 cursor-help">
+                  <AlertTriangle className="h-3 w-3" />
+                  <span>⚠️ {scoreData.missingCount} из 7</span>
+                </div>
+              </TooltipTrigger>
+              <TooltipContent>
+                <div className="text-xs max-w-[200px]">
+                  {lang === "ru" 
+                    ? "Нет данных по некоторым показателям. Рейтинг может быть неточным." 
+                    : "Missing data for some metrics. Rating may be inaccurate."}
+                </div>
+              </TooltipContent>
+            </Tooltip>
           )}
         </div>
       </div>
@@ -1561,8 +1572,8 @@ function WaterProfileCard({ w, profile, rank }) {
 function WaterProfileCompactRow({ w, profile, rank }) {
   const lang = React.useContext(LangCtx);
   const t = I18N[lang];
-  const absoluteScore = scoreWater(w);
-  const s = getProfileScore(w, profile);
+  const scoreData = scoreWater(w);
+  const absoluteScore = scoreData.score;
 
   return (
     <details className={`${GLASS.card} group overflow-hidden`}>
@@ -1573,10 +1584,10 @@ function WaterProfileCompactRow({ w, profile, rank }) {
           <span className="hidden sm:inline-flex">
             <CategoryBadge cat={computeCategory(w)} />
           </span>
-          {!hasMinimumMetrics(w) && (
+          {scoreData.missingCount > 0 && (
             <span className="ml-2 inline-flex items-center gap-1 rounded-xl border border-amber-200 bg-amber-50 px-2 py-1 text-[11px] font-medium text-amber-900">
               <AlertTriangle className="h-3.5 w-3.5" />
-              {t.misc.missingMin}
+              ⚠️
             </span>
           )}
         </div>
@@ -1658,9 +1669,13 @@ function LegendPills({ items }) {
   );
 }
 
-function MetricsTable({ selected }) {
+function MetricsTable({ selected, profile }) {
   const lang = React.useContext(LangCtx);
   const t = I18N[lang];
+
+  // Определяем победителя для подсветки
+  const sortedForProfile = [...selected].sort((a, b) => compareForRanking(a, b, profile));
+  const winnerId = sortedForProfile.length > 0 ? sortedForProfile[0].id : null;
 
   const rows = [
     { key: "ph", label: "pH", ref: String(REF.ph), unit: "", getValue: (w) => w.ph ?? null, digits: 1 },
@@ -1688,18 +1703,21 @@ function MetricsTable({ selected }) {
         </div>
       </div>
 
-      <div className="mt-4 overflow-auto rounded-2xl border border-white/60 bg-white/55 backdrop-blur">
-        <table className="w-full text-left text-sm min-w-[800px] md:min-w-full">
-          <thead className="bg-white/70">
+      <div className="mt-4 overflow-auto rounded-2xl border-2 border-slate-200 bg-white/55 backdrop-blur">
+        <table className="w-full text-left text-sm border-collapse">
+          <thead className="bg-slate-100">
             <tr className="text-xs text-slate-600">
-              <th className="px-4 py-3">{t.table.metric}</th>
-              <th className="px-4 py-3">{t.table.ref}</th>
-              <th className="px-4 py-3">{t.table.unit}</th>
+              <th className="px-4 py-3 border-r border-slate-200">{t.table.metric}</th>
+              <th className="px-4 py-3 border-r border-slate-200">{t.table.ref}</th>
+              <th className="px-4 py-3 border-r border-slate-200">{t.table.unit}</th>
               {selected.map((w) => (
-                <th key={w.id} className="px-4 py-3">
+                <th key={w.id} className={`px-4 py-3 border-r border-slate-200 last:border-r-0 ${w.id === winnerId ? 'bg-amber-50' : ''}`}>
                   <div className="flex items-center gap-2">
                     <span className="text-base">{w.flag_emoji ?? safeCountryFlag(w.country_code)}</span>
                     <span className="max-w-[160px] truncate font-medium text-slate-900">{w.brand_name}</span>
+                    {w.id === winnerId && (
+                      <span className="ml-1 text-amber-600">🏆</span>
+                    )}
                   </div>
                 </th>
               ))}
@@ -1708,23 +1726,33 @@ function MetricsTable({ selected }) {
           <tbody>
             {rows.map((r, idx) => (
               <tr key={r.key} className={idx % 2 ? "bg-white/40" : "bg-white/60"}>
-                <td className="px-4 py-3">
+                <td className="px-4 py-3 border-r border-slate-200">
                   <div className="flex items-center gap-2">
                     <span className="font-medium text-slate-900">{r.label}</span>
                     <MetricHelp k={r.key} />
                   </div>
                 </td>
-                <td className="px-4 py-3 text-slate-700">{r.ref}</td>
-                <td className="px-4 py-3 text-slate-700">{r.unit}</td>
+                <td className="px-4 py-3 text-slate-700 border-r border-slate-200">{r.ref}</td>
+                <td className="px-4 py-3 text-slate-700 border-r border-slate-200">{r.unit}</td>
                 {selected.map((w) => {
                   const v = r.getValue(w);
                   const st = metricStatus(r.key, v);
+                  const scoreData = scoreWater(w);
                   return (
-                    <td key={w.id + r.key} className="px-4 py-3">
+                    <td key={w.id + r.key} className={`px-4 py-3 border-r border-slate-200 last:border-r-0 ${w.id === winnerId ? 'bg-amber-50/50' : ''}`}>
                       <div className="flex items-center justify-between gap-2">
                         <span className="font-semibold text-slate-900">{fmt(v, r.digits ?? 0)}</span>
                         <MetricPill kind={st} />
                       </div>
+                      {idx === rows.length - 1 && (
+                        <div className="mt-2 text-xs flex items-center justify-between border-t border-slate-200 pt-2">
+                          <span className="text-slate-500">Рейтинг:</span>
+                          <span className={`font-bold ${scoreData.missingCount > 0 ? 'text-amber-600' : 'text-emerald-600'}`}>
+                            {scoreData.score.toFixed(1)}
+                            {scoreData.missingCount > 0 && ' ⚠️'}
+                          </span>
+                        </div>
+                      )}
                     </td>
                   );
                 })}
@@ -2248,18 +2276,6 @@ function WaterPicker({ waters, selectedIds, onToggle }) {
                     <span className="font-semibold">{fmt(w.ph, 1)}</span>
                   </div>
                 </div>
-
-                <div className="mt-2 flex flex-wrap items-center gap-2">
-                  {minOk ? (
-                    <span className="inline-flex items-center gap-1 rounded-xl border border-emerald-200 bg-emerald-50 px-2 py-1 text-[11px] font-medium text-emerald-800">
-                      <ShieldCheck className="h-3.5 w-3.5" /> {t.misc.okMin}
-                    </span>
-                  ) : (
-                    <span className="inline-flex items-center gap-1 rounded-xl border border-amber-200 bg-amber-50 px-2 py-1 text-[11px] font-medium text-amber-900">
-                      <AlertTriangle className="h-3.5 w-3.5" /> {t.misc.missingMin}
-                    </span>
-                  )}
-                </div>
               </div>
             </button>
           );
@@ -2417,9 +2433,10 @@ function RotationMock({ selected, profile }) {
   );
 }
 
-function ReportScreen({ selected, profile, mode, compact, onToggleCompact }) {
+function ReportAccordion({ selected, profile, mode, compact, onToggleCompact }) {
   const lang = React.useContext(LangCtx);
   const t = I18N[lang];
+  const [isOpen, setIsOpen] = useState(true);
 
   const winner = pickWinnerDaily(selected, profile);
   const sorted = [...selected].sort((a, b) => compareForRanking(a, b, profile));
@@ -2433,189 +2450,56 @@ function ReportScreen({ selected, profile, mode, compact, onToggleCompact }) {
   }
 
   return (
-    <div className="space-y-5">
-      {/* Первый блок - победитель */}
-      <div className={`${GLASS.card} p-6`}>
-        <div className="flex flex-wrap items-start justify-between gap-3">
-          <div>
-            <div className="text-lg font-semibold text-slate-900">{t.report.title}</div>
-            <div className="mt-1 text-sm text-slate-600">{t.report.dataPenalty}</div>
-          </div>
-          <div className="flex items-center gap-2">
-            <Button
-              variant="outline"
-              className="h-10 rounded-2xl bg-white/70 hover:bg-white"
-              onClick={onToggleCompact}
-              type="button"
-            >
-              {compact ? t.report.expanded : t.report.compact}
-            </Button>
-          </div>
+    <div className={`${GLASS.card} p-6`}>
+      <div className="flex items-center justify-between gap-3 cursor-pointer" onClick={() => setIsOpen(!isOpen)}>
+        <div>
+          <div className="text-lg font-semibold text-slate-900">{t.report.title}</div>
+          <div className="mt-1 text-sm text-slate-600">{t.report.dataPenalty}</div>
         </div>
-
-        {winner && (
-          <div className="mt-4">
-            <div className="text-sm font-medium text-slate-600">{t.report.bestDaily}</div>
-            <div className="mt-2 grid gap-3 lg:grid-cols-[1.3fr_1fr]">
-              <WaterProfileCard w={winner.w} profile={profile} rank={1} />
-              
-              {/* Блок объяснения для пользователя */}
-              <div className={`${GLASS.subtle} p-5`}>
-                <div className="flex items-center gap-2 mb-4">
-                  <TrendingUp className="h-5 w-5 text-slate-700" />
-                  <div className="font-semibold text-slate-900">
-                    {lang === "ru" ? "Почему эта вода лучше?" : "Why is this water better?"}
-                  </div>
-                </div>
-                
-                <div className="space-y-4 text-sm text-slate-700">
-                  <div className="flex gap-3">
-                    <div className="w-6 h-6 rounded-full bg-emerald-100 flex items-center justify-center text-emerald-600 font-bold text-xs flex-shrink-0">1</div>
-                    <div>
-                      <span className="font-medium text-slate-900">
-                        {lang === "ru" ? "Самый сбалансированный состав" : "Most balanced composition"}
-                      </span>
-                      <p className="text-xs text-slate-600 mt-0.5">
-                        {lang === "ru" 
-                          ? "Все показатели близки к оптимальным значениям для ежедневного питья" 
-                          : "All metrics are close to optimal values for daily drinking"}
-                      </p>
-                    </div>
-                  </div>
-                  
-                  <div className="flex gap-3">
-                    <div className="w-6 h-6 rounded-full bg-emerald-100 flex items-center justify-center text-emerald-600 font-bold text-xs flex-shrink-0">2</div>
-                    <div>
-                      <span className="font-medium text-slate-900">
-                        {lang === "ru" ? "Полные данные" : "Complete data"}
-                      </span>
-                      <p className="text-xs text-slate-600 mt-0.5">
-                        {lang === "ru"
-                          ? "У этой воды указаны все ключевые показатели, поэтому оценка точная"
-                          : "All key metrics are available, so the rating is accurate"}
-                      </p>
-                    </div>
-                  </div>
-                  
-                  <div className="flex gap-3">
-                    <div className="w-6 h-6 rounded-full bg-emerald-100 flex items-center justify-center text-emerald-600 font-bold text-xs flex-shrink-0">3</div>
-                    <div>
-                      <span className="font-medium text-slate-900">
-                        {lang === "ru" ? "Подходит под ваш профиль" : "Matches your profile"}
-                      </span>
-                      <p className="text-xs text-slate-600 mt-0.5">
-                        {lang === "ru"
-                          ? `Учтены особенности профиля "${t.profiles[profile].toLowerCase()}"`
-                          : `Takes into account your "${t.profiles[profile].toLowerCase()}" preferences`}
-                      </p>
-                    </div>
-                  </div>
-
-                  <div className="mt-4 pt-3 border-t border-white/40 text-xs text-slate-500 italic">
-                    {lang === "ru"
-                      ? "Оценка учитывает не только пользу, но и безопасность — умеренное содержание солей и минералов"
-                      : "Rating considers both benefits and safety — moderate mineral content"}
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
-      </div>
-
-      {/* Блок рейтинга всех вод */}
-      <div className={`${GLASS.card} p-6`}>
-        <div className="flex items-center justify-between mb-4">
-          <div className="text-lg font-semibold text-slate-900">
-            {lang === "ru" ? "🏆 Общий рейтинг" : "🏆 Overall ranking"}
-          </div>
-          <div className="text-xs text-slate-500 bg-white/50 px-3 py-1 rounded-full">
-            {lang === "ru" ? "Чем выше место, тем ближе к норме" : "Higher rank = closer to optimal"}
-          </div>
-        </div>
-        
-        <div className="space-y-3">
-          {sorted.map((w, idx) => {
-            const absoluteScore = scoreWater(w);
-            
-            let medalColor = "bg-slate-100 text-slate-600";
-            let medalIcon = idx + 1;
-            if (idx === 0) medalColor = "bg-amber-100 text-amber-700 border-amber-200";
-            if (idx === 1) medalColor = "bg-slate-200 text-slate-700 border-slate-300";
-            if (idx === 2) medalColor = "bg-orange-100 text-orange-700 border-orange-200";
-            
-            return (
-              <div key={w.id} className={`${GLASS.subtle} p-4 hover:bg-white/70 transition-all`}>
-                <div className="flex items-center gap-4">
-                  <div className={`
-                    w-10 h-10 rounded-full flex items-center justify-center text-lg font-bold border-2
-                    ${medalColor}
-                  `}>
-                    {medalIcon}
-                  </div>
-                  
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2">
-                      <span className="text-2xl">{w.flag_emoji}</span>
-                      <span className="font-semibold text-slate-900 truncate">
-                        {w.brand_name}
-                      </span>
-                    </div>
-                    <div className="flex gap-2 mt-1">
-                      <CategoryBadge cat={computeCategory(w)} />
-                    </div>
-                  </div>
-                  
-                  <div className="text-right">
-                    <div className="text-2xl font-bold text-slate-900">
-                      {absoluteScore.toFixed(1)}
-                    </div>
-                    <div className="text-xs text-slate-500">
-                      баллов
-                    </div>
-                  </div>
-                </div>
-                
-                <div className="mt-3 h-2 bg-slate-200 rounded-full overflow-hidden">
-                  <div 
-                    className="h-full bg-gradient-to-r from-emerald-400 to-emerald-600 rounded-full transition-all duration-500"
-                    style={{ width: `${absoluteScore}%` }}
-                  />
-                </div>
-              </div>
-            );
-          })}
+        <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            className="h-10 rounded-2xl bg-white/70 hover:bg-white"
+            onClick={(e) => { e.stopPropagation(); onToggleCompact(); }}
+            type="button"
+          >
+            {compact ? t.report.expanded : t.report.compact}
+          </Button>
+          <button className="p-2 hover:bg-white/50 rounded-full">
+            {isOpen ? <ChevronUp className="h-5 w-5" /> : <ChevronDown className="h-5 w-5" />}
+          </button>
         </div>
       </div>
 
-      {/* Второй блок - все профили */}
-      <div className={`${GLASS.card} p-6`}>
-        <div className="flex items-center justify-between gap-3">
-          <div>
-            <div className="text-lg font-semibold text-slate-900">{t.report.profilesBlock}</div>
-            <div className="mt-1 text-sm text-slate-600">{t.report.dataPenalty}</div>
-          </div>
-        </div>
-
-        <div className="mt-4 space-y-3">
-          {compact ? (
-            <div className="space-y-3">
-              {sorted.map((w, index) => (
-                <WaterProfileCompactRow key={w.id} w={w} profile={profile} rank={index + 1} />
-              ))}
-            </div>
-          ) : (
-            <div className="grid gap-4 lg:grid-cols-2">
-              {sorted.map((w, index) => (
-                <WaterProfileCard key={w.id} w={w} profile={profile} rank={index + 1} />
-              ))}
+      {isOpen && (
+        <div className="mt-4 space-y-5">
+          {winner && (
+            <div>
+              <div className="text-sm font-medium text-slate-600 mb-2">{t.report.bestDaily}</div>
+              <WaterProfileCard w={winner.w} profile={profile} rank={1} isWinner={true} />
             </div>
           )}
-        </div>
-      </div>
 
-      {/* Третий блок - таблица */}
-      <MetricsTable selected={sorted} />
+          <div>
+            <div className="text-sm font-medium text-slate-600 mb-2">{t.report.profilesBlock}</div>
+            <div className="space-y-3">
+              {compact ? (
+                <div className="space-y-3">
+                  {sorted.map((w, index) => (
+                    <WaterProfileCompactRow key={w.id} w={w} profile={profile} rank={index + 1} />
+                  ))}
+                </div>
+              ) : (
+                <div className="grid gap-4 lg:grid-cols-2">
+                  {sorted.map((w, index) => (
+                    <WaterProfileCard key={w.id} w={w} profile={profile} rank={index + 1} />
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -2635,7 +2519,7 @@ function runSelfTests() {
     }
     if (borjomi) {
       const s = scoreWater(borjomi);
-      console.assert(s >= 0 && s <= 100, "Score must be clamped 0..100");
+      console.assert(s.score >= 0 && s.score <= 100, "Score must be clamped 0..100");
     }
   } catch (e) {
     console.log("Self tests passed (or skipped)");
@@ -2781,11 +2665,12 @@ export default function App() {
 
                   <TabsContent value="B" className="mt-5 space-y-5">
                     <CompareChart selected={selected} />
-                    <MetricsTable selected={[...selected].sort((a, b) => compareForRanking(a, b, profile))} />
+                    <MetricsTable selected={[...selected].sort((a, b) => compareForRanking(a, b, profile))} profile={profile} />
                   </TabsContent>
 
                   <TabsContent value="C" className="mt-5">
-                    <ReportScreen
+                    <MetricsTable selected={[...selected].sort((a, b) => compareForRanking(a, b, profile))} profile={profile} />
+                    <ReportAccordion
                       selected={selected}
                       profile={profile}
                       mode={mode}
