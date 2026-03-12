@@ -530,7 +530,7 @@ const REF = {
   k: 2000,
   na: 1500,
   cl: 800,
-  ph: 7.4, // Изменено на 7.4 (среднее между 7.3 и 7.5)
+  ph: 7.4,
   tds: 300,
 };
 
@@ -702,15 +702,14 @@ function normalizeWater(w) {
 }
 
 function scoreWater(w) {
-  // Веса показывают ВАЖНОСТЬ каждого минерала
   const weights = {
-    ca: 2.0,  // Кальций - ОЧЕНЬ важный
-    mg: 2.0,  // Магний - ОЧЕНЬ важный
-    k: 1.2,   // Калий - важен
-    na: 1.5,  // Натрий - важен (особенно для профилей)
-    cl: 1.2,  // Хлориды - средне
-    ph: 0.8,  // pH - менее критичен в диапазоне
-    tds: 1.0, // Общая минерализация - справочно
+    ca: 2.0,
+    mg: 2.0,
+    k: 1.2,
+    na: 1.5,
+    cl: 1.2,
+    ph: 0.8,
+    tds: 1.0,
   };
 
   const liters = 2;
@@ -725,12 +724,10 @@ function scoreWater(w) {
   };
   const cov = dataCoverage(w);
 
-  // Функция оценки одного показателя (чем ближе к эталону, тем выше балл)
   function evaluateMetric(key, refDaily) {
     const x = get[key];
     if (x === null || x === undefined) return null;
 
-    // Пересчитываем в суточное потребление (кроме pH и TDS)
     let valuePerDay = x;
     if (key !== "ph" && key !== "tds") {
       valuePerDay = x * liters;
@@ -740,32 +737,24 @@ function scoreWater(w) {
     if (key === "ph") refValue = REF.ph;
     if (key === "tds") refValue = REF.tds;
 
-    // Расчёт отклонения от эталона
-    let ratio;
     if (key === "ph") {
-      // Для pH считаем отклонение в абсолютных значениях
       const deviation = Math.abs(x - refValue);
-      if (deviation <= 0.3) return 100; // Идеально
-      if (deviation <= 0.6) return 80;  // Хорошо
-      if (deviation <= 1.0) return 60;  // Средне
-      return 40; // Плохо
+      if (deviation <= 0.3) return 100;
+      if (deviation <= 0.6) return 80;
+      if (deviation <= 1.0) return 60;
+      return 40;
     } else {
-      ratio = valuePerDay / refValue;
+      const ratio = valuePerDay / refValue;
       
-      // Идеальный диапазон: 70-130% от нормы
       if (ratio >= 0.7 && ratio <= 1.3) return 100;
-      // Хорошо: 50-70% или 130-150%
       if (ratio >= 0.5 && ratio < 0.7) return 80;
       if (ratio > 1.3 && ratio <= 1.5) return 80;
-      // Средне: 30-50% или 150-200%
       if (ratio >= 0.3 && ratio < 0.5) return 60;
       if (ratio > 1.5 && ratio <= 2.0) return 60;
-      // Плохо: <30% или >200%
       return 40;
     }
   }
 
-  // Получаем оценки по каждому показателю
   const scores = {
     ca: evaluateMetric("ca", REF.ca),
     mg: evaluateMetric("mg", REF.mg),
@@ -776,7 +765,6 @@ function scoreWater(w) {
     tds: evaluateMetric("tds", REF.tds),
   };
 
-  // Взвешенная сумма с учётом важности
   let totalWeight = 0;
   let weightedSum = 0;
   let presentCount = 0;
@@ -789,21 +777,15 @@ function scoreWater(w) {
     }
   }
 
-  // Базовый рейтинг (средневзвешенное)
   let finalScore = totalWeight > 0 ? weightedSum / totalWeight : 0;
   
-  // ШТРАФ ЗА ОТСУТСТВИЕ ДАННЫХ (категорический)
   const missingCount = cov.total - cov.count;
-  
-  // Каждый отсутствующий показатель снижает рейтинг на 10 баллов
   finalScore -= missingCount * 10;
   
-  // Дополнительный штраф за отсутствие КЛЮЧЕВЫХ показателей
   if (scores.ca === null || scores.mg === null) {
-    finalScore -= 20; // Сильный штраф, если нет кальция или магния
+    finalScore -= 20;
   }
   
-  // Потолки для неполных данных
   if (presentCount <= 2) {
     finalScore = Math.min(finalScore, 30);
   } else if (presentCount === 3) {
@@ -817,13 +799,12 @@ function scoreWater(w) {
   finalScore = clamp(finalScore, 0, 100);
 
   return {
-    score: Math.round(finalScore * 10) / 10, // Один знак после запятой
+    score: Math.round(finalScore * 10) / 10,
     category: computeCategory(w),
     coverageCount: cov.count,
     coverageTotal: cov.total,
     missingCount: missingCount,
     presentCount: presentCount,
-    scores: scores, // Для отладки
   };
 }
 
@@ -890,18 +871,18 @@ function compareForRanking(a, b, profile) {
   const scoreA = scoreWater(a);
   const scoreB = scoreWater(b);
   
-  // 1. Сначала по количеству показателей (у кого больше, тот выше)
   if (scoreA.presentCount !== scoreB.presentCount) {
     return scoreB.presentCount - scoreA.presentCount;
   }
   
-  // 2. Затем по базовому рейтингу
-  if (Math.abs(scoreB.score - scoreA.score) > 0.01) {
-    return scoreB.score - scoreA.score;
+  const profileScoreA = getProfileScore(a, profile);
+  const profileScoreB = getProfileScore(b, profile);
+  
+  if (Math.abs(profileScoreB - profileScoreA) > 0.01) {
+    return profileScoreB - profileScoreA;
   }
   
-  // 3. При равенстве - по алфавиту
-  return a.brand_name.localeCompare(b.brand_name);
+  return scoreB.score - scoreA.score;
 }
 
 function pickWinnerDaily(selected, profile) {
@@ -1678,75 +1659,236 @@ function LegendPills({ items }) {
   );
 }
 
-{/* Строка с рейтингами */}
-<tr className="bg-slate-50/80">
-  <td className="px-4 py-3 border border-slate-300 font-medium" colSpan={3}>
-    <div className="flex items-center gap-2">
-      <span>🏆 Рейтинг</span>
-      <Tooltip>
-        <TooltipTrigger asChild>
-          <Info className="h-4 w-4 text-slate-500 cursor-help" />
-        </TooltipTrigger>
-        <TooltipContent>
-          <div className="text-xs max-w-[200px]">
-            {lang === "ru" 
-              ? "Чем выше рейтинг, тем ближе состав воды к оптимальному. Максимум 100."
-              : "Higher rating means composition is closer to optimal. Maximum 100."}
-          </div>
-        </TooltipContent>
-      </Tooltip>
-    </div>
-  </td>
-  {selected.map((w) => {
-    const scoreData = scoreWater(w);
-    // Определяем цвет в зависимости от рейтинга
-    let ratingColor = "text-slate-700";
-    if (scoreData.score >= 80) ratingColor = "text-emerald-700";
-    else if (scoreData.score >= 60) ratingColor = "text-sky-700";
-    else if (scoreData.score >= 40) ratingColor = "text-amber-700";
-    else ratingColor = "text-rose-700";
+function MetricsTable({ selected, profile }) {
+  const lang = React.useContext(LangCtx);
+  const t = I18N[lang];
+
+  const sortedForProfile = [...selected].sort((a, b) => compareForRanking(a, b, profile));
+  const winnerId = sortedForProfile.length > 0 ? sortedForProfile[0].id : null;
+
+  const rows = [
+    { key: "ph", label: "pH", ref: String(REF.ph), unit: "", getValue: (w) => w.ph ?? null, digits: 1 },
+    { key: "tds", label: "TDS", ref: String(REF.tds), unit: "мг/л", getValue: (w) => w.tds_mg_l ?? null },
+    { key: "ca", label: "Ca", ref: String(REF.ca), unit: "мг/сутки*", getValue: (w) => w.ca_mg_l ?? null },
+    { key: "mg", label: "Mg", ref: String(REF.mg), unit: "мг/сутки*", getValue: (w) => w.mg_mg_l ?? null },
+    { key: "na", label: "Na", ref: String(REF.na), unit: "мг/сутки**", getValue: (w) => w.na_mg_l ?? null },
+    { key: "cl", label: "Cl", ref: String(REF.cl), unit: "мг/сутки*", getValue: (w) => w.cl_mg_l ?? null },
+  ];
+
+  const getDailyPercentage = (key, value) => {
+    if (value === null || value === undefined) return null;
     
+    const liters = 2;
+    let dailyValue = value;
+    
+    if (key !== "ph" && key !== "tds") {
+      dailyValue = value * liters;
+    }
+    
+    const refValue = key === "ph" ? REF.ph : key === "tds" ? REF.tds : REF[key];
+    const percentage = (dailyValue / refValue) * 100;
+    
+    return Math.round(percentage);
+  };
+
+  const getPercentageStatus = (percentage) => {
+    if (percentage === null) return { color: "text-slate-400", text: "нет данных", bg: "bg-slate-100" };
+    if (percentage < 50) return { color: "text-amber-600", text: "низкий", bg: "bg-amber-50" };
+    if (percentage >= 50 && percentage < 80) return { color: "text-sky-600", text: "средний", bg: "bg-sky-50" };
+    if (percentage >= 80 && percentage <= 120) return { color: "text-emerald-600", text: "норма", bg: "bg-emerald-50" };
+    if (percentage > 120 && percentage <= 200) return { color: "text-orange-600", text: "высокий", bg: "bg-orange-50" };
+    return { color: "text-rose-600", text: "избыток", bg: "bg-rose-50" };
+  };
+
+  if (selected.length === 0) {
     return (
-      <td 
-        key={`rating-${w.id}`} 
-        className={`px-4 py-3 border border-slate-300 ${w.id === winnerId ? 'bg-amber-100' : ''}`}
-      >
-        <div className="flex flex-col">
-          <div className="flex items-center justify-between">
-            <span className={`text-lg font-bold ${ratingColor}`}>
-              {scoreData.score.toFixed(1)}
-            </span>
-            {scoreData.missingCount > 0 && (
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <span className="ml-1 text-amber-600 cursor-help text-sm">⚠️</span>
-                </TooltipTrigger>
-                <TooltipContent>
-                  <div className="text-xs">
-                    {lang === "ru" 
-                      ? `Нет данных по ${scoreData.missingCount} показателям. Рейтинг занижен.` 
-                      : `Missing ${scoreData.missingCount} metrics. Rating is reduced.`}
-                  </div>
-                </TooltipContent>
-              </Tooltip>
-            )}
-          </div>
-          {/* Прогресс-бар для наглядности */}
-          <div className="mt-1 h-1.5 w-full bg-slate-200 rounded-full overflow-hidden">
-            <div 
-              className={`h-full rounded-full ${
-                scoreData.score >= 80 ? 'bg-emerald-500' :
-                scoreData.score >= 60 ? 'bg-sky-500' :
-                scoreData.score >= 40 ? 'bg-amber-500' : 'bg-rose-500'
-              }`}
-              style={{ width: `${scoreData.score}%` }}
-            />
-          </div>
-        </div>
-      </td>
+      <div className={`${GLASS.card} p-6 text-center text-slate-600`}>
+        {t.misc.empty}
+      </div>
     );
-  })}
-</tr>
+  }
+
+  return (
+    <div className={`${GLASS.card} p-6`}>
+      <div className="flex items-center justify-between gap-3">
+        <div>
+          <div className="text-lg font-semibold text-slate-900">{t.table.title}</div>
+          <div className="mt-1 text-sm text-slate-600">{t.report.eduHint}</div>
+        </div>
+      </div>
+
+      <div className="mt-4 overflow-auto rounded-2xl border-2 border-slate-300 bg-white/55 backdrop-blur">
+        <table className="w-full text-left text-sm border-collapse">
+          <thead>
+            <tr className="bg-slate-100">
+              <th className="px-4 py-3 border border-slate-300 font-medium">Показатель</th>
+              <th className="px-4 py-3 border border-slate-300 font-medium">Эталон</th>
+              <th className="px-4 py-3 border border-slate-300 font-medium">Ед.</th>
+              {selected.map((w) => (
+                <th 
+                  key={w.id} 
+                  className={`px-4 py-3 border border-slate-300 font-medium ${w.id === winnerId ? 'bg-amber-100' : ''}`}
+                >
+                  <div className="flex items-center gap-2">
+                    <span className="text-base">{w.flag_emoji ?? safeCountryFlag(w.country_code)}</span>
+                    <span className="max-w-[160px] truncate text-slate-900">{w.brand_name}</span>
+                    {w.id === winnerId && (
+                      <span className="ml-1 text-amber-600" title="Победитель по профилю">🏆</span>
+                    )}
+                  </div>
+                </th>
+              ))}
+            </tr>
+          </thead>
+          
+          <tbody>
+            {rows.map((r, rowIdx) => (
+              <tr key={r.key} className={rowIdx % 2 === 0 ? 'bg-white/60' : 'bg-white/40'}>
+                <td className="px-4 py-3 border border-slate-300">
+                  <div className="flex items-center gap-2">
+                    <span className="font-medium text-slate-900">{r.label}</span>
+                    <MetricHelp k={r.key} />
+                  </div>
+                </td>
+                
+                <td className="px-4 py-3 border border-slate-300 text-slate-700">
+                  {r.ref}
+                </td>
+                
+                <td className="px-4 py-3 border border-slate-300 text-slate-700">
+                  {r.unit}
+                </td>
+                
+                {selected.map((w) => {
+                  const v = r.getValue(w);
+                  const percentage = getDailyPercentage(r.key, v);
+                  const status = percentage ? getPercentageStatus(percentage) : { color: "text-slate-400", text: "нет данных", bg: "bg-slate-100" };
+                  
+                  return (
+                    <td 
+                      key={w.id + r.key} 
+                      className={`px-4 py-3 border border-slate-300 ${w.id === winnerId ? 'bg-amber-50/30' : ''}`}
+                    >
+                      <div className="flex flex-col gap-1">
+                        <div className="flex items-center justify-between">
+                          <span className="font-semibold text-slate-900">{fmt(v, r.digits ?? 0)}</span>
+                          {percentage && (
+                            <span className={`text-xs px-2 py-0.5 rounded-full ${status.bg} ${status.color}`}>
+                              {percentage}%
+                            </span>
+                          )}
+                        </div>
+                        {percentage && (
+                          <div className="text-xs text-slate-500">
+                            от нормы
+                          </div>
+                        )}
+                      </div>
+                    </td>
+                  );
+                })}
+              </tr>
+            ))}
+            
+            <tr className="bg-slate-50/80">
+              <td className="px-4 py-3 border border-slate-300 font-medium" colSpan={3}>
+                <div className="flex items-center gap-2">
+                  <span>🏆 Рейтинг</span>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Info className="h-4 w-4 text-slate-500 cursor-help" />
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <div className="text-xs max-w-[200px]">
+                        {lang === "ru" 
+                          ? "Чем выше рейтинг, тем ближе состав воды к оптимальному. Максимум 100."
+                          : "Higher rating means composition is closer to optimal. Maximum 100."}
+                      </div>
+                    </TooltipContent>
+                  </Tooltip>
+                </div>
+              </td>
+              {selected.map((w) => {
+                const scoreData = scoreWater(w);
+                let ratingColor = "text-slate-700";
+                if (scoreData.score >= 80) ratingColor = "text-emerald-700";
+                else if (scoreData.score >= 60) ratingColor = "text-sky-700";
+                else if (scoreData.score >= 40) ratingColor = "text-amber-700";
+                else ratingColor = "text-rose-700";
+                
+                return (
+                  <td 
+                    key={`rating-${w.id}`} 
+                    className={`px-4 py-3 border border-slate-300 ${w.id === winnerId ? 'bg-amber-100' : ''}`}
+                  >
+                    <div className="flex flex-col">
+                      <div className="flex items-center justify-between">
+                        <span className={`text-lg font-bold ${ratingColor}`}>
+                          {scoreData.score.toFixed(1)}
+                        </span>
+                        {scoreData.missingCount > 0 && (
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <span className="ml-1 text-amber-600 cursor-help text-sm">⚠️</span>
+                            </TooltipTrigger>
+                            <TooltipContent>
+                              <div className="text-xs">
+                                {lang === "ru" 
+                                  ? `Нет данных по ${scoreData.missingCount} показателям. Рейтинг занижен.` 
+                                  : `Missing ${scoreData.missingCount} metrics. Rating is reduced.`}
+                              </div>
+                            </TooltipContent>
+                          </Tooltip>
+                        )}
+                      </div>
+                      <div className="mt-1 h-1.5 w-full bg-slate-200 rounded-full overflow-hidden">
+                        <div 
+                          className={`h-full rounded-full ${
+                            scoreData.score >= 80 ? 'bg-emerald-500' :
+                            scoreData.score >= 60 ? 'bg-sky-500' :
+                            scoreData.score >= 40 ? 'bg-amber-500' : 'bg-rose-500'
+                          }`}
+                          style={{ width: `${scoreData.score}%` }}
+                        />
+                      </div>
+                    </div>
+                  </td>
+                );
+              })}
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div className="mt-4 flex flex-wrap gap-3 text-xs">
+        <div className="flex items-center gap-2">
+          <span className="w-3 h-3 rounded-full bg-emerald-50 border border-emerald-200"></span>
+          <span>Норма (80-120% от нормы)</span>
+        </div>
+        <div className="flex items-center gap-2">
+          <span className="w-3 h-3 rounded-full bg-sky-50 border border-sky-200"></span>
+          <span>Средний (50-80%)</span>
+        </div>
+        <div className="flex items-center gap-2">
+          <span className="w-3 h-3 rounded-full bg-amber-50 border border-amber-200"></span>
+          <span>Низкий (&lt;50%)</span>
+        </div>
+        <div className="flex items-center gap-2">
+          <span className="w-3 h-3 rounded-full bg-orange-50 border border-orange-200"></span>
+          <span>Высокий (120-200%)</span>
+        </div>
+        <div className="flex items-center gap-2">
+          <span className="w-3 h-3 rounded-full bg-rose-50 border border-rose-200"></span>
+          <span>Избыток (&gt;200%)</span>
+        </div>
+      </div>
+
+      <div className="mt-3 text-xs text-slate-600">
+        * ориентир по суточной норме, ** натрий зависит от профиля
+      </div>
+    </div>
+  );
+}
 
 function ImportDialog({ onMerge }) {
   const lang = React.useContext(LangCtx);
@@ -1822,7 +1964,6 @@ function ImportDialog({ onMerge }) {
   );
 }
 
-// ============== СИМУЛЯТОР СКАНЕРА OCR ==============
 function ScannerDialog({ onScanComplete }) {
   const lang = React.useContext(LangCtx);
   const t = I18N[lang];
@@ -1833,7 +1974,6 @@ function ScannerDialog({ onScanComplete }) {
   const [selectedFile, setSelectedFile] = useState(null);
   const [previewUrl, setPreviewUrl] = useState(null);
 
-  // База данных "распознанных" вод для симуляции
   const mockWaterDB = [
     {
       id: "evian",
@@ -2509,7 +2649,6 @@ function UserProfileIcon() {
   return <span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-slate-900/10">👤</span>;
 }
 
-// ============== ОСНОВНОЕ ПРИЛОЖЕНИЕ ==============
 export default function App() {
   const [lang, setLang] = useState("ru");
   const [mode, setMode] = useState("consumer");
@@ -2673,7 +2812,6 @@ export default function App() {
             </div>
           </div>
 
-          {/* Нижняя панель */}
           <div className="fixed bottom-4 left-1/2 z-50 w-[min(1120px,calc(100%-24px))] -translate-x-1/2">
             <div className="pointer-events-auto rounded-3xl border border-white/60 bg-white/70 shadow-lg backdrop-blur">
               <div className="flex flex-wrap items-center justify-between gap-3 px-4 py-3">
