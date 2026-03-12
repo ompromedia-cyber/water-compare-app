@@ -703,13 +703,13 @@ function normalizeWater(w) {
 
 function scoreWater(w) {
   const weights = {
-    ca: 1.2,
-    mg: 1.2,
+    ca: 1.3, // повышен вес кальция
+    mg: 1.3, // повышен вес магния
     k: 0.8,
-    na: 1.3,
+    na: 1.2,
     cl: 1.0,
-    ph: 0.5,
-    tds: 0.7,
+    ph: 0.6,
+    tds: 0.8,
   };
 
   const liters = 2;
@@ -740,31 +740,42 @@ function scoreWater(w) {
     let score = 100;
 
     if (key === "ph") {
-      if (x >= 6.5 && x <= 7.5) score = 100;
-      else if (x < 6.5) {
-        score = Math.max(0, 100 - (6.5 - x) * 25);
+      if (x >= 6.8 && x <= 7.6) score = 100;
+      else if (x < 6.8) {
+        score = Math.max(0, 100 - (6.8 - x) * 30);
       } else {
-        score = Math.max(0, 100 - (x - 7.5) * 25);
+        score = Math.max(0, 100 - (x - 7.6) * 30);
       }
     } else if (key === "tds") {
-      if (x >= 100 && x <= 500) score = 100;
-      else if (x < 100) {
-        score = Math.max(0, 100 - (100 - x) * 0.6);
+      if (x >= 150 && x <= 400) score = 100;
+      else if (x < 150) {
+        score = Math.max(0, 100 - (150 - x) * 0.8);
       } else {
-        score = Math.max(0, 100 - (x - 500) * 0.35);
+        score = Math.max(0, 100 - (x - 400) * 0.4);
       }
     } else {
       const ratio = valuePerDay / refValue;
-      if (ratio >= 0.8 && ratio <= 1.2) {
+      
+      // Идеальный диапазон 70-130% от нормы
+      if (ratio >= 0.7 && ratio <= 1.3) {
         score = 100;
-      } else if (ratio < 0.8) {
-        let deficit = (0.8 - ratio) * 2;
-        let penalty = Math.min(100, Math.pow(deficit, 1.5) * 100);
+      } else if (ratio < 0.7) {
+        // Недостаток (чем меньше, тем хуже)
+        let deficit = (0.7 - ratio) * 2;
+        let penalty = Math.min(100, Math.pow(deficit, 1.3) * 100);
         score = Math.max(0, 100 - penalty);
       } else {
-        let excess = (ratio - 1.2) * 2.5;
-        let penalty = Math.min(100, Math.pow(excess, 1.8) * 100);
+        // Избыток (штрафуем сильнее)
+        let excess = (ratio - 1.3) * 2.5;
+        let penalty = Math.min(100, Math.pow(excess, 1.6) * 100);
         score = Math.max(0, 100 - penalty);
+      }
+      
+      // Особый бонус для кальция и магния (они важны)
+      if (key === "ca" || key === "mg") {
+        if (ratio >= 0.5 && ratio <= 1.5) {
+          score *= 1.1; // +10% за наличие
+        }
       }
     }
     return score;
@@ -794,45 +805,27 @@ function scoreWater(w) {
 
   let finalScore = totalWeight > 0 ? weightedSum / totalWeight : 0;
   
-  // ===== ЖЁСТКИЙ ШТРАФ ЗА ОТСУТСТВИЕ ДАННЫХ =====
+  // Штраф за отсутствие данных
   const missingCount = cov.total - cov.count;
   
-  // Прогрессивный штраф: каждый отсутствующий показатель снижает рейтинг всё сильнее
   if (missingCount === 1) {
-    finalScore *= 0.7; // -30% за 1 пропуск
+    finalScore *= 0.8; // -20%
   } else if (missingCount === 2) {
-    finalScore *= 0.5; // -50% за 2 пропуска
+    finalScore *= 0.6; // -40%
   } else if (missingCount === 3) {
-    finalScore *= 0.3; // -70% за 3 пропуска
-  } else if (missingCount === 4) {
-    finalScore *= 0.15; // -85% за 4 пропуска
-  } else if (missingCount >= 5) {
-    finalScore *= 0.05; // -95% за 5+ пропусков (практически обнуление)
-  }
-  
-  // Дополнительный штраф за отсутствие ключевых показателей
-  const hasKeyMetrics = scores.ca !== null && scores.mg !== null && scores.na !== null;
-  if (!hasKeyMetrics && missingCount > 0) {
-    finalScore *= 0.5; // Ещё -50% если нет Ca, Mg или Na
-  }
-  
-  // Абсолютный потолок: вода с 2 показателями НИКОГДА не получит больше 30 баллов
-  if (presentCount <= 2) {
-    finalScore = Math.min(finalScore, 30);
-  } else if (presentCount === 3) {
-    finalScore = Math.min(finalScore, 50);
-  } else if (presentCount === 4) {
-    finalScore = Math.min(finalScore, 70);
+    finalScore *= 0.4; // -60%
+  } else if (missingCount >= 4) {
+    finalScore *= 0.2; // -80%
   }
 
   finalScore = clamp(finalScore, 0, 100);
 
-  // Уникализация баллов (очень маленькая, чтобы не влияла на порядок)
+  // Уникализация
   const hash = w.id.split('').reduce((acc, c) => acc + c.charCodeAt(0), 0);
-  const micro = (hash % 100) / 1000; // Уменьшил влияние
+  const micro = (hash % 100) / 500;
   let uniqueScore = finalScore + micro;
   if (uniqueScore > 100) uniqueScore = 100;
-  uniqueScore = Math.round(uniqueScore * 10) / 10; // Один знак после запятой
+  uniqueScore = Math.round(uniqueScore * 10) / 10;
 
   return {
     score: uniqueScore,
@@ -1716,6 +1709,34 @@ function MetricsTable({ selected, profile }) {
     { key: "cl", label: "Cl", ref: String(REF.cl), unit: "мг/сутки*", getValue: (w) => w.cl_mg_l ?? null },
   ];
 
+  // Функция для расчёта процента от суточной нормы
+  const getDailyPercentage = (key, value) => {
+    if (value === null || value === undefined) return null;
+    
+    const liters = 2;
+    let dailyValue = value;
+    
+    // Для минералов пересчитываем в суточное потребление
+    if (key !== "ph" && key !== "tds") {
+      dailyValue = value * liters;
+    }
+    
+    const refValue = key === "ph" ? REF.ph : key === "tds" ? REF.tds : REF[key];
+    const percentage = (dailyValue / refValue) * 100;
+    
+    return Math.round(percentage);
+  };
+
+  // Функция для получения цвета и текста статуса
+  const getPercentageStatus = (percentage) => {
+    if (percentage === null) return { color: "text-slate-400", text: "нет данных", bg: "bg-slate-100" };
+    if (percentage < 50) return { color: "text-amber-600", text: "низкий", bg: "bg-amber-50" };
+    if (percentage >= 50 && percentage < 80) return { color: "text-sky-600", text: "средний", bg: "bg-sky-50" };
+    if (percentage >= 80 && percentage <= 120) return { color: "text-emerald-600", text: "норма", bg: "bg-emerald-50" };
+    if (percentage > 120 && percentage <= 200) return { color: "text-orange-600", text: "высокий", bg: "bg-orange-50" };
+    return { color: "text-rose-600", text: "избыток", bg: "bg-rose-50" };
+  };
+
   if (selected.length === 0) {
     return (
       <div className={`${GLASS.card} p-6 text-center text-slate-600`}>
@@ -1738,9 +1759,9 @@ function MetricsTable({ selected, profile }) {
           {/* Заголовок таблицы */}
           <thead>
             <tr className="bg-slate-100">
-              <th className="px-4 py-3 border border-slate-300 font-medium">{t.table.metric}</th>
-              <th className="px-4 py-3 border border-slate-300 font-medium">{t.table.ref}</th>
-              <th className="px-4 py-3 border border-slate-300 font-medium">{t.table.unit}</th>
+              <th className="px-4 py-3 border border-slate-300 font-medium">Показатель</th>
+              <th className="px-4 py-3 border border-slate-300 font-medium">Эталон</th>
+              <th className="px-4 py-3 border border-slate-300 font-medium">Ед.</th>
               {selected.map((w) => (
                 <th 
                   key={w.id} 
@@ -1780,18 +1801,31 @@ function MetricsTable({ selected, profile }) {
                   {r.unit}
                 </td>
                 
-                {/* Значения для каждой выбранной воды */}
+                {/* Значения для каждой выбранной воды с процентами */}
                 {selected.map((w) => {
                   const v = r.getValue(w);
-                  const st = metricStatus(r.key, v);
+                  const percentage = getDailyPercentage(r.key, v);
+                  const status = percentage ? getPercentageStatus(percentage) : { color: "text-slate-400", text: "нет данных", bg: "bg-slate-100" };
+                  
                   return (
                     <td 
                       key={w.id + r.key} 
                       className={`px-4 py-3 border border-slate-300 ${w.id === winnerId ? 'bg-amber-50/30' : ''}`}
                     >
-                      <div className="flex items-center justify-between gap-2">
-                        <span className="font-semibold text-slate-900">{fmt(v, r.digits ?? 0)}</span>
-                        <MetricPill kind={st} />
+                      <div className="flex flex-col gap-1">
+                        <div className="flex items-center justify-between">
+                          <span className="font-semibold text-slate-900">{fmt(v, r.digits ?? 0)}</span>
+                          {percentage && (
+                            <span className={`text-xs px-2 py-0.5 rounded-full ${status.bg} ${status.color}`}>
+                              {percentage}%
+                            </span>
+                          )}
+                        </div>
+                        {percentage && (
+                          <div className="text-xs text-slate-500">
+                            от нормы
+                          </div>
+                        )}
                       </div>
                     </td>
                   );
@@ -1802,7 +1836,21 @@ function MetricsTable({ selected, profile }) {
             {/* Дополнительная строка с рейтингами */}
             <tr className="bg-slate-50/80">
               <td className="px-4 py-3 border border-slate-300 font-medium" colSpan={3}>
-                Рейтинг
+                <div className="flex items-center gap-2">
+                  <span>Общий рейтинг</span>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Info className="h-4 w-4 text-slate-500 cursor-help" />
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <div className="text-xs max-w-[200px]">
+                        {lang === "ru" 
+                          ? "Учитывает близость всех показателей к эталону. Чем выше, тем лучше."
+                          : "Considers how close all metrics are to reference. Higher is better."}
+                      </div>
+                    </TooltipContent>
+                  </Tooltip>
+                </div>
               </td>
               {selected.map((w) => {
                 const scoreData = scoreWater(w);
@@ -1812,11 +1860,11 @@ function MetricsTable({ selected, profile }) {
                     className={`px-4 py-3 border border-slate-300 ${w.id === winnerId ? 'bg-amber-100 font-bold' : ''}`}
                   >
                     <div className="flex items-center justify-between">
-                      <span>{scoreData.score.toFixed(1)}</span>
+                      <span className="text-lg font-semibold">{scoreData.score.toFixed(1)}</span>
                       {scoreData.missingCount > 0 && (
                         <Tooltip>
                           <TooltipTrigger asChild>
-                            <span className="ml-1 text-amber-600 cursor-help">⚠️</span>
+                            <span className="ml-1 text-amber-600 cursor-help text-sm">⚠️</span>
                           </TooltipTrigger>
                           <TooltipContent>
                             <div className="text-xs">
@@ -1828,12 +1876,41 @@ function MetricsTable({ selected, profile }) {
                         </Tooltip>
                       )}
                     </div>
+                    {scoreData.missingCount > 0 && (
+                      <div className="text-xs text-amber-600 mt-1">
+                        рейтинг может быть неточным
+                      </div>
+                    )}
                   </td>
                 );
               })}
             </tr>
           </tbody>
         </table>
+      </div>
+
+      {/* Легенда цветов */}
+      <div className="mt-4 flex flex-wrap gap-3 text-xs">
+        <div className="flex items-center gap-2">
+          <span className="w-3 h-3 rounded-full bg-emerald-50 border border-emerald-200"></span>
+          <span>Норма (80-120% от нормы)</span>
+        </div>
+        <div className="flex items-center gap-2">
+          <span className="w-3 h-3 rounded-full bg-sky-50 border border-sky-200"></span>
+          <span>Средний (50-80%)</span>
+        </div>
+        <div className="flex items-center gap-2">
+          <span className="w-3 h-3 rounded-full bg-amber-50 border border-amber-200"></span>
+          <span>Низкий (&lt;50%)</span>
+        </div>
+        <div className="flex items-center gap-2">
+          <span className="w-3 h-3 rounded-full bg-orange-50 border border-orange-200"></span>
+          <span>Высокий (120-200%)</span>
+        </div>
+        <div className="flex items-center gap-2">
+          <span className="w-3 h-3 rounded-full bg-rose-50 border border-rose-200"></span>
+          <span>Избыток (&gt;200%)</span>
+        </div>
       </div>
 
       <div className="mt-3 text-xs text-slate-600">
