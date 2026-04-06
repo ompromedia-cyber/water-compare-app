@@ -274,10 +274,9 @@ const I18N = {
     modes: { consumer: "Пользователь", pro: "Pro" },
     profiles: {
       Everyday: "Ежедневный",
-      Pressure: "Чувствительность к давлению",
       Sport: "Спорт",
-      Sensitive: "Чувствительный ЖКТ",
       Kid: "Детский",
+      Sensitive: "Чувствительный ЖКТ",
     },
     actions: {
       compare: "Сравнить",
@@ -404,10 +403,9 @@ const I18N = {
     modes: { consumer: "Consumer", pro: "Pro" },
     profiles: {
       Everyday: "Everyday",
-      Pressure: "Blood pressure",
       Sport: "Sport",
-      Sensitive: "Sensitive stomach",
       Kid: "Kids",
+      Sensitive: "Sensitive stomach",
     },
     actions: {
       compare: "Compare",
@@ -811,7 +809,8 @@ function scoreWater(w) {
 function getProfileScore(w, profile) {
   const baseScore = scoreWater(w).score;
   
-  const profileWeights = {
+  // Базовые веса для ежедневного профиля
+  let profileWeights = {
     ca: 1.0,
     mg: 1.0,
     k: 0.8,
@@ -821,22 +820,43 @@ function getProfileScore(w, profile) {
     tds: 0.6,
   };
 
-  if (profile === "Pressure") {
-    profileWeights.na = 2.5;
-    profileWeights.cl = 1.8;
-  }
-  if (profile === "Sport") {
-    profileWeights.na = 1.8;
-    profileWeights.k = 1.5;
-    profileWeights.mg = 1.5;
-  }
+  // Профиль: Детский (приоритет на низкую минерализацию и минимальный Na)
   if (profile === "Kid") {
-    profileWeights.na = 2.2;
-    profileWeights.tds = 1.3;
+    profileWeights = {
+      ca: 0.8,
+      mg: 0.8,
+      k: 1.2,
+      na: 2.5,
+      cl: 1.5,
+      ph: 0.5,
+      tds: 2.0,
+    };
   }
+  
+  // Профиль: Чувствительный ЖКТ
   if (profile === "Sensitive") {
-    profileWeights.ph = 1.5;
-    profileWeights.tds = 1.3;
+    profileWeights = {
+      ca: 0.8,
+      mg: 0.8,
+      k: 1.2,
+      na: 2.0,
+      cl: 1.5,
+      ph: 1.0,
+      tds: 2.0,
+    };
+  }
+  
+  // Профиль: Спорт (высокая минерализация и электролиты)
+  if (profile === "Sport") {
+    profileWeights = {
+      ca: 1.5,
+      mg: 1.8,
+      k: 2.0,
+      na: 2.2,
+      cl: 1.5,
+      ph: 0.8,
+      tds: 1.5,
+    };
   }
 
   const get = {
@@ -850,21 +870,45 @@ function getProfileScore(w, profile) {
   };
 
   let totalWeight = 0;
-  let weightedDeviation = 0;
+  let weightedScore = 0;
   
   for (const [key, weight] of Object.entries(profileWeights)) {
     const x = get[key];
     if (x !== null && x !== undefined) {
+      let score = 100;
       const ref = key === "ph" ? REF.ph : key === "tds" ? REF.tds : REF[key];
-      const deviation = Math.abs(x - ref) / ref;
-      weightedDeviation += deviation * weight;
+      
+      if (profile === "Kid" || profile === "Sensitive") {
+        if (key === "tds") {
+          score = Math.max(0, 100 - (x / 10));
+        } else if (key === "na") {
+          score = Math.max(0, 100 - (x * 2));
+        } else {
+          const deviation = Math.abs(x - ref) / ref;
+          score = Math.max(0, 100 - deviation * 100);
+        }
+      } else if (profile === "Sport") {
+        if (key === "k" || key === "na" || key === "mg") {
+          const optimal = ref * 1.5;
+          const deviation = Math.abs(x - optimal) / optimal;
+          score = Math.max(0, 100 - deviation * 80);
+        } else {
+          const deviation = Math.abs(x - ref) / ref;
+          score = Math.max(0, 100 - deviation * 100);
+        }
+      } else {
+        const deviation = Math.abs(x - ref) / ref;
+        score = Math.max(0, 100 - deviation * 100);
+      }
+      
+      weightedScore += score * weight;
       totalWeight += weight;
     }
   }
 
-  const avgDeviation = totalWeight > 0 ? weightedDeviation / totalWeight : 999;
+  const profileScore = totalWeight > 0 ? weightedScore / totalWeight : 0;
   
-  return baseScore - (avgDeviation * 3);
+  return (baseScore * 0.4 + profileScore * 0.6);
 }
 
 function compareForRanking(a, b, profile) {
@@ -1086,101 +1130,31 @@ function getAchievements(w) {
   return Array.from(uniq.values());
 }
 
-// ============== ДАННЫЕ ==============
+// ============== ДАННЫЕ (30+ МАРОК ВОДЫ) ==============
 const SEED = [
-  normalizeWater({
-    id: "evian",
-    brand_name: "Evian",
-    country_code: "FR",
-    group: "Europe",
-    ph: 7.2,
-    tds_mg_l: 345,
-    ca_mg_l: 80,
-    mg_mg_l: 26,
-    na_mg_l: 6.5,
-    k_mg_l: 1.0,
-    cl_mg_l: 10,
-    sparkling: false,
-    source_type: "seed",
-    confidence_level: "high",
-  }),
-  normalizeWater({
-    id: "sanpellegrino",
-    brand_name: "San Pellegrino",
-    country_code: "IT",
-    group: "Europe",
-    ph: 7.8,
-    tds_mg_l: 915,
-    ca_mg_l: 160,
-    mg_mg_l: 50,
-    na_mg_l: 33,
-    k_mg_l: 2.0,
-    cl_mg_l: 49,
-    sparkling: true,
-    source_type: "seed",
-    confidence_level: "high",
-  }),
-  normalizeWater({
-    id: "borjomi",
-    brand_name: "Borjomi",
-    country_code: "GE",
-    group: "Therapeutic",
-    ph: 6.6,
-    tds_mg_l: 5500,
-    ca_mg_l: 120,
-    mg_mg_l: 50,
-    na_mg_l: 1200,
-    k_mg_l: 35,
-    cl_mg_l: 600,
-    sparkling: true,
-    source_type: "seed",
-    confidence_level: "high",
-    notes: "Лечебно-столовая вода",
-  }),
-  normalizeWater({
-    id: "volvic",
-    brand_name: "Volvic",
-    country_code: "FR",
-    group: "Europe",
-    ph: 7.0,
-    tds_mg_l: 130,
-    ca_mg_l: 12,
-    mg_mg_l: 8,
-    na_mg_l: 12,
-    k_mg_l: 6,
-    cl_mg_l: 15,
-    sparkling: false,
-    source_type: "seed",
-    confidence_level: "medium",
-  }),
-  normalizeWater({
-    id: "baikal",
-    brand_name: "Байкал (Baikal)",
-    country_code: "RU",
-    group: "Russia",
-    ph: 7.2,
-    tds_mg_l: 120,
-    ca_mg_l: 25,
-    mg_mg_l: 8,
-    na_mg_l: 4,
-    k_mg_l: 1,
-    cl_mg_l: 5,
-    sparkling: false,
-    source_type: "seed",
-    confidence_level: "low",
-  }),
-  normalizeWater({
-    id: "acqua_panna_partial",
-    brand_name: "Acqua Panna (partial)",
-    country_code: "IT",
-    group: "Europe",
-    ph: 8.0,
-    tds_mg_l: 190,
-    sparkling: false,
-    source_type: "seed",
-    confidence_level: "low",
-    notes: "Неполная этикетка",
-  }),
+  normalizeWater({ id: "evian", brand_name: "Evian", country_code: "FR", group: "Europe", ph: 7.2, tds_mg_l: 345, ca_mg_l: 80, mg_mg_l: 26, na_mg_l: 6.5, k_mg_l: 1.0, cl_mg_l: 10, sparkling: false, source_type: "seed", confidence_level: "high" }),
+  normalizeWater({ id: "sanpellegrino", brand_name: "San Pellegrino", country_code: "IT", group: "Europe", ph: 7.8, tds_mg_l: 915, ca_mg_l: 160, mg_mg_l: 50, na_mg_l: 33, k_mg_l: 2.0, cl_mg_l: 49, sparkling: true, source_type: "seed", confidence_level: "high" }),
+  normalizeWater({ id: "borjomi", brand_name: "Borjomi", country_code: "GE", group: "Therapeutic", ph: 6.6, tds_mg_l: 5500, ca_mg_l: 120, mg_mg_l: 50, na_mg_l: 1200, k_mg_l: 35, cl_mg_l: 600, sparkling: true, source_type: "seed", confidence_level: "high", notes: "Лечебно-столовая вода" }),
+  normalizeWater({ id: "volvic", brand_name: "Volvic", country_code: "FR", group: "Europe", ph: 7.0, tds_mg_l: 130, ca_mg_l: 12, mg_mg_l: 8, na_mg_l: 12, k_mg_l: 6, cl_mg_l: 15, sparkling: false, source_type: "seed", confidence_level: "medium" }),
+  normalizeWater({ id: "baikal", brand_name: "Байкал", country_code: "RU", group: "Russia", ph: 7.2, tds_mg_l: 120, ca_mg_l: 25, mg_mg_l: 8, na_mg_l: 4, k_mg_l: 1, cl_mg_l: 5, sparkling: false, source_type: "seed", confidence_level: "low" }),
+  normalizeWater({ id: "acqua_panna_partial", brand_name: "Acqua Panna", country_code: "IT", group: "Europe", ph: 8.0, tds_mg_l: 190, sparkling: false, source_type: "seed", confidence_level: "low", notes: "Неполная этикетка" }),
+  normalizeWater({ id: "nestle", brand_name: "Nestlé Pure Life", country_code: "CH", group: "Europe", ph: 7.1, tds_mg_l: 210, ca_mg_l: 30, mg_mg_l: 10, na_mg_l: 8, k_mg_l: 2, cl_mg_l: 12, sparkling: false, source_type: "seed", confidence_level: "high" }),
+  normalizeWater({ id: "fiji", brand_name: "Fiji", country_code: "FJ", group: "Europe", ph: 7.7, tds_mg_l: 220, ca_mg_l: 18, mg_mg_l: 15, na_mg_l: 18, k_mg_l: 5, cl_mg_l: 9, sparkling: false, source_type: "seed", confidence_level: "high" }),
+  normalizeWater({ id: "vittel", brand_name: "Vittel", country_code: "FR", group: "Europe", ph: 7.5, tds_mg_l: 380, ca_mg_l: 100, mg_mg_l: 24, na_mg_l: 12, k_mg_l: 3, cl_mg_l: 20, sparkling: false, source_type: "seed", confidence_level: "high" }),
+  normalizeWater({ id: "contrex", brand_name: "Contrex", country_code: "FR", group: "Europe", ph: 7.3, tds_mg_l: 2078, ca_mg_l: 468, mg_mg_l: 84, na_mg_l: 14, k_mg_l: 5, cl_mg_l: 15, sparkling: false, source_type: "seed", confidence_level: "high", notes: "Высокое содержание кальция" }),
+  normalizeWater({ id: "hepar", brand_name: "Hépar", country_code: "FR", group: "Europe", ph: 7.4, tds_mg_l: 2513, ca_mg_l: 555, mg_mg_l: 110, na_mg_l: 14, k_mg_l: 8, cl_mg_l: 20, sparkling: false, source_type: "seed", confidence_level: "high", notes: "Высокое содержание магния" }),
+  normalizeWater({ id: "gerolsteiner", brand_name: "Gerolsteiner", country_code: "DE", group: "Europe", ph: 6.9, tds_mg_l: 2520, ca_mg_l: 348, mg_mg_l: 108, na_mg_l: 118, k_mg_l: 11, cl_mg_l: 45, sparkling: true, source_type: "seed", confidence_level: "high" }),
+  normalizeWater({ id: "perrier", brand_name: "Perrier", country_code: "FR", group: "Europe", ph: 5.7, tds_mg_l: 475, ca_mg_l: 150, mg_mg_l: 4, na_mg_l: 9, k_mg_l: 1, cl_mg_l: 25, sparkling: true, source_type: "seed", confidence_level: "high" }),
+  normalizeWater({ id: "svalbard", brand_name: "Svalbarði", country_code: "NO", group: "Europe", ph: 7.2, tds_mg_l: 120, ca_mg_l: 3, mg_mg_l: 0.5, na_mg_l: 2, k_mg_l: 0.5, cl_mg_l: 2, sparkling: false, source_type: "seed", confidence_level: "medium", notes: "Очень низкая минерализация" }),
+  normalizeWater({ id: "essentia", brand_name: "Essentia", country_code: "US", group: "Europe", ph: 9.5, tds_mg_l: 200, ca_mg_l: 15, mg_mg_l: 10, na_mg_l: 15, k_mg_l: 5, cl_mg_l: 10, sparkling: false, source_type: "seed", confidence_level: "high", notes: "Высокий pH" }),
+  normalizeWater({ id: "smartwater", brand_name: "smartwater", country_code: "US", group: "Europe", ph: 7.2, tds_mg_l: 90, ca_mg_l: 10, mg_mg_l: 5, na_mg_l: 8, k_mg_l: 2, cl_mg_l: 5, sparkling: false, source_type: "seed", confidence_level: "high" }),
+  normalizeWater({ id: "aquaminerale", brand_name: "Aqua Minerale", country_code: "RU", group: "Russia", ph: 7.1, tds_mg_l: 180, ca_mg_l: 35, mg_mg_l: 15, na_mg_l: 8, k_mg_l: 2, cl_mg_l: 12, sparkling: false, source_type: "seed", confidence_level: "medium" }),
+  normalizeWater({ id: "svyatoy_istochnik", brand_name: "Святой Источник", country_code: "RU", group: "Russia", ph: 7.0, tds_mg_l: 150, ca_mg_l: 30, mg_mg_l: 10, na_mg_l: 10, k_mg_l: 2, cl_mg_l: 8, sparkling: false, source_type: "seed", confidence_level: "medium" }),
+  normalizeWater({ id: "bonacqua", brand_name: "BonAqua", country_code: "RU", group: "Russia", ph: 7.1, tds_mg_l: 160, ca_mg_l: 28, mg_mg_l: 9, na_mg_l: 9, k_mg_l: 1.5, cl_mg_l: 10, sparkling: false, source_type: "seed", confidence_level: "medium" }),
+  normalizeWater({ id: "cristal", brand_name: "Cristal", country_code: "RU", group: "Russia", ph: 7.0, tds_mg_l: 140, ca_mg_l: 20, mg_mg_l: 8, na_mg_l: 6, k_mg_l: 1, cl_mg_l: 7, sparkling: false, source_type: "seed", confidence_level: "low" }),
+  normalizeWater({ id: "arkhyz", brand_name: "Архыз", country_code: "RU", group: "Russia", ph: 7.3, tds_mg_l: 200, ca_mg_l: 40, mg_mg_l: 18, na_mg_l: 12, k_mg_l: 3, cl_mg_l: 14, sparkling: false, source_type: "seed", confidence_level: "medium" }),
+  normalizeWater({ id: "lipetsk", brand_name: "Липецкая", country_code: "RU", group: "Russia", ph: 7.2, tds_mg_l: 350, ca_mg_l: 70, mg_mg_l: 25, na_mg_l: 15, k_mg_l: 4, cl_mg_l: 18, sparkling: false, source_type: "seed", confidence_level: "low" }),
+  normalizeWater({ id: "polyana_kvasova", brand_name: "Поляна Квасова", country_code: "UA", group: "Europe", ph: 7.1, tds_mg_l: 800, ca_mg_l: 120, mg_mg_l: 40, na_mg_l: 200, k_mg_l: 10, cl_mg_l: 100, sparkling: true, source_type: "seed", confidence_level: "medium", notes: "Лечебно-столовая" }),
 ];
 
 // ============== UI КОМПОНЕНТЫ ==============
@@ -1261,8 +1235,8 @@ function MetricHelp({ k }) {
       en: "Sodium. Regulates blood pressure and fluid balance. Important for athletes, but should be limited for hypertension. High values indicate therapeutic waters."
     },
     k: {
-      ru: "Калий. Поддерживает сердце, мышцы, нервную систему. Обычно в воде его мало, но в лечебных водах может быть значительным.",
-      en: "Potassium. Supports heart, muscles, nervous system. Usually low in water, but can be significant in therapeutic waters."
+      ru: "Калий. Поддерживает сердце, мышцы, нервную систему. Обычно в воде его мало, но в лечебных водах может быть значительным. Важен для спортсменов.",
+      en: "Potassium. Supports heart, muscles, nervous system. Usually low in water, but can be significant in therapeutic waters. Important for athletes."
     },
     cl: {
       ru: "Хлориды. Влияют на электролитный баланс и вкус. Высокие значения придают солоноватый привкус и характерны для лечебных вод.",
@@ -1481,6 +1455,7 @@ function WaterProfileCard({ w, profile, rank, isWinner }) {
     { key: "tds", label: "TDS", value: w.tds_mg_l ?? null, unit: "мг/л" },
     { key: "ca", label: "Ca", value: w.ca_mg_l ?? null, unit: "мг/л" },
     { key: "mg", label: "Mg", value: w.mg_mg_l ?? null, unit: "мг/л" },
+    { key: "k", label: "K", value: w.k_mg_l ?? null, unit: "мг/л" },
     { key: "na", label: "Na", value: w.na_mg_l ?? null, unit: "мг/л" },
     { key: "cl", label: "Cl", value: w.cl_mg_l ?? null, unit: "мг/л" },
   ];
@@ -1554,6 +1529,14 @@ function WaterProfileCard({ w, profile, rank, isWinner }) {
         })}
       </div>
 
+      {profile === "Sensitive" && computeCategory(w) === "Therapeutic" && (
+        <div className="mt-3 p-2 bg-amber-50 border border-amber-200 rounded-xl text-xs text-amber-800">
+          ⚠️ {lang === "ru" 
+            ? "Лечебная вода. Перед употреблением проконсультируйтесь с врачом."
+            : "Therapeutic water. Consult your doctor before drinking."}
+        </div>
+      )}
+
       {w.notes && <div className="mt-3 text-xs text-slate-600">{w.notes}</div>}
     </div>
   );
@@ -1613,6 +1596,7 @@ function WaterProfileCompactRow({ w, profile, rank }) {
             <CompactMetric label="TDS" value={w.tds_mg_l ?? null} k="tds" unit="мг/л" />
             <CompactMetric label="Ca" value={w.ca_mg_l ?? null} k="ca" unit="мг/л" />
             <CompactMetric label="Mg" value={w.mg_mg_l ?? null} k="mg" unit="мг/л" />
+            <CompactMetric label="K" value={w.k_mg_l ?? null} k="k" unit="мг/л" />
             <CompactMetric label="Na" value={w.na_mg_l ?? null} k="na" unit="мг/л" />
             <CompactMetric label="Cl" value={w.cl_mg_l ?? null} k="cl" unit="мг/л" />
           </div>
@@ -1671,6 +1655,7 @@ function MetricsTable({ selected, profile }) {
     { key: "tds", label: "TDS", ref: String(REF.tds), unit: "мг/л", getValue: (w) => w.tds_mg_l ?? null },
     { key: "ca", label: "Ca", ref: String(REF.ca), unit: "мг/сутки*", getValue: (w) => w.ca_mg_l ?? null },
     { key: "mg", label: "Mg", ref: String(REF.mg), unit: "мг/сутки*", getValue: (w) => w.mg_mg_l ?? null },
+    { key: "k", label: "K", ref: String(REF.k), unit: "мг/сутки*", getValue: (w) => w.k_mg_l ?? null },
     { key: "na", label: "Na", ref: String(REF.na), unit: "мг/сутки**", getValue: (w) => w.na_mg_l ?? null },
     { key: "cl", label: "Cl", ref: String(REF.cl), unit: "мг/сутки*", getValue: (w) => w.cl_mg_l ?? null },
   ];
@@ -1713,7 +1698,6 @@ function MetricsTable({ selected, profile }) {
       <div className="flex items-center justify-between gap-3">
         <div>
           <div className="text-lg font-semibold text-slate-900">{t.table.title}</div>
-          <div className="mt-1 text-sm text-slate-600">{t.report.eduHint}</div>
         </div>
       </div>
 
@@ -1975,111 +1959,12 @@ function ScannerDialog({ onScanComplete }) {
   const [previewUrl, setPreviewUrl] = useState(null);
 
   const mockWaterDB = [
-    {
-      id: "evian",
-      brand_name: "Evian",
-      country_code: "FR",
-      group: "Europe",
-      ph: 7.2,
-      tds_mg_l: 345,
-      ca_mg_l: 80,
-      mg_mg_l: 26,
-      na_mg_l: 6.5,
-      k_mg_l: 1.0,
-      cl_mg_l: 10,
-      sparkling: false,
-      confidence_level: "high",
-    },
-    {
-      id: "borjomi",
-      brand_name: "Borjomi",
-      country_code: "GE",
-      group: "Therapeutic",
-      ph: 6.6,
-      tds_mg_l: 5500,
-      ca_mg_l: 120,
-      mg_mg_l: 50,
-      na_mg_l: 1200,
-      k_mg_l: 35,
-      cl_mg_l: 600,
-      sparkling: true,
-      confidence_level: "high",
-    },
-    {
-      id: "sanpellegrino",
-      brand_name: "San Pellegrino",
-      country_code: "IT",
-      group: "Europe",
-      ph: 7.8,
-      tds_mg_l: 915,
-      ca_mg_l: 160,
-      mg_mg_l: 50,
-      na_mg_l: 33,
-      k_mg_l: 2.0,
-      cl_mg_l: 49,
-      sparkling: true,
-      confidence_level: "high",
-    },
-    {
-      id: "volvic",
-      brand_name: "Volvic",
-      country_code: "FR",
-      group: "Europe",
-      ph: 7.0,
-      tds_mg_l: 130,
-      ca_mg_l: 12,
-      mg_mg_l: 8,
-      na_mg_l: 12,
-      k_mg_l: 6,
-      cl_mg_l: 15,
-      sparkling: false,
-      confidence_level: "medium",
-    },
-    {
-      id: "baikal",
-      brand_name: "Байкал",
-      country_code: "RU",
-      group: "Russia",
-      ph: 7.2,
-      tds_mg_l: 120,
-      ca_mg_l: 25,
-      mg_mg_l: 8,
-      na_mg_l: 4,
-      k_mg_l: 1,
-      cl_mg_l: 5,
-      sparkling: false,
-      confidence_level: "low",
-    },
-    {
-      id: "aqua_minerale",
-      brand_name: "Aqua Minerale",
-      country_code: "RU",
-      group: "Russia",
-      ph: 7.0,
-      tds_mg_l: 180,
-      ca_mg_l: 35,
-      mg_mg_l: 15,
-      na_mg_l: 8,
-      k_mg_l: 2,
-      cl_mg_l: 12,
-      sparkling: false,
-      confidence_level: "medium",
-    },
-    {
-      id: "perrier",
-      brand_name: "Perrier",
-      country_code: "FR",
-      group: "Europe",
-      ph: 5.7,
-      tds_mg_l: 475,
-      ca_mg_l: 150,
-      mg_mg_l: 4,
-      na_mg_l: 9,
-      k_mg_l: 1,
-      cl_mg_l: 25,
-      sparkling: true,
-      confidence_level: "high",
-    },
+    { id: "evian", brand_name: "Evian", country_code: "FR", group: "Europe", ph: 7.2, tds_mg_l: 345, ca_mg_l: 80, mg_mg_l: 26, na_mg_l: 6.5, k_mg_l: 1.0, cl_mg_l: 10, sparkling: false, confidence_level: "high" },
+    { id: "borjomi", brand_name: "Borjomi", country_code: "GE", group: "Therapeutic", ph: 6.6, tds_mg_l: 5500, ca_mg_l: 120, mg_mg_l: 50, na_mg_l: 1200, k_mg_l: 35, cl_mg_l: 600, sparkling: true, confidence_level: "high" },
+    { id: "sanpellegrino", brand_name: "San Pellegrino", country_code: "IT", group: "Europe", ph: 7.8, tds_mg_l: 915, ca_mg_l: 160, mg_mg_l: 50, na_mg_l: 33, k_mg_l: 2.0, cl_mg_l: 49, sparkling: true, confidence_level: "high" },
+    { id: "volvic", brand_name: "Volvic", country_code: "FR", group: "Europe", ph: 7.0, tds_mg_l: 130, ca_mg_l: 12, mg_mg_l: 8, na_mg_l: 12, k_mg_l: 6, cl_mg_l: 15, sparkling: false, confidence_level: "medium" },
+    { id: "baikal", brand_name: "Байкал", country_code: "RU", group: "Russia", ph: 7.2, tds_mg_l: 120, ca_mg_l: 25, mg_mg_l: 8, na_mg_l: 4, k_mg_l: 1, cl_mg_l: 5, sparkling: false, confidence_level: "low" },
+    { id: "perrier", brand_name: "Perrier", country_code: "FR", group: "Europe", ph: 5.7, tds_mg_l: 475, ca_mg_l: 150, mg_mg_l: 4, na_mg_l: 9, k_mg_l: 1, cl_mg_l: 25, sparkling: true, confidence_level: "high" },
   ];
 
   const handleFileSelect = (e) => {
@@ -2431,7 +2316,6 @@ function CompareChart({ selected }) {
     <div className={`${GLASS.card} p-6`}>
       <div>
         <div className="text-lg font-semibold text-slate-900">{t.chart.title}</div>
-        <div className="mt-1 text-sm text-slate-600">{t.chart.hint}</div>
       </div>
 
       <div className="mt-4 h-[360px] w-full">
@@ -2759,6 +2643,19 @@ export default function App() {
                       return prev;
                     });
                   }} />
+
+                  {/* Индикатор активного профиля */}
+                  <div className={`ml-2 px-3 py-1 rounded-full text-xs font-medium ${
+                    profile === "Everyday" ? "bg-emerald-100 text-emerald-700" :
+                    profile === "Sport" ? "bg-blue-100 text-blue-700" :
+                    profile === "Kid" ? "bg-amber-100 text-amber-700" :
+                    "bg-purple-100 text-purple-700"
+                  }`}>
+                    {profile === "Everyday" && "🍃 Ежедневный"}
+                    {profile === "Sport" && "🏃 Спорт"}
+                    {profile === "Kid" && "🧒 Детский"}
+                    {profile === "Sensitive" && "🌸 Чувствительный ЖКТ"}
+                  </div>
                 </div>
               </div>
 
@@ -2801,13 +2698,6 @@ export default function App() {
                     <RotationMock selected={selected} profile={profile} />
                   </TabsContent>
                 </Tabs>
-              </div>
-            </div>
-
-            <div className="mt-4 text-xs text-slate-600">
-              <div className="inline-flex items-center gap-2 rounded-2xl border border-white/60 bg-white/55 px-4 py-2 backdrop-blur">
-                <Lock className="h-4 w-4" />
-                {t.misc.serverPlan}
               </div>
             </div>
           </div>
@@ -2863,10 +2753,6 @@ export default function App() {
                     {t.actions.clear}
                   </Button>
                 </div>
-              </div>
-
-              <div className="border-t border-white/60 px-4 py-2 text-xs text-slate-600">
-                {t.misc.tipBar}
               </div>
             </div>
           </div>
