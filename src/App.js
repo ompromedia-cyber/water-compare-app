@@ -39,7 +39,7 @@ import {
 const Button = ({ children, variant, className, onClick, disabled, type = "button" }) => (
   <button
     type={type}
-    className={`px-4 py-2 rounded-2xl font-medium transition-all ${
+    className={`px-3 sm:px-4 py-1.5 sm:py-2 rounded-xl sm:rounded-2xl font-medium text-sm sm:text-base transition-all ${
       variant === "outline"
         ? "border border-white/60 bg-white/70 hover:bg-white text-slate-800"
         : "bg-slate-900 text-white hover:bg-slate-800"
@@ -52,7 +52,7 @@ const Button = ({ children, variant, className, onClick, disabled, type = "butto
 );
 
 const GlassCard = ({ className, children }) => (
-  <div className={`rounded-3xl border border-white/60 bg-white/55 shadow-[0_16px_50px_-36px_rgba(15,23,42,0.55)] backdrop-blur ${className}`}>
+  <div className={`rounded-2xl sm:rounded-3xl border border-white/60 bg-white/55 shadow-[0_16px_50px_-36px_rgba(15,23,42,0.55)] backdrop-blur ${className}`}>
     {children}
   </div>
 );
@@ -68,7 +68,7 @@ const Tabs = ({ value, onValueChange, children }) => {
 };
 
 const TabsList = ({ className, children }) => (
-  <div className={`flex gap-2 p-1 rounded-2xl ${className}`}>{children}</div>
+  <div className={`flex gap-1 sm:gap-2 p-1 rounded-xl sm:rounded-2xl ${className}`}>{children}</div>
 );
 
 const TabsTrigger = ({ value, disabled, children }) => {
@@ -77,7 +77,7 @@ const TabsTrigger = ({ value, disabled, children }) => {
   
   return (
     <button
-      className={`px-4 py-2 rounded-xl text-sm font-medium transition-all ${
+      className={`px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg sm:rounded-xl text-xs sm:text-sm font-medium transition-all ${
         isSelected ? 'bg-white shadow-sm' : 'hover:bg-white/50'
       } ${disabled ? 'opacity-50 cursor-not-allowed' : ''}`}
       onClick={() => !disabled && onValueChange(value)}
@@ -124,7 +124,7 @@ const TooltipTrigger = ({ asChild, children, ...props }) => (
 );
 
 const TooltipContent = ({ className, children }) => (
-  <div className={`absolute z-50 mt-1 px-3 py-2 text-xs bg-white rounded-xl shadow-lg border border-white/60 ${className}`}>
+  <div className={`absolute z-50 mt-1 px-2 sm:px-3 py-1.5 sm:py-2 text-xs bg-white rounded-xl shadow-lg border border-white/60 ${className}`}>
     {children}
   </div>
 );
@@ -165,7 +165,7 @@ const DropdownMenuContent = ({ className, children, onClose }) => {
   }, [onClose]);
   
   return (
-    <div ref={ref} className={`absolute z-50 mt-2 bg-white rounded-2xl shadow-xl border border-white/60 ${className}`}>
+    <div ref={ref} className={`absolute z-50 mt-2 bg-white rounded-xl sm:rounded-2xl shadow-xl border border-white/60 ${className}`}>
       {React.Children.map(children, child => {
         if (child.type === DropdownMenuItem) {
           return React.cloneElement(child, { onClick: (e) => { child.props.onClick?.(e); onClose(); } });
@@ -177,12 +177,12 @@ const DropdownMenuContent = ({ className, children, onClose }) => {
 };
 
 const DropdownMenuItem = ({ onClick, children }) => (
-  <div className="px-4 py-2 hover:bg-slate-100 cursor-pointer text-sm" onClick={onClick}>
+  <div className="px-3 sm:px-4 py-2 hover:bg-slate-100 cursor-pointer text-sm" onClick={onClick}>
     {children}
   </div>
 );
 
-const DropdownMenuLabel = ({ children }) => <div className="px-4 py-2 text-sm font-semibold">{children}</div>;
+const DropdownMenuLabel = ({ children }) => <div className="px-3 sm:px-4 py-2 text-sm font-semibold">{children}</div>;
 const DropdownMenuSeparator = () => <hr className="border-white/60" />;
 
 // Dialog компоненты
@@ -206,8 +206,8 @@ const DialogContent = ({ className, children }) => {
   if (!isOpen) return null;
   
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/20 backdrop-blur-sm">
-      <div className={`bg-white rounded-3xl border border-white/60 shadow-xl max-w-2xl w-full max-h-[90vh] overflow-auto ${className}`}>
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/20 backdrop-blur-sm">
+      <div className={`bg-white rounded-2xl sm:rounded-3xl border border-white/60 shadow-xl max-w-[95vw] sm:max-w-2xl w-full max-h-[90vh] overflow-auto ${className}`}>
         <div className="sticky top-0 flex justify-end p-2 bg-white/80 backdrop-blur">
           <button onClick={() => setIsOpen(false)} className="p-1 hover:bg-slate-100 rounded-full">
             <X className="h-5 w-5" />
@@ -219,16 +219,16 @@ const DialogContent = ({ className, children }) => {
   );
 };
 
-const DialogHeader = ({ children }) => <div className="p-6 pb-2">{children}</div>;
-const DialogTitle = ({ children }) => <div className="text-lg font-semibold">{children}</div>;
+const DialogHeader = ({ children }) => <div className="p-4 sm:p-6 pb-2">{children}</div>;
+const DialogTitle = ({ children }) => <div className="text-base sm:text-lg font-semibold">{children}</div>;
 
 // Input компоненты
 const Input = ({ className, ...props }) => (
-  <input className={`px-4 py-2 rounded-2xl border border-white/60 bg-white/70 focus:outline-none focus:ring-2 focus:ring-sky-200 ${className}`} {...props} />
+  <input className={`px-3 sm:px-4 py-1.5 sm:py-2 rounded-xl sm:rounded-2xl border border-white/60 bg-white/70 focus:outline-none focus:ring-2 focus:ring-sky-200 text-sm ${className}`} {...props} />
 );
 
 const Textarea = ({ className, ...props }) => (
-  <textarea className={`px-4 py-2 rounded-2xl border border-white/60 bg-white/70 focus:outline-none focus:ring-2 focus:ring-sky-200 ${className}`} {...props} />
+  <textarea className={`px-3 sm:px-4 py-2 rounded-xl sm:rounded-2xl border border-white/60 bg-white/70 focus:outline-none focus:ring-2 focus:ring-sky-200 text-sm ${className}`} {...props} />
 );
 
 const Slider = ({ value, onValueChange, min, max, step }) => (
@@ -248,11 +248,11 @@ const GLASS = {
   page:
     "min-h-screen bg-[radial-gradient(1200px_600px_at_20%_0%,rgba(56,189,248,0.18),transparent_60%),radial-gradient(900px_500px_at_90%_10%,rgba(34,197,94,0.12),transparent_60%),radial-gradient(1100px_700px_at_50%_100%,rgba(168,85,247,0.10),transparent_60%)] bg-slate-50 text-slate-900",
   card:
-    "rounded-3xl border border-white/60 bg-white/55 shadow-[0_16px_50px_-36px_rgba(15,23,42,0.55)] backdrop-blur",
+    "rounded-2xl sm:rounded-3xl border border-white/60 bg-white/55 shadow-[0_16px_50px_-36px_rgba(15,23,42,0.55)] backdrop-blur",
   chip:
-    "rounded-2xl border border-white/60 bg-white/60 shadow-[0_12px_30px_-28px_rgba(15,23,42,0.6)] backdrop-blur",
+    "rounded-xl sm:rounded-2xl border border-white/60 bg-white/60 shadow-[0_12px_30px_-28px_rgba(15,23,42,0.6)] backdrop-blur",
   subtle:
-    "rounded-2xl border border-white/55 bg-white/45 shadow-[0_12px_38px_-34px_rgba(15,23,42,0.6)] backdrop-blur",
+    "rounded-xl sm:rounded-2xl border border-white/55 bg-white/45 shadow-[0_12px_38px_-34px_rgba(15,23,42,0.6)] backdrop-blur",
 };
 
 const CHART_COLORS = ["#38BDF8", "#34D399", "#FBBF24", "#FB7185", "#A78BFA"];
@@ -809,7 +809,6 @@ function scoreWater(w) {
 function getProfileScore(w, profile) {
   const baseScore = scoreWater(w).score;
   
-  // Базовые веса для ежедневного профиля
   let profileWeights = {
     ca: 1.0,
     mg: 1.0,
@@ -820,7 +819,6 @@ function getProfileScore(w, profile) {
     tds: 0.6,
   };
 
-  // Профиль: Детский (приоритет на низкую минерализацию и минимальный Na)
   if (profile === "Kid") {
     profileWeights = {
       ca: 0.8,
@@ -833,7 +831,6 @@ function getProfileScore(w, profile) {
     };
   }
   
-  // Профиль: Чувствительный ЖКТ
   if (profile === "Sensitive") {
     profileWeights = {
       ca: 0.8,
@@ -846,7 +843,6 @@ function getProfileScore(w, profile) {
     };
   }
   
-  // Профиль: Спорт (высокая минерализация и электролиты)
   if (profile === "Sport") {
     profileWeights = {
       ca: 1.5,
@@ -1169,22 +1165,22 @@ function CategoryBadge({ cat }) {
   const styles = {
     Daily: {
       label: tt.badges.daily,
-      icon: <ShieldCheck className="h-3.5 w-3.5" />,
+      icon: <ShieldCheck className="h-3 w-3 sm:h-3.5 sm:w-3.5" />,
       className: "bg-emerald-50 text-emerald-800 border-emerald-200",
     },
     Rotate: {
       label: tt.badges.rotate,
-      icon: <Sparkles className="h-3.5 w-3.5" />,
+      icon: <Sparkles className="h-3 w-3 sm:h-3.5 sm:w-3.5" />,
       className: "bg-sky-50 text-sky-800 border-sky-200",
     },
     Therapeutic: {
       label: tt.badges.therapeutic,
-      icon: <Beaker className="h-3.5 w-3.5" />,
+      icon: <Beaker className="h-3 w-3 sm:h-3.5 sm:w-3.5" />,
       className: "bg-rose-50 text-rose-800 border-rose-200",
     },
     Unknown: {
       label: tt.badges.unknown,
-      icon: <AlertTriangle className="h-3.5 w-3.5" />,
+      icon: <AlertTriangle className="h-3 w-3 sm:h-3.5 sm:w-3.5" />,
       className: "bg-slate-50 text-slate-800 border-slate-200",
     },
   };
@@ -1194,12 +1190,12 @@ function CategoryBadge({ cat }) {
   return (
     <Tooltip>
       <TooltipTrigger asChild>
-        <span className={`inline-flex cursor-help items-center gap-1 rounded-xl border px-2 py-1 text-xs font-medium ${v.className}`}>
+        <span className={`inline-flex cursor-help items-center gap-1 rounded-xl border px-1.5 py-0.5 sm:px-2 sm:py-1 text-[10px] sm:text-xs font-medium ${v.className}`}>
           {v.icon}
           {v.label}
         </span>
       </TooltipTrigger>
-      <TooltipContent className="max-w-[320px]">
+      <TooltipContent className="max-w-[280px] sm:max-w-[320px]">
         <div className="text-xs leading-snug">{tt.categoryHelp[cat]}</div>
       </TooltipContent>
     </Tooltip>
@@ -1215,32 +1211,32 @@ function MetricHelp({ k }) {
 
   const descriptions = {
     ph: {
-      ru: "Влияет на вкус и усвояемость. Слабощелочная вода (pH 7.3-7.5) считается оптимальной для питья. Кислая вода может раздражать желудок.",
-      en: "Affects taste and absorption. Slightly alkaline (pH 7.3-7.5) is considered optimal for drinking. Acidic water may irritate the stomach."
+      ru: "Влияет на вкус и усвояемость. Слабощелочная вода (pH 7.3-7.5) считается оптимальной для питья.",
+      en: "Affects taste and absorption. Slightly alkaline (pH 7.3-7.5) is optimal."
     },
     tds: {
-      ru: "Общая минерализация. Влияет на вкус и нагрузку на почки. Для ежедневного питья рекомендуется до 500 мг/л, выше — лечебные воды.",
-      en: "Total dissolved solids. Affects taste and kidney load. For daily drinking up to 500 mg/L is recommended, higher values indicate therapeutic waters."
+      ru: "Общая минерализация. Для ежедневного питья рекомендуется до 500 мг/л, выше — лечебные воды.",
+      en: "Total dissolved solids. For daily drinking up to 500 mg/L is recommended."
     },
     ca: {
-      ru: "Кальций. Важен для костей, зубов, свёртываемости крови. Недостаток может влиять на здоровье костей, избыток — риск камней в почках.",
-      en: "Calcium. Essential for bones, teeth, blood clotting. Deficiency affects bone health, excess may increase kidney stone risk."
+      ru: "Кальций. Важен для костей, зубов, свёртываемости крови.",
+      en: "Calcium. Essential for bones, teeth, blood clotting."
     },
     mg: {
-      ru: "Магний. Участвует в работе нервной системы, мышц, сердца. Недостаток вызывает судороги и утомляемость, избыток — слабительный эффект.",
-      en: "Magnesium. Supports nerves, muscles, heart. Deficiency causes cramps and fatigue, excess has laxative effect."
+      ru: "Магний. Участвует в работе нервной системы, мышц, сердца.",
+      en: "Magnesium. Supports nerves, muscles, heart."
     },
     na: {
-      ru: "Натрий. Регулирует давление и водный баланс. Важен для спортсменов, но при гипертонии нужно ограничивать. Высокие значения — лечебные воды.",
-      en: "Sodium. Regulates blood pressure and fluid balance. Important for athletes, but should be limited for hypertension. High values indicate therapeutic waters."
+      ru: "Натрий. Регулирует давление и водный баланс. При гипертонии нужно ограничивать.",
+      en: "Sodium. Regulates blood pressure and fluid balance."
     },
     k: {
-      ru: "Калий. Поддерживает сердце, мышцы, нервную систему. Обычно в воде его мало, но в лечебных водах может быть значительным. Важен для спортсменов.",
-      en: "Potassium. Supports heart, muscles, nervous system. Usually low in water, but can be significant in therapeutic waters. Important for athletes."
+      ru: "Калий. Поддерживает сердце, мышцы, нервную систему. Важен для спортсменов.",
+      en: "Potassium. Supports heart, muscles, nervous system. Important for athletes."
     },
     cl: {
-      ru: "Хлориды. Влияют на электролитный баланс и вкус. Высокие значения придают солоноватый привкус и характерны для лечебных вод.",
-      en: "Chloride. Affects electrolyte balance and taste. High levels give a salty taste and are typical for therapeutic waters."
+      ru: "Хлориды. Влияют на электролитный баланс и вкус.",
+      en: "Chloride. Affects electrolyte balance and taste."
     }
   };
 
@@ -1255,12 +1251,12 @@ function MetricHelp({ k }) {
           aria-label="info"
           type="button"
         >
-          <Info className="h-3.5 w-3.5" />
+          <Info className="h-3 w-3 sm:h-3.5 sm:w-3.5" />
         </button>
       </DialogTrigger>
-      <DialogContent className="max-w-[400px]">
+      <DialogContent className="max-w-[380px] sm:max-w-[400px]">
         <DialogHeader>
-          <DialogTitle>
+          <DialogTitle className="text-base sm:text-lg">
             {k === "ph" && "pH"}
             {k === "tds" && (lang === "ru" ? "Минерализация (TDS)" : "Mineralization (TDS)")}
             {k === "ca" && (lang === "ru" ? "Кальций (Ca)" : "Calcium (Ca)")}
@@ -1270,15 +1266,15 @@ function MetricHelp({ k }) {
             {k === "cl" && (lang === "ru" ? "Хлориды (Cl)" : "Chloride (Cl)")}
           </DialogTitle>
         </DialogHeader>
-        <div className="space-y-4 p-6 pt-2">
-          <div className="text-sm text-slate-700 leading-relaxed">
+        <div className="space-y-3 sm:space-y-4 p-4 sm:p-6 pt-2">
+          <div className="text-xs sm:text-sm text-slate-700 leading-relaxed">
             {text}
           </div>
-          <div className="rounded-xl border border-sky-100 bg-sky-50/60 p-3">
+          <div className="rounded-xl border border-sky-100 bg-sky-50/60 p-2 sm:p-3">
             <div className="text-xs text-slate-600 font-medium mb-1">
-              {lang === "ru" ? "Эталон для daily:" : "Daily reference:"}
+              {lang === "ru" ? "Эталон:" : "Reference:"}
             </div>
-            <div className="font-medium text-slate-900">
+            <div className="font-medium text-slate-900 text-sm sm:text-base">
               {e.ref}
               {unit ? ` ${unit}` : ""}
             </div>
@@ -1296,17 +1292,17 @@ function WaterChip({ w, onRemove }) {
       initial={{ opacity: 0, scale: 0.96 }}
       animate={{ opacity: 1, scale: 1 }}
       exit={{ opacity: 0, scale: 0.96 }}
-      className={`${GLASS.chip} inline-flex items-center gap-2 px-3 py-2`}
+      className={`${GLASS.chip} inline-flex items-center gap-1 sm:gap-2 px-2 sm:px-3 py-1 sm:py-2`}
     >
-      <span className="text-base">{w.flag_emoji ?? safeCountryFlag(w.country_code)}</span>
-      <span className="max-w-[180px] truncate text-sm font-medium">{w.brand_name}</span>
+      <span className="text-sm sm:text-base">{w.flag_emoji ?? safeCountryFlag(w.country_code)}</span>
+      <span className="max-w-[100px] sm:max-w-[180px] truncate text-xs sm:text-sm font-medium">{w.brand_name}</span>
       <button
-        className="ml-1 inline-flex h-7 w-7 items-center justify-center rounded-xl border border-white/60 bg-white/60 text-slate-700 hover:bg-white"
+        className="ml-1 inline-flex h-5 w-5 sm:h-7 sm:w-7 items-center justify-center rounded-xl border border-white/60 bg-white/60 text-slate-700 hover:bg-white"
         onClick={onRemove}
         type="button"
         aria-label="remove"
       >
-        <X className="h-4 w-4" />
+        <X className="h-3 w-3 sm:h-4 sm:w-4" />
       </button>
     </motion.div>
   );
@@ -1320,42 +1316,42 @@ function AchievementPills({ w }) {
 
   const meta = {
     daily: {
-      icon: <ShieldCheck className="h-3.5 w-3.5" />,
+      icon: <ShieldCheck className="h-3 w-3 sm:h-3.5 sm:w-3.5" />,
       className: "border-emerald-200 bg-emerald-50 text-emerald-800",
     },
     therapeutic: {
-      icon: <Beaker className="h-3.5 w-3.5" />,
+      icon: <Beaker className="h-3 w-3 sm:h-3.5 sm:w-3.5" />,
       className: "border-rose-200 bg-rose-50 text-rose-800",
     },
     sport: {
-      icon: <Dumbbell className="h-3.5 w-3.5" />,
+      icon: <Dumbbell className="h-3 w-3 sm:h-3.5 sm:w-3.5" />,
       className: "border-sky-200 bg-sky-50 text-sky-800",
     },
     coffee: {
-      icon: <Coffee className="h-3.5 w-3.5" />,
+      icon: <Coffee className="h-3 w-3 sm:h-3.5 sm:w-3.5" />,
       className: "border-amber-200 bg-amber-50 text-amber-900",
     },
     sparkling: {
-      icon: <Sparkles className="h-3.5 w-3.5" />,
+      icon: <Sparkles className="h-3 w-3 sm:h-3.5 sm:w-3.5" />,
       className: "border-slate-200 bg-white text-slate-800",
     },
     still: {
-      icon: <Droplets className="h-3.5 w-3.5" />,
+      icon: <Droplets className="h-3 w-3 sm:h-3.5 sm:w-3.5" />,
       className: "border-slate-200 bg-white text-slate-800",
     },
   };
 
   return (
-    <div className="mt-2 flex flex-wrap gap-2">
+    <div className="mt-2 flex flex-wrap gap-1.5 sm:gap-2">
       {rules.map((r) => (
         <Tooltip key={r.id}>
           <TooltipTrigger asChild>
-            <span className={`inline-flex cursor-help items-center gap-1 rounded-xl border px-2 py-1 text-xs font-medium ${meta[r.id].className}`}>
+            <span className={`inline-flex cursor-help items-center gap-1 rounded-xl border px-1.5 py-0.5 sm:px-2 sm:py-1 text-[10px] sm:text-xs font-medium ${meta[r.id].className}`}>
               {meta[r.id].icon}
               {t.achievements[r.id]}
             </span>
           </TooltipTrigger>
-          <TooltipContent className="max-w-[360px]">
+          <TooltipContent className="max-w-[320px]">
             <div className="text-xs leading-snug">{lang === "ru" ? r.reasonRU : r.reasonEN}</div>
           </TooltipContent>
         </Tooltip>
@@ -1418,7 +1414,7 @@ function MetricPill({ kind }) {
   return (
     <Tooltip>
       <TooltipTrigger asChild>
-        <span className={`inline-flex cursor-help items-center rounded-xl border px-2 py-0.5 text-[11px] font-medium ${map[kind].cls}`}>
+        <span className={`inline-flex cursor-help items-center rounded-xl border px-1.5 py-0.5 text-[10px] sm:text-[11px] font-medium ${map[kind].cls}`}>
           {map[kind].label}
         </span>
       </TooltipTrigger>
@@ -1432,9 +1428,9 @@ function MetricPill({ kind }) {
 function ScoreBar({ score }) {
   const pct = clamp(score, 0, 100);
   return (
-    <div className="h-2 w-full overflow-hidden rounded-full bg-slate-200/70">
+    <div className="h-1.5 sm:h-2 w-full overflow-hidden rounded-full bg-slate-200/70">
       <div
-        className="h-2 rounded-full bg-slate-900/80"
+        className="h-full rounded-full bg-slate-900/80"
         style={{ width: `${pct}%`, opacity: 0.15 + (pct / 100) * 0.85 }}
       />
     </div>
@@ -1461,14 +1457,14 @@ function WaterProfileCard({ w, profile, rank, isWinner }) {
   ];
 
   return (
-    <div className={`${GLASS.card} p-5 ${isWinner ? 'ring-2 ring-amber-400' : ''}`}>
-      <div className="flex items-start justify-between gap-3">
-        <div className="min-w-0">
-          <div className="flex items-center gap-2">
-            <span className="text-xl">{w.flag_emoji ?? safeCountryFlag(w.country_code)}</span>
+    <div className={`${GLASS.card} p-3 sm:p-5 ${isWinner ? 'ring-2 ring-amber-400' : ''}`}>
+      <div className="flex items-start justify-between gap-2 sm:gap-3">
+        <div className="min-w-0 flex-1">
+          <div className="flex items-center gap-1.5 sm:gap-2">
+            <span className="text-lg sm:text-xl">{w.flag_emoji ?? safeCountryFlag(w.country_code)}</span>
             <div className="min-w-0">
-              <div className="truncate text-base font-semibold text-slate-900">{w.brand_name}</div>
-              <div className="mt-1 flex flex-wrap items-center gap-2">
+              <div className="truncate text-sm sm:text-base font-semibold text-slate-900">{w.brand_name}</div>
+              <div className="mt-1 flex flex-wrap items-center gap-1.5 sm:gap-2">
                 <CategoryBadge cat={computeCategory(w)} />
                 <ConfidenceBadge c={w.confidence_level} />
               </div>
@@ -1477,24 +1473,24 @@ function WaterProfileCard({ w, profile, rank, isWinner }) {
           <AchievementPills w={w} />
         </div>
 
-        <div className="w-[150px] shrink-0">
+        <div className="w-[110px] sm:w-[150px] shrink-0">
           <div className="text-xs font-medium text-slate-600">
             {lang === "ru" ? "Место" : "Rank"}
           </div>
           <div className="mt-1 flex items-end justify-between">
-            <div className="text-2xl font-semibold text-slate-900">#{rank}</div>
-            <div className="text-xs text-slate-600">
+            <div className="text-xl sm:text-2xl font-semibold text-slate-900">#{rank}</div>
+            <div className="text-[10px] sm:text-xs text-slate-600">
               {cov.count}/{cov.total}
             </div>
           </div>
-          <div className="mt-2">
+          <div className="mt-1 sm:mt-2">
             <ScoreBar score={absoluteScore} />
           </div>
           {scoreData.missingCount > 0 && (
             <Tooltip>
               <TooltipTrigger asChild>
-                <div className="mt-2 text-xs flex items-center gap-1 text-amber-600 cursor-help">
-                  <AlertTriangle className="h-3 w-3" />
+                <div className="mt-1 sm:mt-2 text-[10px] sm:text-xs flex items-center gap-1 text-amber-600 cursor-help">
+                  <AlertTriangle className="h-2.5 w-2.5 sm:h-3 sm:w-3" />
                   <span>⚠️ {scoreData.missingCount} из 7</span>
                 </div>
               </TooltipTrigger>
@@ -1510,19 +1506,19 @@ function WaterProfileCard({ w, profile, rank, isWinner }) {
         </div>
       </div>
 
-      <div className="mt-4 grid gap-2">
+      <div className="mt-3 sm:mt-4 grid gap-1.5 sm:gap-2">
         {metrics.map((m) => {
           const st = metricStatus(m.key, m.value);
           return (
-            <div key={m.key} className={`${GLASS.subtle} flex items-center justify-between gap-3 px-3 py-2`}>
-              <div className="flex items-center gap-2">
-                <div className="text-sm font-medium text-slate-800">{m.label}</div>
+            <div key={m.key} className={`${GLASS.subtle} flex items-center justify-between gap-2 sm:gap-3 px-2 sm:px-3 py-1.5 sm:py-2`}>
+              <div className="flex items-center gap-1.5 sm:gap-2">
+                <div className="text-xs sm:text-sm font-medium text-slate-800">{m.label}</div>
                 <MetricHelp k={m.key} />
                 <MetricPill kind={st} />
               </div>
-              <div className="text-sm font-semibold text-slate-900">
+              <div className="text-xs sm:text-sm font-semibold text-slate-900">
                 {fmt(m.value, m.digits ?? 0)}
-                {m.unit && <span className="ml-1 text-xs font-medium text-slate-600">{m.unit}</span>}
+                {m.unit && <span className="ml-0.5 sm:ml-1 text-[10px] sm:text-xs font-medium text-slate-600">{m.unit}</span>}
               </div>
             </div>
           );
@@ -1530,14 +1526,14 @@ function WaterProfileCard({ w, profile, rank, isWinner }) {
       </div>
 
       {profile === "Sensitive" && computeCategory(w) === "Therapeutic" && (
-        <div className="mt-3 p-2 bg-amber-50 border border-amber-200 rounded-xl text-xs text-amber-800">
+        <div className="mt-2 sm:mt-3 p-1.5 sm:p-2 bg-amber-50 border border-amber-200 rounded-lg sm:rounded-xl text-[10px] sm:text-xs text-amber-800">
           ⚠️ {lang === "ru" 
             ? "Лечебная вода. Перед употреблением проконсультируйтесь с врачом."
             : "Therapeutic water. Consult your doctor before drinking."}
         </div>
       )}
 
-      {w.notes && <div className="mt-3 text-xs text-slate-600">{w.notes}</div>}
+      {w.notes && <div className="mt-2 sm:mt-3 text-[10px] sm:text-xs text-slate-600">{w.notes}</div>}
     </div>
   );
 }
@@ -1550,40 +1546,40 @@ function WaterProfileCompactRow({ w, profile, rank }) {
 
   return (
     <details className={`${GLASS.card} group overflow-hidden`}>
-      <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-4 py-3">
-        <div className="flex min-w-0 items-center gap-2">
-          <span className="text-lg">{w.flag_emoji ?? safeCountryFlag(w.country_code)}</span>
-          <span className="truncate text-sm font-semibold text-slate-900">{w.brand_name}</span>
+      <summary className="flex cursor-pointer list-none items-center justify-between gap-2 sm:gap-3 px-3 sm:px-4 py-2 sm:py-3">
+        <div className="flex min-w-0 items-center gap-1.5 sm:gap-2">
+          <span className="text-base sm:text-lg">{w.flag_emoji ?? safeCountryFlag(w.country_code)}</span>
+          <span className="truncate text-xs sm:text-sm font-semibold text-slate-900">{w.brand_name}</span>
           <span className="hidden sm:inline-flex">
             <CategoryBadge cat={computeCategory(w)} />
           </span>
           {scoreData.missingCount > 0 && (
-            <span className="ml-2 inline-flex items-center gap-1 rounded-xl border border-amber-200 bg-amber-50 px-2 py-1 text-[11px] font-medium text-amber-900">
-              <AlertTriangle className="h-3.5 w-3.5" />
+            <span className="ml-1 sm:ml-2 inline-flex items-center gap-1 rounded-xl border border-amber-200 bg-amber-50 px-1.5 py-0.5 text-[10px] sm:text-[11px] font-medium text-amber-900">
+              <AlertTriangle className="h-2.5 w-2.5 sm:h-3.5 sm:w-3.5" />
               ⚠️
             </span>
           )}
         </div>
-        <div className="flex shrink-0 items-center gap-3">
+        <div className="flex shrink-0 items-center gap-2 sm:gap-3">
           <div className="text-right">
-            <div className="text-[11px] font-medium text-slate-600">
+            <div className="text-[10px] sm:text-[11px] font-medium text-slate-600">
               {lang === "ru" ? "Место" : "Rank"}
             </div>
-            <div className="text-sm font-semibold text-slate-900">#{rank}</div>
+            <div className="text-xs sm:text-sm font-semibold text-slate-900">#{rank}</div>
           </div>
-          <ChevronDown className="h-4 w-4 text-slate-500 transition-transform group-open:rotate-180" />
+          <ChevronDown className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-slate-500 transition-transform group-open:rotate-180" />
         </div>
       </summary>
-      <div className="px-4 pb-4">
+      <div className="px-3 sm:px-4 pb-3 sm:pb-4">
         <div className="mt-2 grid gap-2 sm:grid-cols-2">
-          <div className={`${GLASS.subtle} px-3 py-2`}>
-            <div className="text-xs text-slate-600">{t.score.coverage}</div>
-            <div className="mt-1 text-sm font-semibold text-slate-900">
+          <div className={`${GLASS.subtle} px-2 sm:px-3 py-1.5 sm:py-2`}>
+            <div className="text-[10px] sm:text-xs text-slate-600">{t.score.coverage}</div>
+            <div className="mt-1 text-xs sm:text-sm font-semibold text-slate-900">
               {dataCoverage(w).count}/{dataCoverage(w).total}
             </div>
           </div>
-          <div className={`${GLASS.subtle} px-3 py-2`}>
-            <div className="text-xs text-slate-600">{t.misc.dataCoverage}</div>
+          <div className={`${GLASS.subtle} px-2 sm:px-3 py-1.5 sm:py-2`}>
+            <div className="text-[10px] sm:text-xs text-slate-600">{t.misc.dataCoverage}</div>
             <div className="mt-1">
               <ScoreBar score={absoluteScore} />
             </div>
@@ -1591,7 +1587,7 @@ function WaterProfileCompactRow({ w, profile, rank }) {
         </div>
 
         <div className="mt-3 grid gap-2">
-          <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+          <div className="grid grid-cols-2 gap-1.5 sm:gap-2 sm:grid-cols-3">
             <CompactMetric label="pH" value={w.ph ?? null} digits={1} k="ph" />
             <CompactMetric label="TDS" value={w.tds_mg_l ?? null} k="tds" unit="мг/л" />
             <CompactMetric label="Ca" value={w.ca_mg_l ?? null} k="ca" unit="мг/л" />
@@ -1613,16 +1609,16 @@ function WaterProfileCompactRow({ w, profile, rank }) {
 function CompactMetric({ label, value, digits, unit, k }) {
   const st = metricStatus(k, value);
   return (
-    <div className={`${GLASS.subtle} flex items-center justify-between gap-2 px-3 py-2`}>
-      <div className="flex items-center gap-2">
-        <div className="text-xs font-semibold text-slate-800">{label}</div>
+    <div className={`${GLASS.subtle} flex items-center justify-between gap-1.5 sm:gap-2 px-2 sm:px-3 py-1.5 sm:py-2`}>
+      <div className="flex items-center gap-1 sm:gap-2">
+        <div className="text-[10px] sm:text-xs font-semibold text-slate-800">{label}</div>
         <MetricHelp k={k} />
       </div>
-      <div className="flex items-center gap-2">
+      <div className="flex items-center gap-1 sm:gap-2">
         <MetricPill kind={st} />
-        <div className="text-xs font-semibold text-slate-900">
+        <div className="text-[10px] sm:text-xs font-semibold text-slate-900">
           {fmt(value, digits ?? 0)}
-          {unit && <span className="ml-1 text-[11px] font-medium text-slate-600">{unit}</span>}
+          {unit && <span className="ml-0.5 text-[9px] sm:text-[11px] font-medium text-slate-600">{unit}</span>}
         </div>
       </div>
     </div>
@@ -1631,12 +1627,12 @@ function CompactMetric({ label, value, digits, unit, k }) {
 
 function LegendPills({ items }) {
   return (
-    <div className="mt-3 flex flex-wrap gap-2">
+    <div className="mt-3 flex flex-wrap gap-1.5 sm:gap-2">
       {items.map((x) => (
-        <span key={x.name} className={`${GLASS.chip} inline-flex items-center gap-2 px-3 py-1.5 text-xs font-medium`}>
-          <span className="text-base">{x.flag ?? "💧"}</span>
-          <span className="inline-block h-2.5 w-2.5 rounded-full" style={{ background: x.color }} />
-          <span className="max-w-[180px] truncate">{x.name}</span>
+        <span key={x.name} className={`${GLASS.chip} inline-flex items-center gap-1 sm:gap-2 px-2 sm:px-3 py-1 sm:py-1.5 text-[10px] sm:text-xs font-medium`}>
+          <span className="text-sm sm:text-base">{x.flag ?? "💧"}</span>
+          <span className="inline-block h-2 w-2 sm:h-2.5 sm:w-2.5 rounded-full" style={{ background: x.color }} />
+          <span className="max-w-[120px] sm:max-w-[180px] truncate">{x.name}</span>
         </span>
       ))}
     </div>
@@ -1687,37 +1683,37 @@ function MetricsTable({ selected, profile }) {
 
   if (selected.length === 0) {
     return (
-      <div className={`${GLASS.card} p-6 text-center text-slate-600`}>
+      <div className={`${GLASS.card} p-4 sm:p-6 text-center text-slate-600`}>
         {t.misc.empty}
       </div>
     );
   }
 
   return (
-    <div className={`${GLASS.card} p-6`}>
+    <div className={`${GLASS.card} p-3 sm:p-6`}>
       <div className="flex items-center justify-between gap-3">
         <div>
-          <div className="text-lg font-semibold text-slate-900">{t.table.title}</div>
+          <div className="text-base sm:text-lg font-semibold text-slate-900">{t.table.title}</div>
         </div>
       </div>
 
-      <div className="mt-4 overflow-auto rounded-2xl border-2 border-slate-300 bg-white/55 backdrop-blur">
-        <table className="w-full text-left text-sm border-collapse">
+      <div className="mt-3 sm:mt-4 overflow-x-auto rounded-xl sm:rounded-2xl border-2 border-slate-300 bg-white/55 backdrop-blur">
+        <table className="w-full text-left text-[10px] sm:text-sm border-collapse min-w-[600px] sm:min-w-full">
           <thead>
             <tr className="bg-slate-100">
-              <th className="px-4 py-3 border border-slate-300 font-medium">Показатель</th>
-              <th className="px-4 py-3 border border-slate-300 font-medium">Эталон</th>
-              <th className="px-4 py-3 border border-slate-300 font-medium">Ед.</th>
+              <th className="px-2 sm:px-4 py-2 sm:py-3 border border-slate-300 font-medium">Показатель</th>
+              <th className="px-2 sm:px-4 py-2 sm:py-3 border border-slate-300 font-medium">Эталон</th>
+              <th className="px-2 sm:px-4 py-2 sm:py-3 border border-slate-300 font-medium">Ед.</th>
               {selected.map((w) => (
                 <th 
                   key={w.id} 
-                  className={`px-4 py-3 border border-slate-300 font-medium ${w.id === winnerId ? 'bg-amber-100' : ''}`}
+                  className={`px-2 sm:px-4 py-2 sm:py-3 border border-slate-300 font-medium ${w.id === winnerId ? 'bg-amber-100' : ''}`}
                 >
-                  <div className="flex items-center gap-2">
-                    <span className="text-base">{w.flag_emoji ?? safeCountryFlag(w.country_code)}</span>
-                    <span className="max-w-[160px] truncate text-slate-900">{w.brand_name}</span>
+                  <div className="flex items-center gap-1 sm:gap-2">
+                    <span className="text-xs sm:text-base">{w.flag_emoji ?? safeCountryFlag(w.country_code)}</span>
+                    <span className="max-w-[80px] sm:max-w-[160px] truncate text-slate-900 text-xs sm:text-sm">{w.brand_name}</span>
                     {w.id === winnerId && (
-                      <span className="ml-1 text-amber-600" title="Победитель по профилю">🏆</span>
+                      <span className="ml-0.5 sm:ml-1 text-amber-600 text-xs sm:text-base" title="Победитель по профилю">🏆</span>
                     )}
                   </div>
                 </th>
@@ -1728,21 +1724,14 @@ function MetricsTable({ selected, profile }) {
           <tbody>
             {rows.map((r, rowIdx) => (
               <tr key={r.key} className={rowIdx % 2 === 0 ? 'bg-white/60' : 'bg-white/40'}>
-                <td className="px-4 py-3 border border-slate-300">
-                  <div className="flex items-center gap-2">
+                <td className="px-2 sm:px-4 py-2 sm:py-3 border border-slate-300">
+                  <div className="flex items-center gap-1 sm:gap-2">
                     <span className="font-medium text-slate-900">{r.label}</span>
                     <MetricHelp k={r.key} />
                   </div>
                 </td>
-                
-                <td className="px-4 py-3 border border-slate-300 text-slate-700">
-                  {r.ref}
-                </td>
-                
-                <td className="px-4 py-3 border border-slate-300 text-slate-700">
-                  {r.unit}
-                </td>
-                
+                <td className="px-2 sm:px-4 py-2 sm:py-3 border border-slate-300 text-slate-700">{r.ref}</td>
+                <td className="px-2 sm:px-4 py-2 sm:py-3 border border-slate-300 text-slate-700">{r.unit}</td>
                 {selected.map((w) => {
                   const v = r.getValue(w);
                   const percentage = getDailyPercentage(r.key, v);
@@ -1751,22 +1740,17 @@ function MetricsTable({ selected, profile }) {
                   return (
                     <td 
                       key={w.id + r.key} 
-                      className={`px-4 py-3 border border-slate-300 ${w.id === winnerId ? 'bg-amber-50/30' : ''}`}
+                      className={`px-2 sm:px-4 py-2 sm:py-3 border border-slate-300 ${w.id === winnerId ? 'bg-amber-50/30' : ''}`}
                     >
-                      <div className="flex flex-col gap-1">
+                      <div className="flex flex-col gap-0.5 sm:gap-1">
                         <div className="flex items-center justify-between">
-                          <span className="font-semibold text-slate-900">{fmt(v, r.digits ?? 0)}</span>
+                          <span className="font-semibold text-slate-900 text-xs sm:text-sm">{fmt(v, r.digits ?? 0)}</span>
                           {percentage && (
-                            <span className={`text-xs px-2 py-0.5 rounded-full ${status.bg} ${status.color}`}>
+                            <span className={`text-[9px] sm:text-xs px-1 sm:px-2 py-0.5 rounded-full ${status.bg} ${status.color}`}>
                               {percentage}%
                             </span>
                           )}
                         </div>
-                        {percentage && (
-                          <div className="text-xs text-slate-500">
-                            от нормы
-                          </div>
-                        )}
                       </div>
                     </td>
                   );
@@ -1775,12 +1759,12 @@ function MetricsTable({ selected, profile }) {
             ))}
             
             <tr className="bg-slate-50/80">
-              <td className="px-4 py-3 border border-slate-300 font-medium" colSpan={3}>
-                <div className="flex items-center gap-2">
-                  <span>🏆 Рейтинг</span>
+              <td className="px-2 sm:px-4 py-2 sm:py-3 border border-slate-300 font-medium" colSpan={3}>
+                <div className="flex items-center gap-1 sm:gap-2">
+                  <span className="text-xs sm:text-sm">🏆 Рейтинг</span>
                   <Tooltip>
                     <TooltipTrigger asChild>
-                      <Info className="h-4 w-4 text-slate-500 cursor-help" />
+                      <Info className="h-3 w-3 sm:h-4 sm:w-4 text-slate-500 cursor-help" />
                     </TooltipTrigger>
                     <TooltipContent>
                       <div className="text-xs max-w-[200px]">
@@ -1803,17 +1787,17 @@ function MetricsTable({ selected, profile }) {
                 return (
                   <td 
                     key={`rating-${w.id}`} 
-                    className={`px-4 py-3 border border-slate-300 ${w.id === winnerId ? 'bg-amber-100' : ''}`}
+                    className={`px-2 sm:px-4 py-2 sm:py-3 border border-slate-300 ${w.id === winnerId ? 'bg-amber-100' : ''}`}
                   >
                     <div className="flex flex-col">
                       <div className="flex items-center justify-between">
-                        <span className={`text-lg font-bold ${ratingColor}`}>
+                        <span className={`text-sm sm:text-lg font-bold ${ratingColor}`}>
                           {scoreData.score.toFixed(1)}
                         </span>
                         {scoreData.missingCount > 0 && (
                           <Tooltip>
                             <TooltipTrigger asChild>
-                              <span className="ml-1 text-amber-600 cursor-help text-sm">⚠️</span>
+                              <span className="ml-0.5 sm:ml-1 text-amber-600 cursor-help text-xs sm:text-sm">⚠️</span>
                             </TooltipTrigger>
                             <TooltipContent>
                               <div className="text-xs">
@@ -1825,7 +1809,7 @@ function MetricsTable({ selected, profile }) {
                           </Tooltip>
                         )}
                       </div>
-                      <div className="mt-1 h-1.5 w-full bg-slate-200 rounded-full overflow-hidden">
+                      <div className="mt-0.5 sm:mt-1 h-1 sm:h-1.5 w-full bg-slate-200 rounded-full overflow-hidden">
                         <div 
                           className={`h-full rounded-full ${
                             scoreData.score >= 80 ? 'bg-emerald-500' :
@@ -1844,30 +1828,30 @@ function MetricsTable({ selected, profile }) {
         </table>
       </div>
 
-      <div className="mt-4 flex flex-wrap gap-3 text-xs">
-        <div className="flex items-center gap-2">
-          <span className="w-3 h-3 rounded-full bg-emerald-50 border border-emerald-200"></span>
-          <span>Норма (80-120% от нормы)</span>
+      <div className="mt-3 sm:mt-4 flex flex-wrap gap-2 sm:gap-3 text-[9px] sm:text-xs">
+        <div className="flex items-center gap-1 sm:gap-2">
+          <span className="w-2 h-2 sm:w-3 sm:h-3 rounded-full bg-emerald-50 border border-emerald-200"></span>
+          <span>Норма</span>
         </div>
-        <div className="flex items-center gap-2">
-          <span className="w-3 h-3 rounded-full bg-sky-50 border border-sky-200"></span>
-          <span>Средний (50-80%)</span>
+        <div className="flex items-center gap-1 sm:gap-2">
+          <span className="w-2 h-2 sm:w-3 sm:h-3 rounded-full bg-sky-50 border border-sky-200"></span>
+          <span>Средний</span>
         </div>
-        <div className="flex items-center gap-2">
-          <span className="w-3 h-3 rounded-full bg-amber-50 border border-amber-200"></span>
-          <span>Низкий (&lt;50%)</span>
+        <div className="flex items-center gap-1 sm:gap-2">
+          <span className="w-2 h-2 sm:w-3 sm:h-3 rounded-full bg-amber-50 border border-amber-200"></span>
+          <span>Низкий</span>
         </div>
-        <div className="flex items-center gap-2">
-          <span className="w-3 h-3 rounded-full bg-orange-50 border border-orange-200"></span>
-          <span>Высокий (120-200%)</span>
+        <div className="flex items-center gap-1 sm:gap-2">
+          <span className="w-2 h-2 sm:w-3 sm:h-3 rounded-full bg-orange-50 border border-orange-200"></span>
+          <span>Высокий</span>
         </div>
-        <div className="flex items-center gap-2">
-          <span className="w-3 h-3 rounded-full bg-rose-50 border border-rose-200"></span>
-          <span>Избыток (&gt;200%)</span>
+        <div className="flex items-center gap-1 sm:gap-2">
+          <span className="w-2 h-2 sm:w-3 sm:h-3 rounded-full bg-rose-50 border border-rose-200"></span>
+          <span>Избыток</span>
         </div>
       </div>
 
-      <div className="mt-3 text-xs text-slate-600">
+      <div className="mt-2 sm:mt-3 text-[9px] sm:text-xs text-slate-600">
         * ориентир по суточной норме, ** натрий зависит от профиля
       </div>
     </div>
@@ -1905,30 +1889,30 @@ function ImportDialog({ onMerge }) {
   return (
     <Dialog>
       <DialogTrigger asChild>
-        <Button variant="outline" className="h-10 rounded-2xl bg-white/70 hover:bg-white">
-          <Upload className="mr-2 h-4 w-4" />
+        <Button variant="outline" className="h-8 sm:h-10 rounded-xl sm:rounded-2xl bg-white/70 hover:bg-white">
+          <Upload className="mr-1 sm:mr-2 h-3 w-3 sm:h-4 sm:w-4" />
           {t.actions.import}
         </Button>
       </DialogTrigger>
-      <DialogContent className="max-w-[820px]">
+      <DialogContent className="max-w-[95vw] sm:max-w-[820px]">
         <DialogHeader>
           <DialogTitle>{t.import.title}</DialogTitle>
         </DialogHeader>
-        <div className="space-y-3 p-6 pt-2">
-          <div className="text-sm text-slate-600">{t.import.hint}</div>
+        <div className="space-y-3 p-4 sm:p-6 pt-2">
+          <div className="text-xs sm:text-sm text-slate-600">{t.import.hint}</div>
           <Textarea
             value={text}
             onChange={(e) => setText(e.target.value)}
             placeholder={t.import.placeholder}
-            className="min-h-[220px]"
+            className="min-h-[150px] sm:min-h-[220px]"
           />
           <div className="flex flex-wrap items-center gap-2">
-            <Button onClick={parse} className="h-10 rounded-2xl">
-              <ClipboardPaste className="mr-2 h-4 w-4" />
+            <Button onClick={parse} className="h-8 sm:h-10 rounded-xl sm:rounded-2xl">
+              <ClipboardPaste className="mr-1 sm:mr-2 h-3 w-3 sm:h-4 sm:w-4" />
               {t.import.parse}
             </Button>
-            <label className="inline-flex cursor-pointer items-center gap-2 rounded-2xl border border-white/60 bg-white/70 px-4 py-2 text-sm font-medium text-slate-800 hover:bg-white">
-              <Upload className="h-4 w-4" />
+            <label className="inline-flex cursor-pointer items-center gap-1 sm:gap-2 rounded-xl sm:rounded-2xl border border-white/60 bg-white/70 px-2 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm font-medium text-slate-800 hover:bg-white">
+              <Upload className="h-3 w-3 sm:h-4 sm:w-4" />
               <input
                 type="file"
                 accept=".json,.csv,text/csv,application/json"
@@ -1940,7 +1924,7 @@ function ImportDialog({ onMerge }) {
               />
               {lang === "ru" ? "Загрузить файл" : "Upload file"}
             </label>
-            {status && <span className="text-sm text-slate-700">{status}</span>}
+            {status && <span className="text-xs sm:text-sm text-slate-700">{status}</span>}
           </div>
         </div>
       </DialogContent>
@@ -2023,34 +2007,34 @@ function ScannerDialog({ onScanComplete }) {
   return (
     <Dialog>
       <DialogTrigger asChild>
-        <Button variant="outline" className="h-10 rounded-2xl bg-white/70 hover:bg-white inline-flex items-center">
-          <Camera className="mr-2 h-4 w-4" />
+        <Button variant="outline" className="h-8 sm:h-10 rounded-xl sm:rounded-2xl bg-white/70 hover:bg-white inline-flex items-center">
+          <Camera className="mr-1 sm:mr-2 h-3 w-3 sm:h-4 sm:w-4" />
           {lang === "ru" ? "Сканер" : "Scanner"}
         </Button>
       </DialogTrigger>
       
-      <DialogContent className="max-w-2xl">
+      <DialogContent className="max-w-[95vw] sm:max-w-2xl">
         <DialogHeader>
           <DialogTitle>
             {lang === "ru" ? "📸 Сканер этикетки" : "📸 Label Scanner"}
           </DialogTitle>
         </DialogHeader>
         
-        <div className="p-6 pt-2 space-y-4">
-          <div className="text-sm text-slate-600 bg-sky-50/60 p-3 rounded-xl">
+        <div className="p-4 sm:p-6 pt-2 space-y-3 sm:space-y-4">
+          <div className="text-xs sm:text-sm text-slate-600 bg-sky-50/60 p-2 sm:p-3 rounded-xl">
             {lang === "ru" 
               ? "Загрузите фото этикетки воды, и мы распознаем состав с помощью OCR (демо-режим)"
               : "Upload a photo of the water label, and we'll extract the composition using OCR (demo mode)"}
           </div>
           
           {!previewUrl && !isScanning && !scanResult && (
-            <div className="border-2 border-dashed border-sky-200 rounded-2xl p-8 text-center hover:bg-sky-50/30 transition cursor-pointer"
+            <div className="border-2 border-dashed border-sky-200 rounded-xl sm:rounded-2xl p-6 sm:p-8 text-center hover:bg-sky-50/30 transition cursor-pointer"
                  onClick={() => document.getElementById('scan-file-input').click()}>
-              <Camera className="h-12 w-12 mx-auto text-sky-400 mb-3" />
-              <div className="text-sm font-medium text-slate-700 mb-1">
+              <Camera className="h-8 w-8 sm:h-12 sm:w-12 mx-auto text-sky-400 mb-2 sm:mb-3" />
+              <div className="text-xs sm:text-sm font-medium text-slate-700 mb-0.5 sm:mb-1">
                 {lang === "ru" ? "Нажмите для загрузки фото" : "Click to upload photo"}
               </div>
-              <div className="text-xs text-slate-500">
+              <div className="text-[10px] sm:text-xs text-slate-500">
                 {lang === "ru" ? "Поддерживаются JPG, PNG" : "JPG, PNG supported"}
               </div>
               <input
@@ -2064,17 +2048,17 @@ function ScannerDialog({ onScanComplete }) {
           )}
           
           {previewUrl && !isScanning && !scanResult && (
-            <div className="space-y-3">
-              <div className="relative rounded-2xl overflow-hidden border border-white/60">
-                <img src={previewUrl} alt="Preview" className="w-full h-auto max-h-64 object-contain" />
+            <div className="space-y-2 sm:space-y-3">
+              <div className="relative rounded-xl sm:rounded-2xl overflow-hidden border border-white/60">
+                <img src={previewUrl} alt="Preview" className="w-full h-auto max-h-48 sm:max-h-64 object-contain" />
               </div>
               <div className="flex gap-2">
-                <Button onClick={startScan} className="flex-1">
-                  <Scan className="mr-2 h-4 w-4" />
+                <Button onClick={startScan} className="flex-1 h-8 sm:h-10">
+                  <Scan className="mr-1 sm:mr-2 h-3 w-3 sm:h-4 sm:w-4" />
                   {lang === "ru" ? "Начать сканирование" : "Start scan"}
                 </Button>
-                <Button variant="outline" onClick={cancelScan} className="flex-1">
-                  <X className="mr-2 h-4 w-4" />
+                <Button variant="outline" onClick={cancelScan} className="flex-1 h-8 sm:h-10">
+                  <X className="mr-1 sm:mr-2 h-3 w-3 sm:h-4 sm:w-4" />
                   {lang === "ru" ? "Отмена" : "Cancel"}
                 </Button>
               </div>
@@ -2082,68 +2066,68 @@ function ScannerDialog({ onScanComplete }) {
           )}
           
           {isScanning && (
-            <div className="space-y-4 py-6">
+            <div className="space-y-3 sm:space-y-4 py-4 sm:py-6">
               <div className="flex items-center justify-center">
-                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-sky-600"></div>
+                <div className="animate-spin rounded-full h-8 w-8 sm:h-12 sm:w-12 border-b-2 border-sky-600"></div>
               </div>
-              <div className="text-center text-sm text-slate-700">
+              <div className="text-center text-xs sm:text-sm text-slate-700">
                 {lang === "ru" ? "Анализируем этикетку..." : "Analyzing label..."}
               </div>
-              <div className="h-2 bg-slate-200 rounded-full overflow-hidden">
+              <div className="h-1.5 sm:h-2 bg-slate-200 rounded-full overflow-hidden">
                 <div 
                   className="h-full bg-sky-500 rounded-full transition-all duration-300"
                   style={{ width: `${scanProgress}%` }}
                 />
               </div>
-              <div className="text-center text-xs text-slate-500">
+              <div className="text-center text-[10px] sm:text-xs text-slate-500">
                 {lang === "ru" ? `Распознано ${Math.floor(scanProgress/14)} из 7 показателей` : `${Math.floor(scanProgress/14)} of 7 metrics recognized`}
               </div>
             </div>
           )}
           
           {scanResult && !isScanning && (
-            <div className="space-y-4">
-              <div className="bg-emerald-50 border border-emerald-200 rounded-2xl p-4">
-                <div className="flex items-center gap-2 text-emerald-700 mb-3">
-                  <ShieldCheck className="h-5 w-5" />
-                  <span className="font-medium">
+            <div className="space-y-3 sm:space-y-4">
+              <div className="bg-emerald-50 border border-emerald-200 rounded-xl sm:rounded-2xl p-3 sm:p-4">
+                <div className="flex items-center gap-1.5 sm:gap-2 text-emerald-700 mb-2 sm:mb-3">
+                  <ShieldCheck className="h-4 w-4 sm:h-5 sm:w-5" />
+                  <span className="font-medium text-xs sm:text-sm">
                     {lang === "ru" ? "Этикетка распознана!" : "Label recognized!"}
                   </span>
                 </div>
                 
-                <div className="flex items-center gap-3 mb-3">
-                  <span className="text-3xl">{scanResult.flag_emoji}</span>
+                <div className="flex items-center gap-2 sm:gap-3 mb-2 sm:mb-3">
+                  <span className="text-2xl sm:text-3xl">{scanResult.flag_emoji}</span>
                   <div>
-                    <div className="font-semibold text-lg">{scanResult.brand_name}</div>
-                    <div className="flex gap-2 mt-1">
+                    <div className="font-semibold text-sm sm:text-lg">{scanResult.brand_name}</div>
+                    <div className="flex gap-1.5 sm:gap-2 mt-0.5 sm:mt-1">
                       <CategoryBadge cat={scanResult.category} />
                       <ConfidenceBadge c={scanResult.confidence_level} />
                     </div>
                   </div>
                 </div>
                 
-                <div className="grid grid-cols-2 gap-2 text-sm">
-                  <div className="bg-white/70 p-2 rounded-xl flex justify-between">
+                <div className="grid grid-cols-2 gap-1.5 sm:gap-2 text-xs sm:text-sm">
+                  <div className="bg-white/70 p-1.5 sm:p-2 rounded-lg sm:rounded-xl flex justify-between">
                     <span className="text-slate-600">pH</span>
                     <span className="font-semibold">{scanResult.ph}</span>
                   </div>
-                  <div className="bg-white/70 p-2 rounded-xl flex justify-between">
+                  <div className="bg-white/70 p-1.5 sm:p-2 rounded-lg sm:rounded-xl flex justify-between">
                     <span className="text-slate-600">TDS</span>
                     <span className="font-semibold">{scanResult.tds_mg_l} мг/л</span>
                   </div>
-                  <div className="bg-white/70 p-2 rounded-xl flex justify-between">
+                  <div className="bg-white/70 p-1.5 sm:p-2 rounded-lg sm:rounded-xl flex justify-between">
                     <span className="text-slate-600">Ca</span>
                     <span className="font-semibold">{scanResult.ca_mg_l} мг/л</span>
                   </div>
-                  <div className="bg-white/70 p-2 rounded-xl flex justify-between">
+                  <div className="bg-white/70 p-1.5 sm:p-2 rounded-lg sm:rounded-xl flex justify-between">
                     <span className="text-slate-600">Mg</span>
                     <span className="font-semibold">{scanResult.mg_mg_l} мг/л</span>
                   </div>
-                  <div className="bg-white/70 p-2 rounded-xl flex justify-between">
+                  <div className="bg-white/70 p-1.5 sm:p-2 rounded-lg sm:rounded-xl flex justify-between">
                     <span className="text-slate-600">Na</span>
                     <span className="font-semibold">{scanResult.na_mg_l} мг/л</span>
                   </div>
-                  <div className="bg-white/70 p-2 rounded-xl flex justify-between">
+                  <div className="bg-white/70 p-1.5 sm:p-2 rounded-lg sm:rounded-xl flex justify-between">
                     <span className="text-slate-600">Cl</span>
                     <span className="font-semibold">{scanResult.cl_mg_l} мг/л</span>
                   </div>
@@ -2151,12 +2135,12 @@ function ScannerDialog({ onScanComplete }) {
               </div>
               
               <div className="flex gap-2">
-                <Button onClick={confirmScan} className="flex-1">
-                  <Check className="mr-2 h-4 w-4" />
+                <Button onClick={confirmScan} className="flex-1 h-8 sm:h-10">
+                  <Check className="mr-1 sm:mr-2 h-3 w-3 sm:h-4 sm:w-4" />
                   {lang === "ru" ? "Добавить в список" : "Add to list"}
                 </Button>
-                <Button variant="outline" onClick={cancelScan} className="flex-1">
-                  <RotateCcw className="mr-2 h-4 w-4" />
+                <Button variant="outline" onClick={cancelScan} className="flex-1 h-8 sm:h-10">
+                  <RotateCcw className="mr-1 sm:mr-2 h-3 w-3 sm:h-4 sm:w-4" />
                   {lang === "ru" ? "Новое фото" : "New photo"}
                 </Button>
               </div>
@@ -2168,6 +2152,7 @@ function ScannerDialog({ onScanComplete }) {
   );
 }
 
+// ============== КОМПОНЕНТ WATER PICKER С АЛФАВИТНОЙ НАВИГАЦИЕЙ ==============
 function WaterPicker({ waters, selectedIds, onToggle }) {
   const lang = React.useContext(LangCtx);
   const t = I18N[lang];
@@ -2176,42 +2161,81 @@ function WaterPicker({ waters, selectedIds, onToggle }) {
   const [group, setGroup] = useState("all");
   const [onlyVerified, setOnlyVerified] = useState(false);
   const [tdsMax, setTdsMax] = useState(2000);
+  const [selectedLetter, setSelectedLetter] = useState(null);
 
+  // Получаем буквы для навигации
+  const letters = useMemo(() => {
+    const uniqueLetters = new Set();
+    waters.forEach(w => {
+      const firstChar = w.brand_name.charAt(0).toUpperCase();
+      if (/[A-ZА-Я]/.test(firstChar)) {
+        uniqueLetters.add(firstChar);
+      }
+    });
+    return Array.from(uniqueLetters).sort((a, b) => {
+      // Русские буквы после латинских
+      const isLatinA = /[A-Z]/.test(a);
+      const isLatinB = /[A-Z]/.test(b);
+      if (isLatinA && !isLatinB) return -1;
+      if (!isLatinA && isLatinB) return 1;
+      return a.localeCompare(b);
+    });
+  }, [waters]);
+
+  // Фильтрация вод
   const filtered = useMemo(() => {
-    const q = query.trim().toLowerCase();
-    return waters
+    let q = query.trim().toLowerCase();
+    let result = waters
       .filter((w) => (group === "all" ? true : w.group === group))
       .filter((w) => (onlyVerified ? w.confidence_level === "high" : true))
-      .filter((w) => (w.tds_mg_l ?? 0) <= tdsMax)
-      .filter((w) => (q ? w.brand_name.toLowerCase().includes(q) : true))
-      .sort((a, b) => a.brand_name.localeCompare(b.brand_name)); // ← сортировка по алфавиту
-  }, [waters, query, group, onlyVerified, tdsMax]);
+      .filter((w) => (w.tds_mg_l ?? 0) <= tdsMax);
+    
+    if (q) {
+      result = result.filter((w) => w.brand_name.toLowerCase().includes(q));
+    } else if (selectedLetter) {
+      result = result.filter((w) => w.brand_name.charAt(0).toUpperCase() === selectedLetter);
+    }
+    
+    return result.sort((a, b) => a.brand_name.localeCompare(b.brand_name));
+  }, [waters, query, group, onlyVerified, tdsMax, selectedLetter]);
+
+  const handleLetterClick = (letter) => {
+    if (selectedLetter === letter) {
+      setSelectedLetter(null);
+    } else {
+      setSelectedLetter(letter);
+      setQuery("");
+    }
+  };
 
   return (
-    <div className={`${GLASS.card} p-6`}>
-      <div className="flex flex-wrap items-center justify-between gap-3">
+    <div className={`${GLASS.card} p-3 sm:p-6`}>
+      <div className="flex flex-col sm:flex-row sm:flex-wrap items-start sm:items-center justify-between gap-3">
         <div>
-          <div className="text-lg font-semibold text-slate-900">{t.screenA}</div>
-          <div className="mt-1 text-sm text-slate-600">{t.limitHint}</div>
+          <div className="text-base sm:text-lg font-semibold text-slate-900">{t.screenA}</div>
+          <div className="text-xs sm:text-sm text-slate-600">{t.limitHint}</div>
         </div>
-        <div className="flex flex-wrap items-center gap-2">
-          <div className="relative">
-            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" />
+        <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
+          <div className="relative flex-1 sm:flex-none">
+            <Search className="pointer-events-none absolute left-2 sm:left-3 top-1/2 h-3 w-3 sm:h-4 sm:w-4 -translate-y-1/2 text-slate-500" />
             <Input
               value={query}
-              onChange={(e) => setQuery(e.target.value)}
+              onChange={(e) => {
+                setQuery(e.target.value);
+                setSelectedLetter(null);
+              }}
               placeholder={t.searchPlaceholder}
-              className="h-10 w-[320px] rounded-2xl bg-white/70 pl-10"
+              className="h-8 sm:h-10 w-full sm:w-[320px] rounded-xl sm:rounded-2xl bg-white/70 pl-7 sm:pl-10 text-xs sm:text-sm"
             />
           </div>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="outline" className="h-10 rounded-2xl bg-white/70 hover:bg-white">
-                <SlidersHorizontal className="mr-2 h-4 w-4" />
+              <Button variant="outline" className="h-8 sm:h-10 rounded-xl sm:rounded-2xl bg-white/70 hover:bg-white">
+                <SlidersHorizontal className="mr-1 sm:mr-2 h-3 w-3 sm:h-4 sm:w-4" />
                 {t.filters.title}
               </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent className="w-72">
+            <DropdownMenuContent className="w-64 sm:w-72">
               <DropdownMenuLabel>{t.filters.group}</DropdownMenuLabel>
               <DropdownMenuSeparator />
               <DropdownMenuItem onClick={() => setGroup("all")}>{t.filters.all}</DropdownMenuItem>
@@ -2239,10 +2263,50 @@ function WaterPicker({ waters, selectedIds, onToggle }) {
         </div>
       </div>
 
-      <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+      {/* Алфавитная навигация */}
+      {letters.length > 0 && !query && (
+        <div className="mt-3 sm:mt-4 flex flex-wrap gap-1.5 sm:gap-2 border-t border-white/40 pt-3 sm:pt-4">
+          <button
+            onClick={() => setSelectedLetter(null)}
+            className={`px-2 sm:px-3 py-1 sm:py-1.5 rounded-lg sm:rounded-xl text-xs sm:text-sm font-medium transition-all ${
+              !selectedLetter 
+                ? 'bg-slate-800 text-white shadow-md' 
+                : 'bg-white/60 text-slate-600 hover:bg-white/80'
+            }`}
+          >
+            Все
+          </button>
+          {letters.map(letter => (
+            <button
+              key={letter}
+              onClick={() => handleLetterClick(letter)}
+              className={`px-2 sm:px-3 py-1 sm:py-1.5 rounded-lg sm:rounded-xl text-xs sm:text-sm font-medium transition-all ${
+                selectedLetter === letter 
+                  ? 'bg-sky-500 text-white shadow-md' 
+                  : 'bg-white/60 text-slate-600 hover:bg-white/80'
+              }`}
+            >
+              {letter}
+            </button>
+          ))}
+        </div>
+      )}
+
+      {selectedLetter && !query && (
+        <div className="mt-2 text-xs text-slate-500 flex items-center gap-2">
+          <span>Показаны воды на букву <span className="font-semibold text-sky-600">{selectedLetter}</span></span>
+          <button 
+            onClick={() => setSelectedLetter(null)}
+            className="text-sky-500 hover:text-sky-700 underline"
+          >
+            Сбросить
+          </button>
+        </div>
+      )}
+
+      <div className="mt-3 sm:mt-4 grid gap-2 sm:gap-3 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
         {filtered.map((w) => {
           const selected = selectedIds.includes(w.id);
-          const minOk = hasMinimumMetrics(w);
           return (
             <button
               key={w.id}
@@ -2250,32 +2314,32 @@ function WaterPicker({ waters, selectedIds, onToggle }) {
               onClick={() => onToggle(w)}
               className={`${GLASS.subtle} text-left transition hover:bg-white/70 ${selected ? "ring-2 ring-sky-200" : ""}`}
             >
-              <div className="p-4">
+              <div className="p-2 sm:p-4">
                 <div className="flex items-start justify-between gap-2">
                   <div className="min-w-0">
-                    <div className="flex items-center gap-2">
-                      <span className="text-xl">{w.flag_emoji ?? safeCountryFlag(w.country_code)}</span>
+                    <div className="flex items-center gap-1.5 sm:gap-2">
+                      <span className="text-base sm:text-xl">{w.flag_emoji ?? safeCountryFlag(w.country_code)}</span>
                       <div className="min-w-0">
-                        <div className="truncate text-sm font-semibold text-slate-900">{w.brand_name}</div>
-                        <div className="mt-1 flex flex-wrap items-center gap-2">
+                        <div className="truncate text-xs sm:text-sm font-semibold text-slate-900">{w.brand_name}</div>
+                        <div className="mt-0.5 sm:mt-1 flex flex-wrap items-center gap-1 sm:gap-2">
                           <CategoryBadge cat={computeCategory(w)} />
                           <ConfidenceBadge c={w.confidence_level} />
                         </div>
                       </div>
                     </div>
                   </div>
-                  <div className="inline-flex items-center gap-2 rounded-2xl border border-white/60 bg-white/70 px-2 py-1 text-xs font-semibold text-slate-800">
-                    {selected ? "✓" : <Plus className="h-4 w-4" />}
+                  <div className="inline-flex items-center gap-1 sm:gap-2 rounded-xl sm:rounded-2xl border border-white/60 bg-white/70 px-1.5 sm:px-2 py-0.5 sm:py-1 text-[10px] sm:text-xs font-semibold text-slate-800">
+                    {selected ? "✓" : <Plus className="h-3 w-3 sm:h-4 sm:w-4" />}
                     {selected ? t.selected : t.actions.add}
                   </div>
                 </div>
 
-                <div className="mt-3 grid grid-cols-2 gap-2 text-xs text-slate-700">
-                  <div className="flex items-center justify-between rounded-xl border border-white/60 bg-white/60 px-2 py-1">
+                <div className="mt-2 sm:mt-3 grid grid-cols-2 gap-1.5 sm:gap-2 text-[10px] sm:text-xs text-slate-700">
+                  <div className="flex items-center justify-between rounded-lg sm:rounded-xl border border-white/60 bg-white/60 px-1.5 sm:px-2 py-1">
                     <span>TDS</span>
                     <span className="font-semibold">{fmt(w.tds_mg_l, 0)}</span>
                   </div>
-                  <div className="flex items-center justify-between rounded-xl border border-white/60 bg-white/60 px-2 py-1">
+                  <div className="flex items-center justify-between rounded-lg sm:rounded-xl border border-white/60 bg-white/60 px-1.5 sm:px-2 py-1">
                     <span>pH</span>
                     <span className="font-semibold">{fmt(w.ph, 1)}</span>
                   </div>
@@ -2285,6 +2349,12 @@ function WaterPicker({ waters, selectedIds, onToggle }) {
           );
         })}
       </div>
+      
+      {filtered.length === 0 && (
+        <div className="mt-6 text-center text-sm text-slate-500 py-8">
+          {lang === "ru" ? "Нет марок воды, соответствующих выбранным критериям" : "No water brands match the selected criteria"}
+        </div>
+      )}
     </div>
   );
 }
@@ -2306,35 +2376,37 @@ function CompareChart({ selected }) {
 
   if (data.length === 0) {
     return (
-      <div className={`${GLASS.card} p-6 text-center text-slate-600`}>
+      <div className={`${GLASS.card} p-4 sm:p-6 text-center text-slate-600 text-sm`}>
         Недостаточно данных для построения графика
       </div>
     );
   }
 
   return (
-    <div className={`${GLASS.card} p-6`}>
+    <div className={`${GLASS.card} p-3 sm:p-6`}>
       <div>
-        <div className="text-lg font-semibold text-slate-900">{t.chart.title}</div>
+        <div className="text-base sm:text-lg font-semibold text-slate-900">{t.chart.title}</div>
       </div>
 
-      <div className="mt-4 h-[360px] w-full">
+      <div className="mt-3 sm:mt-4 h-[250px] sm:h-[360px] w-full">
         <ResponsiveContainer width="100%" height="100%">
-          <ScatterChart margin={{ top: 20, right: 20, bottom: 20, left: 20 }}>
+          <ScatterChart margin={{ top: 10, right: 10, bottom: 10, left: 10 }}>
             <CartesianGrid strokeDasharray="3 3" />
             <XAxis 
               type="number" 
               dataKey="tds" 
               name="TDS" 
               unit=" mg/L" 
-              label={{ value: t.chart.x, position: "insideBottom", offset: -10 }} 
+              tick={{ fontSize: 10 }}
+              label={{ value: t.chart.x, position: "insideBottom", offset: -5, style: { fontSize: 10 } }} 
             />
             <YAxis 
               type="number" 
               dataKey="ph" 
               name="pH" 
               domain={[4, 10]} 
-              label={{ value: t.chart.y, angle: -90, position: "insideLeft" }} 
+              tick={{ fontSize: 10 }}
+              label={{ value: t.chart.y, angle: -90, position: "insideLeft", style: { fontSize: 10 } }} 
             />
             <RechartsTooltip
               cursor={{ strokeDasharray: "3 3" }}
@@ -2342,18 +2414,18 @@ function CompareChart({ selected }) {
                 if (!active || !payload?.length) return null;
                 const p = payload[0]?.payload;
                 return (
-                  <div className="rounded-2xl border border-white/60 bg-white/80 p-3 text-xs shadow-lg backdrop-blur">
-                    <div className="flex items-center gap-2">
-                      <span className="text-base">{p.flag}</span>
-                      <div className="font-semibold text-slate-900">{p.name}</div>
-                      <span className="inline-block h-2.5 w-2.5 rounded-full" style={{ background: p.color }} />
+                  <div className="rounded-xl sm:rounded-2xl border border-white/60 bg-white/80 p-2 sm:p-3 text-[10px] sm:text-xs shadow-lg backdrop-blur">
+                    <div className="flex items-center gap-1 sm:gap-2">
+                      <span className="text-sm sm:text-base">{p.flag}</span>
+                      <div className="font-semibold text-slate-900 text-xs sm:text-sm">{p.name}</div>
+                      <span className="inline-block h-2 w-2 sm:h-2.5 sm:w-2.5 rounded-full" style={{ background: p.color }} />
                     </div>
-                    <div className="mt-2 space-y-1 text-slate-700">
-                      <div className="flex items-center justify-between gap-3">
+                    <div className="mt-1 sm:mt-2 space-y-0.5 sm:space-y-1 text-slate-700">
+                      <div className="flex items-center justify-between gap-2 sm:gap-3">
                         <span className="font-medium">TDS</span>
                         <span>{fmt(p.tds, 0)} мг/л</span>
                       </div>
-                      <div className="flex items-center justify-between gap-3">
+                      <div className="flex items-center justify-between gap-2 sm:gap-3">
                         <span className="font-medium">pH</span>
                         <span>{fmt(p.ph, 1)}</span>
                       </div>
@@ -2380,7 +2452,7 @@ function RotationMock({ selected, profile }) {
 
   if (selected.length < 2) {
     return (
-      <div className={`${GLASS.card} p-6 text-center text-slate-600`}>
+      <div className={`${GLASS.card} p-4 sm:p-6 text-center text-slate-600 text-sm`}>
         {t.misc.notEnough}
       </div>
     );
@@ -2402,29 +2474,29 @@ function RotationMock({ selected, profile }) {
   ].filter((x) => x.w);
 
   return (
-    <div className={`${GLASS.card} p-6`}>
+    <div className={`${GLASS.card} p-3 sm:p-6`}>
       <div>
-        <div className="text-lg font-semibold text-slate-900">{t.rotation.title}</div>
-        <div className="mt-1 text-sm text-slate-600">{t.rotation.hint}</div>
+        <div className="text-base sm:text-lg font-semibold text-slate-900">{t.rotation.title}</div>
+        <div className="text-xs sm:text-sm text-slate-600">{t.rotation.hint}</div>
       </div>
 
-      <div className="mt-4 overflow-hidden rounded-2xl border border-white/60 bg-white/55 backdrop-blur">
-        <table className="w-full text-left text-sm">
+      <div className="mt-3 sm:mt-4 overflow-hidden rounded-xl sm:rounded-2xl border border-white/60 bg-white/55 backdrop-blur">
+        <table className="w-full text-left text-xs sm:text-sm">
           <thead className="bg-white/70">
-            <tr className="text-xs text-slate-600">
-              <th className="px-4 py-3">{t.rotation.day}</th>
-              <th className="px-4 py-3">{t.rotation.water}</th>
+            <tr className="text-slate-600">
+              <th className="px-3 sm:px-4 py-2 sm:py-3">{t.rotation.day}</th>
+              <th className="px-3 sm:px-4 py-2 sm:py-3">{t.rotation.water}</th>
             </tr>
           </thead>
           <tbody>
             {plan.map((p, idx) => (
               <tr key={p.day} className={idx % 2 ? "bg-white/40" : "bg-white/60"}>
-                <td className="px-4 py-3 font-semibold text-slate-900">{p.day}</td>
-                <td className="px-4 py-3">
-                  <div className="flex items-center gap-2">
-                    <span className="text-base">{p.w.flag_emoji ?? safeCountryFlag(p.w.country_code)}</span>
-                    <span className="font-medium text-slate-900">{p.w.brand_name}</span>
-                    <span className="ml-2"><CategoryBadge cat={computeCategory(p.w)} /></span>
+                <td className="px-3 sm:px-4 py-2 sm:py-3 font-semibold text-slate-900">{p.day}</td>
+                <td className="px-3 sm:px-4 py-2 sm:py-3">
+                  <div className="flex items-center gap-1.5 sm:gap-2">
+                    <span className="text-base sm:text-lg">{p.w.flag_emoji ?? safeCountryFlag(p.w.country_code)}</span>
+                    <span className="font-medium text-slate-900 text-xs sm:text-sm">{p.w.brand_name}</span>
+                    <span className="ml-0.5 sm:ml-2"><CategoryBadge cat={computeCategory(p.w)} /></span>
                   </div>
                 </td>
               </tr>
@@ -2446,54 +2518,54 @@ function ReportAccordion({ selected, profile, mode, compact, onToggleCompact }) 
 
   if (selected.length === 0) {
     return (
-      <div className={`${GLASS.card} p-6 text-center text-slate-600`}>
+      <div className={`${GLASS.card} p-4 sm:p-6 text-center text-slate-600 text-sm`}>
         {t.misc.empty}
       </div>
     );
   }
 
   return (
-    <div className={`${GLASS.card} p-6`}>
-      <div className="flex items-center justify-between gap-3 cursor-pointer" onClick={() => setIsOpen(!isOpen)}>
+    <div className={`${GLASS.card} p-3 sm:p-6`}>
+      <div className="flex flex-wrap items-center justify-between gap-2 cursor-pointer" onClick={() => setIsOpen(!isOpen)}>
         <div>
-          <div className="text-lg font-semibold text-slate-900">{t.report.title}</div>
-          <div className="mt-1 text-sm text-slate-600">{t.report.dataPenalty}</div>
+          <div className="text-base sm:text-lg font-semibold text-slate-900">{t.report.title}</div>
+          <div className="text-xs sm:text-sm text-slate-600">{t.report.dataPenalty}</div>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1 sm:gap-2">
           <Button
             variant="outline"
-            className="h-10 rounded-2xl bg-white/70 hover:bg-white"
+            className="h-8 sm:h-10 rounded-xl sm:rounded-2xl bg-white/70 hover:bg-white"
             onClick={(e) => { e.stopPropagation(); onToggleCompact(); }}
             type="button"
           >
             {compact ? t.report.expanded : t.report.compact}
           </Button>
-          <button className="p-2 hover:bg-white/50 rounded-full">
-            {isOpen ? <ChevronUp className="h-5 w-5" /> : <ChevronDown className="h-5 w-5" />}
+          <button className="p-1 sm:p-2 hover:bg-white/50 rounded-full">
+            {isOpen ? <ChevronUp className="h-4 w-4 sm:h-5 sm:w-5" /> : <ChevronDown className="h-4 w-4 sm:h-5 sm:w-5" />}
           </button>
         </div>
       </div>
 
       {isOpen && (
-        <div className="mt-4 space-y-5">
+        <div className="mt-3 sm:mt-4 space-y-4 sm:space-y-5">
           {winner && (
             <div>
-              <div className="text-sm font-medium text-slate-600 mb-2">{t.report.bestDaily}</div>
+              <div className="text-xs sm:text-sm font-medium text-slate-600 mb-1.5 sm:mb-2">{t.report.bestDaily}</div>
               <WaterProfileCard w={winner.w} profile={profile} rank={1} isWinner={true} />
             </div>
           )}
 
           <div>
-            <div className="text-sm font-medium text-slate-600 mb-2">{t.report.profilesBlock}</div>
-            <div className="space-y-3">
+            <div className="text-xs sm:text-sm font-medium text-slate-600 mb-1.5 sm:mb-2">{t.report.profilesBlock}</div>
+            <div className="space-y-2 sm:space-y-3">
               {compact ? (
-                <div className="space-y-3">
+                <div className="space-y-2 sm:space-y-3">
                   {sorted.map((w, index) => (
                     <WaterProfileCompactRow key={w.id} w={w} profile={profile} rank={index + 1} />
                   ))}
                 </div>
               ) : (
-                <div className="grid gap-4 lg:grid-cols-2">
+                <div className="grid gap-3 sm:gap-4 grid-cols-1 md:grid-cols-2">
                   {sorted.map((w, index) => (
                     <WaterProfileCard key={w.id} w={w} profile={profile} rank={index + 1} />
                   ))}
@@ -2530,7 +2602,7 @@ function runSelfTests() {
 }
 
 function UserProfileIcon() {
-  return <span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-slate-900/10">👤</span>;
+  return <span className="inline-flex h-4 w-4 sm:h-5 sm:w-5 items-center justify-center rounded-full bg-slate-900/10 text-xs sm:text-base">👤</span>;
 }
 
 export default function App() {
@@ -2583,30 +2655,30 @@ export default function App() {
     <LangCtx.Provider value={lang}>
       <TooltipProvider>
         <div className={GLASS.page}>
-          <div className="mx-auto max-w-7xl px-4 pb-28 pt-6">
-            <div className={`${GLASS.card} p-6`}>
-              <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="mx-auto max-w-7xl px-3 sm:px-4 pb-24 sm:pb-28 pt-4 sm:pt-6">
+            <div className={`${GLASS.card} p-3 sm:p-6`}>
+              <div className="flex flex-wrap items-center justify-between gap-2 sm:gap-3">
                 <div>
-                  <div className="text-xl font-semibold text-slate-900">{t.appName}</div>
-                  <div className="mt-1 text-sm text-slate-600">{t.tagline}</div>
+                  <div className="text-base sm:text-xl font-semibold text-slate-900">{t.appName}</div>
+                  <div className="text-xs sm:text-sm text-slate-600">{t.tagline}</div>
                 </div>
 
-                <div className="flex flex-wrap items-center gap-2">
+                <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
                   <Button
                     variant="outline"
-                    className="h-10 rounded-2xl bg-white/70 hover:bg-white inline-flex items-center"
+                    className="h-8 sm:h-10 rounded-xl sm:rounded-2xl bg-white/70 hover:bg-white inline-flex items-center"
                     onClick={() => setLang((v) => (v === "ru" ? "en" : "ru"))}
                     type="button"
                   >
-                    <Languages className="mr-2 h-4 w-4" />
-                    {t.langLabel}: {lang.toUpperCase()}
+                    <Languages className="mr-1 sm:mr-2 h-3 w-3 sm:h-4 sm:w-4" />
+                    <span className="text-xs sm:text-sm">{t.langLabel}: {lang.toUpperCase()}</span>
                   </Button>
 
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
-                      <Button variant="outline" className="h-10 rounded-2xl bg-white/70 hover:bg-white inline-flex items-center" type="button">
-                        <Lock className="mr-2 h-4 w-4" />
-                        {t.modeLabel}: {t.modes[mode]}
+                      <Button variant="outline" className="h-8 sm:h-10 rounded-xl sm:rounded-2xl bg-white/70 hover:bg-white inline-flex items-center" type="button">
+                        <Lock className="mr-1 sm:mr-2 h-3 w-3 sm:h-4 sm:w-4" />
+                        <span className="text-xs sm:text-sm">{t.modeLabel}: {t.modes[mode]}</span>
                       </Button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent>
@@ -2617,9 +2689,9 @@ export default function App() {
 
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
-                      <Button variant="outline" className="h-10 rounded-2xl bg-white/70 hover:bg-white inline-flex items-center" type="button">
+                      <Button variant="outline" className="h-8 sm:h-10 rounded-xl sm:rounded-2xl bg-white/70 hover:bg-white inline-flex items-center" type="button">
                         <UserProfileIcon />
-                        <span className="ml-2">{t.profileLabel}: {t.profiles[profile]}</span>
+                        <span className="ml-1 sm:ml-2 text-xs sm:text-sm">{t.profileLabel}: {t.profiles[profile]}</span>
                       </Button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent>
@@ -2645,7 +2717,7 @@ export default function App() {
                   }} />
 
                   {/* Индикатор активного профиля */}
-                  <div className={`ml-2 px-3 py-1 rounded-full text-xs font-medium ${
+                  <div className={`ml-0.5 sm:ml-2 px-2 sm:px-3 py-0.5 sm:py-1 rounded-full text-[10px] sm:text-xs font-medium ${
                     profile === "Everyday" ? "bg-emerald-100 text-emerald-700" :
                     profile === "Sport" ? "bg-blue-100 text-blue-700" :
                     profile === "Kid" ? "bg-amber-100 text-amber-700" :
@@ -2654,14 +2726,14 @@ export default function App() {
                     {profile === "Everyday" && "🍃 Ежедневный"}
                     {profile === "Sport" && "🏃 Спорт"}
                     {profile === "Kid" && "🧒 Детский"}
-                    {profile === "Sensitive" && "🌸 Чувствительный ЖКТ"}
+                    {profile === "Sensitive" && "🌸 ЖКТ"}
                   </div>
                 </div>
               </div>
 
-              <div className="mt-5">
+              <div className="mt-4 sm:mt-5">
                 <Tabs value={screen} onValueChange={(v) => setScreen(v)}>
-                  <TabsList className="rounded-2xl bg-white/70">
+                  <TabsList className="rounded-xl sm:rounded-2xl bg-white/70">
                     <TabsTrigger value="A">{t.screenA}</TabsTrigger>
                     <TabsTrigger value="B" disabled={!canCompare}>
                       {t.screenB}
@@ -2674,16 +2746,16 @@ export default function App() {
                     </TabsTrigger>
                   </TabsList>
 
-                  <TabsContent value="A" className="mt-5">
+                  <TabsContent value="A" className="mt-4 sm:mt-5">
                     <WaterPicker waters={waters} selectedIds={selectedIds} onToggle={toggleSelect} />
                   </TabsContent>
 
-                  <TabsContent value="B" className="mt-5 space-y-5">
+                  <TabsContent value="B" className="mt-4 sm:mt-5 space-y-4 sm:space-y-5">
                     <CompareChart selected={selected} />
                     <MetricsTable selected={[...selected].sort((a, b) => compareForRanking(a, b, profile))} profile={profile} />
                   </TabsContent>
 
-                  <TabsContent value="C" className="mt-5">
+                  <TabsContent value="C" className="mt-4 sm:mt-5 space-y-4 sm:space-y-5">
                     <MetricsTable selected={[...selected].sort((a, b) => compareForRanking(a, b, profile))} profile={profile} />
                     <ReportAccordion
                       selected={selected}
@@ -2694,7 +2766,7 @@ export default function App() {
                     />
                   </TabsContent>
 
-                  <TabsContent value="D" className="mt-5">
+                  <TabsContent value="D" className="mt-4 sm:mt-5">
                     <RotationMock selected={selected} profile={profile} />
                   </TabsContent>
                 </Tabs>
@@ -2702,18 +2774,18 @@ export default function App() {
             </div>
           </div>
 
-          <div className="fixed bottom-4 left-1/2 z-50 w-[min(1120px,calc(100%-24px))] -translate-x-1/2">
-            <div className="pointer-events-auto rounded-3xl border border-white/60 bg-white/70 shadow-lg backdrop-blur">
-              <div className="flex flex-wrap items-center justify-between gap-3 px-4 py-3">
-                <div className="flex min-w-0 flex-1 items-center gap-3">
+          <div className="fixed bottom-3 sm:bottom-4 left-1/2 z-50 w-[calc(100%-16px)] sm:w-[min(1120px,calc(100%-24px))] -translate-x-1/2">
+            <div className="pointer-events-auto rounded-2xl sm:rounded-3xl border border-white/60 bg-white/70 shadow-lg backdrop-blur">
+              <div className="flex flex-wrap items-center justify-between gap-2 sm:gap-3 px-2 sm:px-4 py-2 sm:py-3">
+                <div className="flex min-w-0 flex-1 items-center gap-2 sm:gap-3">
                   <div className="hidden sm:block">
-                    <div className="text-xs font-medium text-slate-600">{t.selected}</div>
-                    <div className="text-sm font-semibold text-slate-900">
+                    <div className="text-[10px] sm:text-xs font-medium text-slate-600">{t.selected}</div>
+                    <div className="text-xs sm:text-sm font-semibold text-slate-900">
                       {selected.length ? `${selected.length}/5` : t.misc.empty}
                     </div>
                   </div>
                   <div className="min-w-0 flex-1 overflow-x-auto">
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-1.5 sm:gap-2">
                       <AnimatePresence>
                         {selected.map((w) => (
                           <WaterChip key={w.id} w={w} onRemove={() => removeFromCompare(w.id)} />
@@ -2723,10 +2795,10 @@ export default function App() {
                   </div>
                 </div>
 
-                <div className="flex shrink-0 flex-wrap items-center justify-end gap-2">
+                <div className="flex shrink-0 flex-wrap items-center justify-end gap-1.5 sm:gap-2">
                   <Button
                     variant="outline"
-                    className="h-10 rounded-2xl bg-white/70 hover:bg-white"
+                    className="h-7 sm:h-10 rounded-xl sm:rounded-2xl bg-white/70 hover:bg-white text-xs sm:text-sm px-2 sm:px-4"
                     onClick={() => setScreen("A")}
                     type="button"
                   >
@@ -2734,7 +2806,7 @@ export default function App() {
                   </Button>
 
                   <Button
-                    className="h-10 rounded-2xl"
+                    className="h-7 sm:h-10 rounded-xl sm:rounded-2xl text-xs sm:text-sm px-2 sm:px-4"
                     onClick={onCompare}
                     disabled={!canCompare}
                     type="button"
@@ -2744,12 +2816,12 @@ export default function App() {
 
                   <Button
                     variant="outline"
-                    className="h-10 rounded-2xl bg-white/70 hover:bg-white"
+                    className="h-7 sm:h-10 rounded-xl sm:rounded-2xl bg-white/70 hover:bg-white text-xs sm:text-sm px-2 sm:px-4"
                     onClick={clear}
                     type="button"
                     disabled={!selected.length}
                   >
-                    <RotateCcw className="mr-2 h-4 w-4" />
+                    <RotateCcw className="mr-0.5 sm:mr-2 h-3 w-3 sm:h-4 sm:w-4" />
                     {t.actions.clear}
                   </Button>
                 </div>
