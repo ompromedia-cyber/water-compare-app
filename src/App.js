@@ -2161,8 +2161,7 @@ function WaterPicker({ waters, selectedIds, onToggle }) {
   const [onlyVerified, setOnlyVerified] = useState(false);
   const [tdsMax, setTdsMax] = useState(2000);
   const [selectedLetter, setSelectedLetter] = useState(null);
-  const [showNoResults, setShowNoResults] = useState(false);
-  const [notificationLetter, setNotificationLetter] = useState(null);
+  const [noResultsMessage, setNoResultsMessage] = useState(null);
 
   // ПОЛНЫЙ АЛФАВИТ
   const fullAlphabet = [
@@ -2193,14 +2192,8 @@ function WaterPicker({ waters, selectedIds, onToggle }) {
     
     if (q) {
       result = result.filter((w) => w.brand_name.toLowerCase().includes(q));
-      if (result.length === 0) setShowNoResults(true);
-      else setShowNoResults(false);
     } else if (selectedLetter) {
       result = result.filter((w) => w.brand_name.charAt(0).toUpperCase() === selectedLetter);
-      if (result.length === 0) setShowNoResults(true);
-      else setShowNoResults(false);
-    } else {
-      setShowNoResults(false);
     }
     
     return result.sort((a, b) => a.brand_name.localeCompare(b.brand_name));
@@ -2210,16 +2203,10 @@ function WaterPicker({ waters, selectedIds, onToggle }) {
     const hasWater = availableLettersSet.has(letter);
     
     if (!hasWater) {
-      // Показываем уведомление для буквы без воды
-      setNotificationLetter(letter);
-      setShowNoResults(true);
-      setSelectedLetter(null);
-      setQuery("");
-      // Автоматически скрываем через 3 секунды
-      setTimeout(() => {
-        setShowNoResults(false);
-        setNotificationLetter(null);
-      }, 3000);
+      // Для букв без воды - показываем сообщение, НЕ меняем selectedLetter
+      setNoResultsMessage(`Нет марок воды на букву "${letter}"`);
+      // Сбрасываем через 3 секунды
+      setTimeout(() => setNoResultsMessage(null), 3000);
       return;
     }
     
@@ -2230,15 +2217,13 @@ function WaterPicker({ waters, selectedIds, onToggle }) {
       setSelectedLetter(letter);
       setQuery("");
     }
-    setShowNoResults(false);
-    setNotificationLetter(null);
+    setNoResultsMessage(null);
   };
 
   const clearAllFilters = () => {
     setSelectedLetter(null);
     setQuery("");
-    setShowNoResults(false);
-    setNotificationLetter(null);
+    setNoResultsMessage(null);
   };
 
   return (
@@ -2256,8 +2241,7 @@ function WaterPicker({ waters, selectedIds, onToggle }) {
               onChange={(e) => {
                 setQuery(e.target.value);
                 setSelectedLetter(null);
-                setShowNoResults(false);
-                setNotificationLetter(null);
+                setNoResultsMessage(null);
               }}
               placeholder={t.searchPlaceholder}
               className="h-8 sm:h-10 w-full sm:w-[320px] rounded-xl sm:rounded-2xl bg-white/70 pl-7 sm:pl-10 text-xs sm:text-sm"
@@ -2363,35 +2347,19 @@ function WaterPicker({ waters, selectedIds, onToggle }) {
         </div>
       )}
 
-      {/* Уведомление об отсутствии воды на букву */}
-      {showNoResults && notificationLetter && (
+      {/* Сообщение об отсутствии воды на букву */}
+      {noResultsMessage && (
         <div className="mt-4 sm:mt-6 p-4 sm:p-6 text-center">
           <div className="inline-block bg-amber-50 border border-amber-200 rounded-xl px-4 sm:px-6 py-3 sm:py-4">
             <p className="text-amber-700 text-sm sm:text-base flex items-center gap-2">
               <AlertTriangle className="h-5 w-5" />
-              {lang === "ru" 
-                ? `Нет марок воды на букву "${notificationLetter}"`
-                : `No water brands starting with "${notificationLetter}"`}
+              {noResultsMessage}
             </p>
           </div>
         </div>
       )}
 
-      {/* Уведомление об отсутствии результатов при фильтрации */}
-      {showNoResults && !notificationLetter && filtered.length === 0 && (
-        <div className="mt-4 sm:mt-6 p-4 sm:p-6 text-center">
-          <div className="inline-block bg-amber-50 border border-amber-200 rounded-xl px-4 sm:px-6 py-3 sm:py-4">
-            <p className="text-amber-700 text-sm sm:text-base flex items-center gap-2">
-              <AlertTriangle className="h-5 w-5" />
-              {lang === "ru" 
-                ? "Нет марок воды, соответствующих выбранным критериям" 
-                : "No water brands match the selected criteria"}
-            </p>
-          </div>
-        </div>
-      )}
-
-      {selectedLetter && !query && !showNoResults && filtered.length > 0 && (
+      {selectedLetter && !query && !noResultsMessage && filtered.length > 0 && (
         <div className="mt-2 text-xs text-slate-500 flex items-center gap-2">
           <span>Показаны воды на букву <span className="font-semibold text-sky-600">{selectedLetter}</span></span>
           <button 
@@ -2449,7 +2417,7 @@ function WaterPicker({ waters, selectedIds, onToggle }) {
         })}
       </div>
       
-      {filtered.length === 0 && !showNoResults && (
+      {filtered.length === 0 && !selectedLetter && !query && !noResultsMessage && (
         <div className="mt-6 text-center text-sm text-slate-500 py-8">
           {lang === "ru" ? "Нет марок воды, соответствующих выбранным критериям" : "No water brands match the selected criteria"}
         </div>
