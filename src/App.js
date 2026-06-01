@@ -2203,9 +2203,8 @@ function WaterPicker({ waters, selectedIds, onToggle }) {
     const hasWater = availableLettersSet.has(letter);
     
     if (!hasWater) {
-      // Для букв без воды - показываем сообщение, НЕ меняем selectedLetter
+      // Для всех букв без воды - показываем сообщение и НЕ меняем фильтр
       setNoResultsMessage(`Нет марок воды на букву "${letter}"`);
-      // Сбрасываем через 3 секунды
       setTimeout(() => setNoResultsMessage(null), 3000);
       return;
     }
@@ -2290,6 +2289,7 @@ function WaterPicker({ waters, selectedIds, onToggle }) {
             <span className="text-xs text-slate-400 mr-1 sm:mr-2 self-center">A–Z</span>
             {fullAlphabet.filter(l => /[A-Z]/.test(l)).map(letter => {
               const hasWater = availableLettersSet.has(letter);
+              // Одинаковый стиль для всех букв без воды
               return (
                 <button
                   key={letter}
@@ -2347,7 +2347,7 @@ function WaterPicker({ waters, selectedIds, onToggle }) {
         </div>
       )}
 
-      {/* Сообщение об отсутствии воды на букву */}
+      {/* Сообщение об отсутствии воды на букву - для всех букв */}
       {noResultsMessage && (
         <div className="mt-4 sm:mt-6 p-4 sm:p-6 text-center">
           <div className="inline-block bg-amber-50 border border-amber-200 rounded-xl px-4 sm:px-6 py-3 sm:py-4">
