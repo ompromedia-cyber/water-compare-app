@@ -2162,7 +2162,7 @@ function WaterPicker({ waters, selectedIds, onToggle }) {
   const [tdsMax, setTdsMax] = useState(2000);
   const [selectedLetter, setSelectedLetter] = useState(null);
 
-  // Полный алфавит (латиница + кириллица)
+  // ПОЛНЫЙ АЛФАВИТ (все буквы, даже если нет вод)
   const fullAlphabet = [
     'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M',
     'N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z',
@@ -2171,23 +2171,14 @@ function WaterPicker({ waters, selectedIds, onToggle }) {
     'Щ', 'Ъ', 'Ы', 'Ь', 'Э', 'Ю', 'Я'
   ];
 
-  // Получаем буквы, которые реально есть в названиях вод
-  const availableLetters = useMemo(() => {
-    const uniqueLetters = new Set();
+  // Получаем множество доступных букв для определения активности
+  const availableLettersSet = useMemo(() => {
+    const set = new Set();
     waters.forEach(w => {
       const firstChar = w.brand_name.charAt(0).toUpperCase();
-      if (fullAlphabet.includes(firstChar)) {
-        uniqueLetters.add(firstChar);
-      }
+      set.add(firstChar);
     });
-    return Array.from(uniqueLetters).sort((a, b) => {
-      // Сортируем: сначала латиница, потом кириллица
-      const isLatinA = /[A-Z]/.test(a);
-      const isLatinB = /[A-Z]/.test(b);
-      if (isLatinA && !isLatinB) return -1;
-      if (!isLatinA && isLatinB) return 1;
-      return a.localeCompare(b);
-    });
+    return set;
   }, [waters]);
 
   // Фильтрация вод
@@ -2271,32 +2262,70 @@ function WaterPicker({ waters, selectedIds, onToggle }) {
         </div>
       </div>
 
-      {/* Алфавитная навигация - только доступные буквы */}
-      {availableLetters.length > 0 && !query && (
-        <div className="mt-3 sm:mt-4 flex flex-wrap gap-1.5 sm:gap-2 border-t border-white/40 pt-3 sm:pt-4">
-          <button
-            onClick={() => setSelectedLetter(null)}
-            className={`px-2 sm:px-3 py-1 sm:py-1.5 rounded-lg sm:rounded-xl text-xs sm:text-sm font-medium transition-all ${
-              !selectedLetter 
-                ? 'bg-slate-800 text-white shadow-md' 
-                : 'bg-white/60 text-slate-600 hover:bg-white/80'
-            }`}
-          >
-            Все
-          </button>
-          {availableLetters.map(letter => (
+      {/* ПОЛНЫЙ АЛФАВИТ с разделением на латиницу и кириллицу */}
+      {!query && (
+        <div className="mt-3 sm:mt-4 space-y-3 sm:space-y-4">
+          {/* Латиница */}
+          <div className="flex flex-wrap gap-1.5 sm:gap-2">
+            <span className="text-xs text-slate-400 mr-1 sm:mr-2 self-center">A–Z</span>
+            {fullAlphabet.filter(l => /[A-Z]/.test(l)).map(letter => {
+              const hasWater = availableLettersSet.has(letter);
+              return (
+                <button
+                  key={letter}
+                  onClick={() => hasWater && handleLetterClick(letter)}
+                  disabled={!hasWater}
+                  className={`px-2 sm:px-3 py-1 sm:py-1.5 rounded-lg sm:rounded-xl text-xs sm:text-sm font-medium transition-all ${
+                    !hasWater 
+                      ? 'bg-slate-100 text-slate-300 cursor-not-allowed opacity-50' 
+                      : selectedLetter === letter 
+                        ? 'bg-sky-500 text-white shadow-md' 
+                        : 'bg-white/60 text-slate-600 hover:bg-white/80'
+                  }`}
+                >
+                  {letter}
+                </button>
+              );
+            })}
+          </div>
+          
+          {/* Кириллица */}
+          <div className="flex flex-wrap gap-1.5 sm:gap-2">
+            <span className="text-xs text-slate-400 mr-1 sm:mr-2 self-center">А–Я</span>
+            {fullAlphabet.filter(l => /[А-Я]/.test(l)).map(letter => {
+              const hasWater = availableLettersSet.has(letter);
+              return (
+                <button
+                  key={letter}
+                  onClick={() => hasWater && handleLetterClick(letter)}
+                  disabled={!hasWater}
+                  className={`px-2 sm:px-3 py-1 sm:py-1.5 rounded-lg sm:rounded-xl text-xs sm:text-sm font-medium transition-all ${
+                    !hasWater 
+                      ? 'bg-slate-100 text-slate-300 cursor-not-allowed opacity-50' 
+                      : selectedLetter === letter 
+                        ? 'bg-sky-500 text-white shadow-md' 
+                        : 'bg-white/60 text-slate-600 hover:bg-white/80'
+                  }`}
+                >
+                  {letter}
+                </button>
+              );
+            })}
+          </div>
+          
+          {/* Кнопка "Все" */}
+          <div className="pt-2">
             <button
-              key={letter}
-              onClick={() => handleLetterClick(letter)}
-              className={`px-2 sm:px-3 py-1 sm:py-1.5 rounded-lg sm:rounded-xl text-xs sm:text-sm font-medium transition-all ${
-                selectedLetter === letter 
-                  ? 'bg-sky-500 text-white shadow-md' 
+              onClick={() => setSelectedLetter(null)}
+              className={`px-3 sm:px-4 py-1 sm:py-1.5 rounded-lg sm:rounded-xl text-xs sm:text-sm font-medium transition-all ${
+                !selectedLetter 
+                  ? 'bg-slate-800 text-white shadow-md' 
                   : 'bg-white/60 text-slate-600 hover:bg-white/80'
               }`}
             >
-              {letter}
+              Все
             </button>
-          ))}
+          </div>
         </div>
       )}
 
