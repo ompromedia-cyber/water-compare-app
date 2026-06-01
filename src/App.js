@@ -2161,6 +2161,7 @@ function WaterPicker({ waters, selectedIds, onToggle }) {
   const [onlyVerified, setOnlyVerified] = useState(false);
   const [tdsMax, setTdsMax] = useState(2000);
   const [selectedLetter, setSelectedLetter] = useState(null);
+  const [showNoResults, setShowNoResults] = useState(false);
 
   // ПОЛНЫЙ АЛФАВИТ (все буквы, даже если нет вод)
   const fullAlphabet = [
@@ -2191,20 +2192,40 @@ function WaterPicker({ waters, selectedIds, onToggle }) {
     
     if (q) {
       result = result.filter((w) => w.brand_name.toLowerCase().includes(q));
+      if (result.length === 0) setShowNoResults(true);
+      else setShowNoResults(false);
     } else if (selectedLetter) {
       result = result.filter((w) => w.brand_name.charAt(0).toUpperCase() === selectedLetter);
+      if (result.length === 0) setShowNoResults(true);
+      else setShowNoResults(false);
+    } else {
+      setShowNoResults(false);
     }
     
     return result.sort((a, b) => a.brand_name.localeCompare(b.brand_name));
   }, [waters, query, group, onlyVerified, tdsMax, selectedLetter]);
 
   const handleLetterClick = (letter) => {
+    const hasWater = availableLettersSet.has(letter);
+    
+    if (!hasWater) {
+      // Если нет воды на эту букву, показываем сообщение
+      setSelectedLetter(null);
+      setQuery("");
+      setShowNoResults(true);
+      // Через 3 секунды скрываем сообщение
+      setTimeout(() => setShowNoResults(false), 3000);
+      return;
+    }
+    
+    // Если вода есть
     if (selectedLetter === letter) {
       setSelectedLetter(null);
     } else {
       setSelectedLetter(letter);
       setQuery("");
     }
+    setShowNoResults(false);
   };
 
   return (
@@ -2222,6 +2243,7 @@ function WaterPicker({ waters, selectedIds, onToggle }) {
               onChange={(e) => {
                 setQuery(e.target.value);
                 setSelectedLetter(null);
+                setShowNoResults(false);
               }}
               placeholder={t.searchPlaceholder}
               className="h-8 sm:h-10 w-full sm:w-[320px] rounded-xl sm:rounded-2xl bg-white/70 pl-7 sm:pl-10 text-xs sm:text-sm"
@@ -2273,11 +2295,10 @@ function WaterPicker({ waters, selectedIds, onToggle }) {
               return (
                 <button
                   key={letter}
-                  onClick={() => hasWater && handleLetterClick(letter)}
-                  disabled={!hasWater}
-                  className={`px-2 sm:px-3 py-1 sm:py-1.5 rounded-lg sm:rounded-xl text-xs sm:text-sm font-medium transition-all ${
+                  onClick={() => handleLetterClick(letter)}
+                  className={`px-2 sm:px-3 py-1 sm:py-1.5 rounded-lg sm:rounded-xl text-xs sm:text-sm font-medium transition-all cursor-pointer ${
                     !hasWater 
-                      ? 'bg-slate-100 text-slate-300 cursor-not-allowed opacity-50' 
+                      ? 'bg-slate-100 text-slate-400 opacity-60 hover:bg-slate-200' 
                       : selectedLetter === letter 
                         ? 'bg-sky-500 text-white shadow-md' 
                         : 'bg-white/60 text-slate-600 hover:bg-white/80'
@@ -2297,11 +2318,10 @@ function WaterPicker({ waters, selectedIds, onToggle }) {
               return (
                 <button
                   key={letter}
-                  onClick={() => hasWater && handleLetterClick(letter)}
-                  disabled={!hasWater}
-                  className={`px-2 sm:px-3 py-1 sm:py-1.5 rounded-lg sm:rounded-xl text-xs sm:text-sm font-medium transition-all ${
+                  onClick={() => handleLetterClick(letter)}
+                  className={`px-2 sm:px-3 py-1 sm:py-1.5 rounded-lg sm:rounded-xl text-xs sm:text-sm font-medium transition-all cursor-pointer ${
                     !hasWater 
-                      ? 'bg-slate-100 text-slate-300 cursor-not-allowed opacity-50' 
+                      ? 'bg-slate-100 text-slate-400 opacity-60 hover:bg-slate-200' 
                       : selectedLetter === letter 
                         ? 'bg-sky-500 text-white shadow-md' 
                         : 'bg-white/60 text-slate-600 hover:bg-white/80'
@@ -2316,9 +2336,13 @@ function WaterPicker({ waters, selectedIds, onToggle }) {
           {/* Кнопка "Все" */}
           <div className="pt-2">
             <button
-              onClick={() => setSelectedLetter(null)}
-              className={`px-3 sm:px-4 py-1 sm:py-1.5 rounded-lg sm:rounded-xl text-xs sm:text-sm font-medium transition-all ${
-                !selectedLetter 
+              onClick={() => {
+                setSelectedLetter(null);
+                setQuery("");
+                setShowNoResults(false);
+              }}
+              className={`px-3 sm:px-4 py-1 sm:py-1.5 rounded-lg sm:rounded-xl text-xs sm:text-sm font-medium transition-all cursor-pointer ${
+                !selectedLetter && !query
                   ? 'bg-slate-800 text-white shadow-md' 
                   : 'bg-white/60 text-slate-600 hover:bg-white/80'
               }`}
@@ -2333,11 +2357,28 @@ function WaterPicker({ waters, selectedIds, onToggle }) {
         <div className="mt-2 text-xs text-slate-500 flex items-center gap-2">
           <span>Показаны воды на букву <span className="font-semibold text-sky-600">{selectedLetter}</span></span>
           <button 
-            onClick={() => setSelectedLetter(null)}
+            onClick={() => {
+              setSelectedLetter(null);
+              setShowNoResults(false);
+            }}
             className="text-sky-500 hover:text-sky-700 underline"
           >
             Сбросить
           </button>
+        </div>
+      )}
+
+      {/* Сообщение "Нет результатов" */}
+      {showNoResults && (
+        <div className="mt-4 sm:mt-6 p-4 sm:p-6 text-center">
+          <div className="inline-block bg-amber-50 border border-amber-200 rounded-xl px-4 sm:px-6 py-3 sm:py-4">
+            <p className="text-amber-700 text-sm sm:text-base flex items-center gap-2">
+              <AlertTriangle className="h-5 w-5" />
+              {lang === "ru" 
+                ? "Нет марок воды, соответствующих выбранным критериям" 
+                : "No water brands match the selected criteria"}
+            </p>
+          </div>
         </div>
       )}
 
@@ -2386,12 +2427,6 @@ function WaterPicker({ waters, selectedIds, onToggle }) {
           );
         })}
       </div>
-      
-      {filtered.length === 0 && (
-        <div className="mt-6 text-center text-sm text-slate-500 py-8">
-          {lang === "ru" ? "Нет марок воды, соответствующих выбранным критериям" : "No water brands match the selected criteria"}
-        </div>
-      )}
     </div>
   );
 }
