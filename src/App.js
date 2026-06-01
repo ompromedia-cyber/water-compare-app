@@ -2162,17 +2162,26 @@ function WaterPicker({ waters, selectedIds, onToggle }) {
   const [tdsMax, setTdsMax] = useState(2000);
   const [selectedLetter, setSelectedLetter] = useState(null);
 
-  // Получаем буквы для навигации
-  const letters = useMemo(() => {
+  // Полный алфавит (латиница + кириллица)
+  const fullAlphabet = [
+    'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M',
+    'N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z',
+    'А', 'Б', 'В', 'Г', 'Д', 'Е', 'Ё', 'Ж', 'З', 'И', 'Й', 'К', 'Л',
+    'М', 'Н', 'О', 'П', 'Р', 'С', 'Т', 'У', 'Ф', 'Х', 'Ц', 'Ч', 'Ш',
+    'Щ', 'Ъ', 'Ы', 'Ь', 'Э', 'Ю', 'Я'
+  ];
+
+  // Получаем буквы, которые реально есть в названиях вод
+  const availableLetters = useMemo(() => {
     const uniqueLetters = new Set();
     waters.forEach(w => {
       const firstChar = w.brand_name.charAt(0).toUpperCase();
-      if (/[A-ZА-Я]/.test(firstChar)) {
+      if (fullAlphabet.includes(firstChar)) {
         uniqueLetters.add(firstChar);
       }
     });
     return Array.from(uniqueLetters).sort((a, b) => {
-      // Русские буквы после латинских
+      // Сортируем: сначала латиница, потом кириллица
       const isLatinA = /[A-Z]/.test(a);
       const isLatinB = /[A-Z]/.test(b);
       if (isLatinA && !isLatinB) return -1;
@@ -2262,8 +2271,8 @@ function WaterPicker({ waters, selectedIds, onToggle }) {
         </div>
       </div>
 
-      {/* Алфавитная навигация */}
-      {letters.length > 0 && !query && (
+      {/* Алфавитная навигация - только доступные буквы */}
+      {availableLetters.length > 0 && !query && (
         <div className="mt-3 sm:mt-4 flex flex-wrap gap-1.5 sm:gap-2 border-t border-white/40 pt-3 sm:pt-4">
           <button
             onClick={() => setSelectedLetter(null)}
@@ -2275,7 +2284,7 @@ function WaterPicker({ waters, selectedIds, onToggle }) {
           >
             Все
           </button>
-          {letters.map(letter => (
+          {availableLetters.map(letter => (
             <button
               key={letter}
               onClick={() => handleLetterClick(letter)}
