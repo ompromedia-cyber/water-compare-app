@@ -24,6 +24,7 @@ import {
   Scan,
   Check,
   ChevronUp,
+  Star,
 } from "lucide-react";
 import {
   CartesianGrid,
@@ -33,13 +34,17 @@ import {
   Tooltip as RechartsTooltip,
   XAxis,
   YAxis,
+  BarChart,
+  Bar,
+  Cell,
+  Legend,
 } from "recharts";
 
 // ============== UI КОМПОНЕНТЫ ==============
 const Button = ({ children, variant, className, onClick, disabled, type = "button" }) => (
   <button
     type={type}
-    className={`px-3 sm:px-4 py-1.5 sm:py-2 rounded-xl sm:rounded-2xl font-medium text-sm sm:text-base transition-all ${
+    className={`px-3 sm:px-4 py-1.5 sm:py-2 rounded-xl sm:rounded-2xl font-medium text-sm sm:text-base transition-all transform active:scale-95 ${
       variant === "outline"
         ? "border border-white/60 bg-white/70 hover:bg-white text-slate-800"
         : "bg-slate-900 text-white hover:bg-slate-800"
@@ -51,8 +56,13 @@ const Button = ({ children, variant, className, onClick, disabled, type = "butto
   </button>
 );
 
-const GlassCard = ({ className, children }) => (
-  <div className={`rounded-2xl sm:rounded-3xl border border-white/60 bg-white/55 shadow-[0_16px_50px_-36px_rgba(15,23,42,0.55)] backdrop-blur ${className}`}>
+const GlassCard = ({ className, children, onClick, isSelected }) => (
+  <div 
+    onClick={onClick}
+    className={`rounded-2xl sm:rounded-3xl border border-white/60 bg-white/55 shadow-[0_16px_50px_-36px_rgba(15,23,42,0.55)] backdrop-blur transition-all duration-200 ${
+      isSelected ? 'ring-2 ring-sky-400 shadow-lg transform scale-[1.02]' : 'hover:shadow-md hover:scale-[1.01]'
+    } ${className}`}
+  >
     {children}
   </div>
 );
@@ -262,7 +272,7 @@ const LangCtx = React.createContext("ru");
 // ============== ЛОКАЛИЗАЦИЯ ==============
 const I18N = {
   ru: {
-    appName: "Water Intelligence",
+    appName: "Water Expert",
     tagline: "Сравнение 1–5 вод",
     screenA: "Выбор",
     screenB: "Сравнение",
@@ -391,7 +401,7 @@ const I18N = {
     },
   },
   en: {
-    appName: "Water Intelligence",
+    appName: "Water Expert",
     tagline: "Compare 1–5 waters",
     screenA: "Pick",
     screenB: "Compare",
@@ -1128,28 +1138,32 @@ function getAchievements(w) {
 
 // ============== ДАННЫЕ (30+ МАРОК ВОДЫ) ==============
 const SEED = [
+  // Топ популярных вод (отображаются первыми)
+  normalizeWater({ id: "evian", brand_name: "Evian", country_code: "FR", group: "Europe", ph: 7.2, tds_mg_l: 345, ca_mg_l: 80, mg_mg_l: 26, na_mg_l: 6.5, k_mg_l: 1.0, cl_mg_l: 10, sparkling: false, source_type: "seed", confidence_level: "high", popular: true }),
+  normalizeWater({ id: "sanpellegrino", brand_name: "San Pellegrino", country_code: "IT", group: "Europe", ph: 7.8, tds_mg_l: 915, ca_mg_l: 160, mg_mg_l: 50, na_mg_l: 33, k_mg_l: 2.0, cl_mg_l: 49, sparkling: true, source_type: "seed", confidence_level: "high", popular: true }),
+  normalizeWater({ id: "volvic", brand_name: "Volvic", country_code: "FR", group: "Europe", ph: 7.0, tds_mg_l: 130, ca_mg_l: 12, mg_mg_l: 8, na_mg_l: 12, k_mg_l: 6, cl_mg_l: 15, sparkling: false, source_type: "seed", confidence_level: "medium", popular: true }),
+  normalizeWater({ id: "baikal", brand_name: "Байкал", country_code: "RU", group: "Russia", ph: 7.2, tds_mg_l: 120, ca_mg_l: 25, mg_mg_l: 8, na_mg_l: 4, k_mg_l: 1, cl_mg_l: 5, sparkling: false, source_type: "seed", confidence_level: "low", popular: true }),
+  
+  // Все остальные марки
   normalizeWater({ id: "acqua_panna_partial", brand_name: "Acqua Panna", country_code: "IT", group: "Europe", ph: 8.0, tds_mg_l: 190, sparkling: false, source_type: "seed", confidence_level: "low", notes: "Неполная этикетка" }),
   normalizeWater({ id: "aquaminerale", brand_name: "Aqua Minerale", country_code: "RU", group: "Russia", ph: 7.1, tds_mg_l: 180, ca_mg_l: 35, mg_mg_l: 15, na_mg_l: 8, k_mg_l: 2, cl_mg_l: 12, sparkling: false, source_type: "seed", confidence_level: "medium" }),
   normalizeWater({ id: "arkhyz", brand_name: "Архыз", country_code: "RU", group: "Russia", ph: 7.3, tds_mg_l: 200, ca_mg_l: 40, mg_mg_l: 18, na_mg_l: 12, k_mg_l: 3, cl_mg_l: 14, sparkling: false, source_type: "seed", confidence_level: "medium" }),
-  normalizeWater({ id: "baikal", brand_name: "Байкал", country_code: "RU", group: "Russia", ph: 7.2, tds_mg_l: 120, ca_mg_l: 25, mg_mg_l: 8, na_mg_l: 4, k_mg_l: 1, cl_mg_l: 5, sparkling: false, source_type: "seed", confidence_level: "low" }),
   normalizeWater({ id: "bonacqua", brand_name: "BonAqua", country_code: "RU", group: "Russia", ph: 7.1, tds_mg_l: 160, ca_mg_l: 28, mg_mg_l: 9, na_mg_l: 9, k_mg_l: 1.5, cl_mg_l: 10, sparkling: false, source_type: "seed", confidence_level: "medium" }),
   normalizeWater({ id: "borjomi", brand_name: "Borjomi", country_code: "GE", group: "Therapeutic", ph: 6.6, tds_mg_l: 5500, ca_mg_l: 120, mg_mg_l: 50, na_mg_l: 1200, k_mg_l: 35, cl_mg_l: 600, sparkling: true, source_type: "seed", confidence_level: "high", notes: "Лечебно-столовая вода" }),
   normalizeWater({ id: "contrex", brand_name: "Contrex", country_code: "FR", group: "Europe", ph: 7.3, tds_mg_l: 2078, ca_mg_l: 468, mg_mg_l: 84, na_mg_l: 14, k_mg_l: 5, cl_mg_l: 15, sparkling: false, source_type: "seed", confidence_level: "high", notes: "Высокое содержание кальция" }),
   normalizeWater({ id: "cristal", brand_name: "Cristal", country_code: "RU", group: "Russia", ph: 7.0, tds_mg_l: 140, ca_mg_l: 20, mg_mg_l: 8, na_mg_l: 6, k_mg_l: 1, cl_mg_l: 7, sparkling: false, source_type: "seed", confidence_level: "low" }),
   normalizeWater({ id: "essentia", brand_name: "Essentia", country_code: "US", group: "Europe", ph: 9.5, tds_mg_l: 200, ca_mg_l: 15, mg_mg_l: 10, na_mg_l: 15, k_mg_l: 5, cl_mg_l: 10, sparkling: false, source_type: "seed", confidence_level: "high", notes: "Высокий pH" }),
-  normalizeWater({ id: "evian", brand_name: "Evian", country_code: "FR", group: "Europe", ph: 7.2, tds_mg_l: 345, ca_mg_l: 80, mg_mg_l: 26, na_mg_l: 6.5, k_mg_l: 1.0, cl_mg_l: 10, sparkling: false, source_type: "seed", confidence_level: "high" }),
   normalizeWater({ id: "fiji", brand_name: "Fiji", country_code: "FJ", group: "Europe", ph: 7.7, tds_mg_l: 220, ca_mg_l: 18, mg_mg_l: 15, na_mg_l: 18, k_mg_l: 5, cl_mg_l: 9, sparkling: false, source_type: "seed", confidence_level: "high" }),
   normalizeWater({ id: "gerolsteiner", brand_name: "Gerolsteiner", country_code: "DE", group: "Europe", ph: 6.9, tds_mg_l: 2520, ca_mg_l: 348, mg_mg_l: 108, na_mg_l: 118, k_mg_l: 11, cl_mg_l: 45, sparkling: true, source_type: "seed", confidence_level: "high" }),
   normalizeWater({ id: "hepar", brand_name: "Hépar", country_code: "FR", group: "Europe", ph: 7.4, tds_mg_l: 2513, ca_mg_l: 555, mg_mg_l: 110, na_mg_l: 14, k_mg_l: 8, cl_mg_l: 20, sparkling: false, source_type: "seed", confidence_level: "high", notes: "Высокое содержание магния" }),
   normalizeWater({ id: "lipetsk", brand_name: "Липецкая", country_code: "RU", group: "Russia", ph: 7.2, tds_mg_l: 350, ca_mg_l: 70, mg_mg_l: 25, na_mg_l: 15, k_mg_l: 4, cl_mg_l: 18, sparkling: false, source_type: "seed", confidence_level: "low" }),
   normalizeWater({ id: "nestle", brand_name: "Nestlé Pure Life", country_code: "CH", group: "Europe", ph: 7.1, tds_mg_l: 210, ca_mg_l: 30, mg_mg_l: 10, na_mg_l: 8, k_mg_l: 2, cl_mg_l: 12, sparkling: false, source_type: "seed", confidence_level: "high" }),
   normalizeWater({ id: "perrier", brand_name: "Perrier", country_code: "FR", group: "Europe", ph: 5.7, tds_mg_l: 475, ca_mg_l: 150, mg_mg_l: 4, na_mg_l: 9, k_mg_l: 1, cl_mg_l: 25, sparkling: true, source_type: "seed", confidence_level: "high" }),
-  normalizeWater({ id: "sanpellegrino", brand_name: "San Pellegrino", country_code: "IT", group: "Europe", ph: 7.8, tds_mg_l: 915, ca_mg_l: 160, mg_mg_l: 50, na_mg_l: 33, k_mg_l: 2.0, cl_mg_l: 49, sparkling: true, source_type: "seed", confidence_level: "high" }),
+  normalizeWater({ id: "polyana_kvasova", brand_name: "Поляна Квасова", country_code: "UA", group: "Europe", ph: 7.1, tds_mg_l: 800, ca_mg_l: 120, mg_mg_l: 40, na_mg_l: 200, k_mg_l: 10, cl_mg_l: 100, sparkling: true, source_type: "seed", confidence_level: "medium", notes: "Лечебно-столовая" }),
   normalizeWater({ id: "smartwater", brand_name: "smartwater", country_code: "US", group: "Europe", ph: 7.2, tds_mg_l: 90, ca_mg_l: 10, mg_mg_l: 5, na_mg_l: 8, k_mg_l: 2, cl_mg_l: 5, sparkling: false, source_type: "seed", confidence_level: "high" }),
   normalizeWater({ id: "svalbard", brand_name: "Svalbarði", country_code: "NO", group: "Europe", ph: 7.2, tds_mg_l: 120, ca_mg_l: 3, mg_mg_l: 0.5, na_mg_l: 2, k_mg_l: 0.5, cl_mg_l: 2, sparkling: false, source_type: "seed", confidence_level: "medium", notes: "Очень низкая минерализация" }),
   normalizeWater({ id: "svyatoy_istochnik", brand_name: "Святой Источник", country_code: "RU", group: "Russia", ph: 7.0, tds_mg_l: 150, ca_mg_l: 30, mg_mg_l: 10, na_mg_l: 10, k_mg_l: 2, cl_mg_l: 8, sparkling: false, source_type: "seed", confidence_level: "medium" }),
   normalizeWater({ id: "vittel", brand_name: "Vittel", country_code: "FR", group: "Europe", ph: 7.5, tds_mg_l: 380, ca_mg_l: 100, mg_mg_l: 24, na_mg_l: 12, k_mg_l: 3, cl_mg_l: 20, sparkling: false, source_type: "seed", confidence_level: "high" }),
-  normalizeWater({ id: "volvic", brand_name: "Volvic", country_code: "FR", group: "Europe", ph: 7.0, tds_mg_l: 130, ca_mg_l: 12, mg_mg_l: 8, na_mg_l: 12, k_mg_l: 6, cl_mg_l: 15, sparkling: false, source_type: "seed", confidence_level: "medium" }),
 ];
 
 // ============== UI КОМПОНЕНТЫ ==============
@@ -1717,7 +1731,7 @@ function MetricsTable({ selected, profile }) {
                   </div>
                 </th>
               ))}
-            </tr>
+            </table>
           </thead>
           
           <tbody>
@@ -1819,7 +1833,7 @@ function MetricsTable({ selected, profile }) {
                         />
                       </div>
                     </div>
-                  </td>
+                  </table>
                 );
               })}
             </tr>
@@ -2151,7 +2165,6 @@ function ScannerDialog({ onScanComplete }) {
   );
 }
 
-// ============== КОМПОНЕНТ WATER PICKER С АЛФАВИТНОЙ НАВИГАЦИЕЙ ==============
 function WaterPicker({ waters, selectedIds, onToggle }) {
   const lang = React.useContext(LangCtx);
   const t = I18N[lang];
@@ -2182,10 +2195,21 @@ function WaterPicker({ waters, selectedIds, onToggle }) {
     return set;
   }, [waters]);
 
+  // Сортируем воды: сначала популярные, затем по алфавиту
+  const sortedWaters = useMemo(() => {
+    return [...waters].sort((a, b) => {
+      // Если у одной есть popular, а у другой нет
+      if (a.popular && !b.popular) return -1;
+      if (!a.popular && b.popular) return 1;
+      // Иначе по алфавиту
+      return a.brand_name.localeCompare(b.brand_name);
+    });
+  }, [waters]);
+
   // Фильтрация вод
   const filtered = useMemo(() => {
     let q = query.trim().toLowerCase();
-    let result = waters
+    let result = sortedWaters
       .filter((w) => (group === "all" ? true : w.group === group))
       .filter((w) => (onlyVerified ? w.confidence_level === "high" : true))
       .filter((w) => (w.tds_mg_l ?? 0) <= tdsMax);
@@ -2196,20 +2220,18 @@ function WaterPicker({ waters, selectedIds, onToggle }) {
       result = result.filter((w) => w.brand_name.charAt(0).toUpperCase() === selectedLetter);
     }
     
-    return result.sort((a, b) => a.brand_name.localeCompare(b.brand_name));
-  }, [waters, query, group, onlyVerified, tdsMax, selectedLetter]);
+    return result;
+  }, [sortedWaters, query, group, onlyVerified, tdsMax, selectedLetter]);
 
   const handleLetterClick = (letter) => {
     const hasWater = availableLettersSet.has(letter);
     
     if (!hasWater) {
-      // Для всех букв без воды - показываем сообщение и НЕ меняем фильтр
       setNoResultsMessage(`Нет марок воды на букву "${letter}"`);
       setTimeout(() => setNoResultsMessage(null), 3000);
       return;
     }
     
-    // Если вода есть
     if (selectedLetter === letter) {
       setSelectedLetter(null);
     } else {
@@ -2224,6 +2246,10 @@ function WaterPicker({ waters, selectedIds, onToggle }) {
     setQuery("");
     setNoResultsMessage(null);
   };
+
+  // Разделяем воды на популярные и остальные для отображения
+  const popularWaters = filtered.filter(w => w.popular);
+  const otherWaters = filtered.filter(w => !w.popular);
 
   return (
     <div className={`${GLASS.card} p-3 sm:p-6`}>
@@ -2289,7 +2315,6 @@ function WaterPicker({ waters, selectedIds, onToggle }) {
             <span className="text-xs text-slate-400 mr-1 sm:mr-2 self-center">A–Z</span>
             {fullAlphabet.filter(l => /[A-Z]/.test(l)).map(letter => {
               const hasWater = availableLettersSet.has(letter);
-              // Одинаковый стиль для всех букв без воды
               return (
                 <button
                   key={letter}
@@ -2347,7 +2372,7 @@ function WaterPicker({ waters, selectedIds, onToggle }) {
         </div>
       )}
 
-      {/* Сообщение об отсутствии воды на букву - для всех букв */}
+      {/* Сообщение об отсутствии воды на букву */}
       {noResultsMessage && (
         <div className="mt-4 sm:mt-6 p-4 sm:p-6 text-center">
           <div className="inline-block bg-amber-50 border border-amber-200 rounded-xl px-4 sm:px-6 py-3 sm:py-4">
@@ -2371,51 +2396,118 @@ function WaterPicker({ waters, selectedIds, onToggle }) {
         </div>
       )}
 
-      <div className="mt-3 sm:mt-4 grid gap-2 sm:gap-3 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
-        {filtered.map((w) => {
-          const selected = selectedIds.includes(w.id);
-          return (
-            <button
-              key={w.id}
-              type="button"
-              onClick={() => onToggle(w)}
-              className={`${GLASS.subtle} text-left transition hover:bg-white/70 ${selected ? "ring-2 ring-sky-200" : ""}`}
-            >
-              <div className="p-2 sm:p-4">
-                <div className="flex items-start justify-between gap-2">
-                  <div className="min-w-0">
-                    <div className="flex items-center gap-1.5 sm:gap-2">
-                      <span className="text-base sm:text-xl">{w.flag_emoji ?? safeCountryFlag(w.country_code)}</span>
+      {/* Популярные воды */}
+      {popularWaters.length > 0 && !query && !selectedLetter && (
+        <div className="mt-4">
+          <div className="flex items-center gap-2 mb-3">
+            <Star className="h-4 w-4 text-amber-500" />
+            <span className="text-sm font-semibold text-slate-700">Популярные воды</span>
+          </div>
+          <div className="grid gap-2 sm:gap-3 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
+            {popularWaters.map((w) => {
+              const selected = selectedIds.includes(w.id);
+              return (
+                <GlassCard
+                  key={w.id}
+                  isSelected={selected}
+                  onClick={() => onToggle(w)}
+                  className="cursor-pointer"
+                >
+                  <div className="p-2 sm:p-4">
+                    <div className="flex items-start justify-between gap-2">
                       <div className="min-w-0">
-                        <div className="truncate text-xs sm:text-sm font-semibold text-slate-900">{w.brand_name}</div>
-                        <div className="mt-0.5 sm:mt-1 flex flex-wrap items-center gap-1 sm:gap-2">
-                          <CategoryBadge cat={computeCategory(w)} />
-                          <ConfidenceBadge c={w.confidence_level} />
+                        <div className="flex items-center gap-1.5 sm:gap-2">
+                          <span className="text-base sm:text-xl">{w.flag_emoji ?? safeCountryFlag(w.country_code)}</span>
+                          <div className="min-w-0">
+                            <div className="truncate text-xs sm:text-sm font-semibold text-slate-900">{w.brand_name}</div>
+                            <div className="mt-0.5 sm:mt-1 flex flex-wrap items-center gap-1 sm:gap-2">
+                              <CategoryBadge cat={computeCategory(w)} />
+                              <ConfidenceBadge c={w.confidence_level} />
+                            </div>
+                          </div>
                         </div>
+                      </div>
+                      <div className="inline-flex items-center gap-1 sm:gap-2 rounded-xl sm:rounded-2xl border border-white/60 bg-white/70 px-1.5 sm:px-2 py-0.5 sm:py-1 text-[10px] sm:text-xs font-semibold text-slate-800">
+                        {selected ? "✓" : <Plus className="h-3 w-3 sm:h-4 sm:w-4" />}
+                        {selected ? t.selected : t.actions.add}
+                      </div>
+                    </div>
+
+                    <div className="mt-2 sm:mt-3 grid grid-cols-2 gap-1.5 sm:gap-2 text-[10px] sm:text-xs text-slate-700">
+                      <div className="flex items-center justify-between rounded-lg sm:rounded-xl border border-white/60 bg-white/60 px-1.5 sm:px-2 py-1">
+                        <span>TDS</span>
+                        <span className="font-semibold">{fmt(w.tds_mg_l, 0)}</span>
+                      </div>
+                      <div className="flex items-center justify-between rounded-lg sm:rounded-xl border border-white/60 bg-white/60 px-1.5 sm:px-2 py-1">
+                        <span>pH</span>
+                        <span className="font-semibold">{fmt(w.ph, 1)}</span>
                       </div>
                     </div>
                   </div>
-                  <div className="inline-flex items-center gap-1 sm:gap-2 rounded-xl sm:rounded-2xl border border-white/60 bg-white/70 px-1.5 sm:px-2 py-0.5 sm:py-1 text-[10px] sm:text-xs font-semibold text-slate-800">
-                    {selected ? "✓" : <Plus className="h-3 w-3 sm:h-4 sm:w-4" />}
-                    {selected ? t.selected : t.actions.add}
-                  </div>
-                </div>
+                </GlassCard>
+              );
+            })}
+          </div>
+        </div>
+      )}
 
-                <div className="mt-2 sm:mt-3 grid grid-cols-2 gap-1.5 sm:gap-2 text-[10px] sm:text-xs text-slate-700">
-                  <div className="flex items-center justify-between rounded-lg sm:rounded-xl border border-white/60 bg-white/60 px-1.5 sm:px-2 py-1">
-                    <span>TDS</span>
-                    <span className="font-semibold">{fmt(w.tds_mg_l, 0)}</span>
+      {/* Остальные воды */}
+      {otherWaters.length > 0 && (
+        <div className={`${popularWaters.length > 0 && !query && !selectedLetter ? 'mt-6' : 'mt-3 sm:mt-4'}`}>
+          {popularWaters.length > 0 && !query && !selectedLetter && (
+            <div className="flex items-center gap-2 mb-3">
+              <div className="h-px flex-1 bg-slate-200"></div>
+              <span className="text-sm font-semibold text-slate-500">Все воды</span>
+              <div className="h-px flex-1 bg-slate-200"></div>
+            </div>
+          )}
+          <div className="grid gap-2 sm:gap-3 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
+            {otherWaters.map((w) => {
+              const selected = selectedIds.includes(w.id);
+              return (
+                <GlassCard
+                  key={w.id}
+                  isSelected={selected}
+                  onClick={() => onToggle(w)}
+                  className="cursor-pointer"
+                >
+                  <div className="p-2 sm:p-4">
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-1.5 sm:gap-2">
+                          <span className="text-base sm:text-xl">{w.flag_emoji ?? safeCountryFlag(w.country_code)}</span>
+                          <div className="min-w-0">
+                            <div className="truncate text-xs sm:text-sm font-semibold text-slate-900">{w.brand_name}</div>
+                            <div className="mt-0.5 sm:mt-1 flex flex-wrap items-center gap-1 sm:gap-2">
+                              <CategoryBadge cat={computeCategory(w)} />
+                              <ConfidenceBadge c={w.confidence_level} />
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                      <div className="inline-flex items-center gap-1 sm:gap-2 rounded-xl sm:rounded-2xl border border-white/60 bg-white/70 px-1.5 sm:px-2 py-0.5 sm:py-1 text-[10px] sm:text-xs font-semibold text-slate-800">
+                        {selected ? "✓" : <Plus className="h-3 w-3 sm:h-4 sm:w-4" />}
+                        {selected ? t.selected : t.actions.add}
+                      </div>
+                    </div>
+
+                    <div className="mt-2 sm:mt-3 grid grid-cols-2 gap-1.5 sm:gap-2 text-[10px] sm:text-xs text-slate-700">
+                      <div className="flex items-center justify-between rounded-lg sm:rounded-xl border border-white/60 bg-white/60 px-1.5 sm:px-2 py-1">
+                        <span>TDS</span>
+                        <span className="font-semibold">{fmt(w.tds_mg_l, 0)}</span>
+                      </div>
+                      <div className="flex items-center justify-between rounded-lg sm:rounded-xl border border-white/60 bg-white/60 px-1.5 sm:px-2 py-1">
+                        <span>pH</span>
+                        <span className="font-semibold">{fmt(w.ph, 1)}</span>
+                      </div>
+                    </div>
                   </div>
-                  <div className="flex items-center justify-between rounded-lg sm:rounded-xl border border-white/60 bg-white/60 px-1.5 sm:px-2 py-1">
-                    <span>pH</span>
-                    <span className="font-semibold">{fmt(w.ph, 1)}</span>
-                  </div>
-                </div>
-              </div>
-            </button>
-          );
-        })}
-      </div>
+                </GlassCard>
+              );
+            })}
+          </div>
+        </div>
+      )}
       
       {filtered.length === 0 && !selectedLetter && !query && !noResultsMessage && (
         <div className="mt-6 text-center text-sm text-slate-500 py-8">
