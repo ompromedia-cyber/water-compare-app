@@ -34,10 +34,6 @@ import {
   Tooltip as RechartsTooltip,
   XAxis,
   YAxis,
-  BarChart,
-  Bar,
-  Cell,
-  Legend,
 } from "recharts";
 
 // ============== UI КОМПОНЕНТЫ ==============
@@ -60,7 +56,7 @@ const GlassCard = ({ className, children, onClick, isSelected }) => (
   <div 
     onClick={onClick}
     className={`rounded-2xl sm:rounded-3xl border border-white/60 bg-white/55 shadow-[0_16px_50px_-36px_rgba(15,23,42,0.55)] backdrop-blur transition-all duration-200 ${
-      isSelected ? 'ring-2 ring-sky-400 shadow-lg transform scale-[1.02]' : 'hover:shadow-md hover:scale-[1.01]'
+      isSelected ? 'ring-2 ring-sky-400 shadow-lg transform scale-[1.02]' : 'hover:shadow-md hover:scale-[1.01] cursor-pointer'
     } ${className}`}
   >
     {children}
@@ -704,6 +700,7 @@ function normalizeWater(w) {
     source_type: w.source_type ?? "seed",
     confidence_level: w.confidence_level ?? "low",
     notes: w.notes,
+    popular: w.popular || false,
   };
   base.category = computeCategory(base);
   return base;
@@ -1138,13 +1135,10 @@ function getAchievements(w) {
 
 // ============== ДАННЫЕ (30+ МАРОК ВОДЫ) ==============
 const SEED = [
-  // Топ популярных вод (отображаются первыми)
   normalizeWater({ id: "evian", brand_name: "Evian", country_code: "FR", group: "Europe", ph: 7.2, tds_mg_l: 345, ca_mg_l: 80, mg_mg_l: 26, na_mg_l: 6.5, k_mg_l: 1.0, cl_mg_l: 10, sparkling: false, source_type: "seed", confidence_level: "high", popular: true }),
   normalizeWater({ id: "sanpellegrino", brand_name: "San Pellegrino", country_code: "IT", group: "Europe", ph: 7.8, tds_mg_l: 915, ca_mg_l: 160, mg_mg_l: 50, na_mg_l: 33, k_mg_l: 2.0, cl_mg_l: 49, sparkling: true, source_type: "seed", confidence_level: "high", popular: true }),
   normalizeWater({ id: "volvic", brand_name: "Volvic", country_code: "FR", group: "Europe", ph: 7.0, tds_mg_l: 130, ca_mg_l: 12, mg_mg_l: 8, na_mg_l: 12, k_mg_l: 6, cl_mg_l: 15, sparkling: false, source_type: "seed", confidence_level: "medium", popular: true }),
   normalizeWater({ id: "baikal", brand_name: "Байкал", country_code: "RU", group: "Russia", ph: 7.2, tds_mg_l: 120, ca_mg_l: 25, mg_mg_l: 8, na_mg_l: 4, k_mg_l: 1, cl_mg_l: 5, sparkling: false, source_type: "seed", confidence_level: "low", popular: true }),
-  
-  // Все остальные марки
   normalizeWater({ id: "acqua_panna_partial", brand_name: "Acqua Panna", country_code: "IT", group: "Europe", ph: 8.0, tds_mg_l: 190, sparkling: false, source_type: "seed", confidence_level: "low", notes: "Неполная этикетка" }),
   normalizeWater({ id: "aquaminerale", brand_name: "Aqua Minerale", country_code: "RU", group: "Russia", ph: 7.1, tds_mg_l: 180, ca_mg_l: 35, mg_mg_l: 15, na_mg_l: 8, k_mg_l: 2, cl_mg_l: 12, sparkling: false, source_type: "seed", confidence_level: "medium" }),
   normalizeWater({ id: "arkhyz", brand_name: "Архыз", country_code: "RU", group: "Russia", ph: 7.3, tds_mg_l: 200, ca_mg_l: 40, mg_mg_l: 18, na_mg_l: 12, k_mg_l: 3, cl_mg_l: 14, sparkling: false, source_type: "seed", confidence_level: "medium" }),
@@ -1731,7 +1725,7 @@ function MetricsTable({ selected, profile }) {
                   </div>
                 </th>
               ))}
-            </table>
+            </tr>
           </thead>
           
           <tbody>
@@ -1833,10 +1827,10 @@ function MetricsTable({ selected, profile }) {
                         />
                       </div>
                     </div>
-                  </table>
+                  </td>
                 );
               })}
-            </tr>
+            </td>
           </tbody>
         </table>
       </div>
@@ -2176,7 +2170,6 @@ function WaterPicker({ waters, selectedIds, onToggle }) {
   const [selectedLetter, setSelectedLetter] = useState(null);
   const [noResultsMessage, setNoResultsMessage] = useState(null);
 
-  // ПОЛНЫЙ АЛФАВИТ
   const fullAlphabet = [
     'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M',
     'N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z',
@@ -2185,7 +2178,6 @@ function WaterPicker({ waters, selectedIds, onToggle }) {
     'Щ', 'Ъ', 'Ы', 'Ь', 'Э', 'Ю', 'Я'
   ];
 
-  // Получаем множество доступных букв
   const availableLettersSet = useMemo(() => {
     const set = new Set();
     waters.forEach(w => {
@@ -2195,18 +2187,14 @@ function WaterPicker({ waters, selectedIds, onToggle }) {
     return set;
   }, [waters]);
 
-  // Сортируем воды: сначала популярные, затем по алфавиту
   const sortedWaters = useMemo(() => {
     return [...waters].sort((a, b) => {
-      // Если у одной есть popular, а у другой нет
       if (a.popular && !b.popular) return -1;
       if (!a.popular && b.popular) return 1;
-      // Иначе по алфавиту
       return a.brand_name.localeCompare(b.brand_name);
     });
   }, [waters]);
 
-  // Фильтрация вод
   const filtered = useMemo(() => {
     let q = query.trim().toLowerCase();
     let result = sortedWaters
@@ -2247,7 +2235,6 @@ function WaterPicker({ waters, selectedIds, onToggle }) {
     setNoResultsMessage(null);
   };
 
-  // Разделяем воды на популярные и остальные для отображения
   const popularWaters = filtered.filter(w => w.popular);
   const otherWaters = filtered.filter(w => !w.popular);
 
@@ -2307,10 +2294,8 @@ function WaterPicker({ waters, selectedIds, onToggle }) {
         </div>
       </div>
 
-      {/* Алфавитная навигация */}
       {!query && (
         <div className="mt-3 sm:mt-4 space-y-3 sm:space-y-4">
-          {/* Латиница */}
           <div className="flex flex-wrap gap-1.5 sm:gap-2">
             <span className="text-xs text-slate-400 mr-1 sm:mr-2 self-center">A–Z</span>
             {fullAlphabet.filter(l => /[A-Z]/.test(l)).map(letter => {
@@ -2333,7 +2318,6 @@ function WaterPicker({ waters, selectedIds, onToggle }) {
             })}
           </div>
           
-          {/* Кириллица */}
           <div className="flex flex-wrap gap-1.5 sm:gap-2">
             <span className="text-xs text-slate-400 mr-1 sm:mr-2 self-center">А–Я</span>
             {fullAlphabet.filter(l => /[А-Я]/.test(l)).map(letter => {
@@ -2356,7 +2340,6 @@ function WaterPicker({ waters, selectedIds, onToggle }) {
             })}
           </div>
           
-          {/* Кнопка "Все" */}
           <div className="pt-2">
             <button
               onClick={clearAllFilters}
@@ -2372,7 +2355,6 @@ function WaterPicker({ waters, selectedIds, onToggle }) {
         </div>
       )}
 
-      {/* Сообщение об отсутствии воды на букву */}
       {noResultsMessage && (
         <div className="mt-4 sm:mt-6 p-4 sm:p-6 text-center">
           <div className="inline-block bg-amber-50 border border-amber-200 rounded-xl px-4 sm:px-6 py-3 sm:py-4">
@@ -2396,7 +2378,6 @@ function WaterPicker({ waters, selectedIds, onToggle }) {
         </div>
       )}
 
-      {/* Популярные воды */}
       {popularWaters.length > 0 && !query && !selectedLetter && (
         <div className="mt-4">
           <div className="flex items-center gap-2 mb-3">
@@ -2451,7 +2432,6 @@ function WaterPicker({ waters, selectedIds, onToggle }) {
         </div>
       )}
 
-      {/* Остальные воды */}
       {otherWaters.length > 0 && (
         <div className={`${popularWaters.length > 0 && !query && !selectedLetter ? 'mt-6' : 'mt-3 sm:mt-4'}`}>
           {popularWaters.length > 0 && !query && !selectedLetter && (
@@ -2875,7 +2855,6 @@ export default function App() {
                     });
                   }} />
 
-                  {/* Индикатор активного профиля */}
                   <div className={`ml-0.5 sm:ml-2 px-2 sm:px-3 py-0.5 sm:py-1 rounded-full text-[10px] sm:text-xs font-medium ${
                     profile === "Everyday" ? "bg-emerald-100 text-emerald-700" :
                     profile === "Sport" ? "bg-blue-100 text-blue-700" :
