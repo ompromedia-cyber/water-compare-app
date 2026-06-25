@@ -459,44 +459,107 @@ function scoreWater(w) {
 
 function getProfileScore(w, profile) {
   const baseScore = scoreWater(w).score;
+  
+  // Веса для каждого профиля
   let profileWeights = { ca: 1.0, mg: 1.0, k: 0.8, na: 1.2, cl: 1.0, ph: 0.4, tds: 0.6 };
-  if (profile === "Kid") profileWeights = { ca: 0.8, mg: 0.8, k: 1.2, na: 2.5, cl: 1.5, ph: 0.5, tds: 2.0 };
-  if (profile === "Sensitive") profileWeights = { ca: 0.8, mg: 0.8, k: 1.2, na: 2.0, cl: 1.5, ph: 1.0, tds: 2.0 };
-  if (profile === "Sport") profileWeights = { ca: 1.5, mg: 1.8, k: 2.0, na: 2.2, cl: 1.5, ph: 0.8, tds: 1.5 };
+  
+  if (profile === "Kid") {
+    profileWeights = { ca: 0.8, mg: 0.8, k: 1.2, na: 2.5, cl: 1.5, ph: 0.5, tds: 2.0 };
+  } else if (profile === "Sensitive") {
+    profileWeights = { ca: 0.8, mg: 0.8, k: 1.2, na: 2.0, cl: 1.5, ph: 1.0, tds: 2.0 };
+  } else if (profile === "Sport") {
+    profileWeights = { ca: 1.5, mg: 1.8, k: 2.0, na: 2.2, cl: 1.5, ph: 0.8, tds: 1.5 };
+  }
+  // Для Everyday веса остаются базовыми
+  
   const get = {
     ca: w.ca_mg_l ?? null, mg: w.mg_mg_l ?? null, k: w.k_mg_l ?? null,
     na: w.na_mg_l ?? null, cl: w.cl_mg_l ?? null, ph: w.ph ?? null, tds: w.tds_mg_l ?? null,
   };
-  let totalWeight = 0, weightedScore = 0;
+  
+  let totalWeight = 0;
+  let weightedScore = 0;
+  let presentCount = 0;
+  
   for (const [key, weight] of Object.entries(profileWeights)) {
     const x = get[key];
     if (x !== null && x !== undefined) {
       const ref = key === "ph" ? REF.ph : key === "tds" ? REF.tds : REF[key];
+      
+      // Расчёт близости к эталону (0-100)
       let score = 100;
       const deviation = Math.abs(x - ref) / ref;
       score = Math.max(0, 100 - deviation * 100);
+      
+      // Для некоторых профилей меняем логику оценки
+      if (profile === "Kid" || profile === "Sensitive") {
+        if (key === "tds") {
+          // Чем ниже TDS, тем лучше (для детей и ЖКТ)
+          score = Math.max(0, 100 - (x / 10));
+        } else if (key === "na") {
+          // Чем ниже натрий, тем лучше
+          score = Math.max(0, 100 - (x * 2));
+        }
+      } else if (profile === "Sport") {
+        if (key === "k" || key === "na" || key === "mg") {
+          // Для спортсменов оптимальные значения выше на 30%
+          const optimal = ref * 1.3;
+          const deviation2 = Math.abs(x - optimal) / optimal;
+          score = Math.max(0, 100 - deviation2 * 80);
+        }
+      }
+      
       weightedScore += score * weight;
       totalWeight += weight;
+      presentCount++;
     }
   }
-  const profileScore = totalWeight > 0 ? weightedScore / totalWeight : 0;
-  return baseScore * 0.4 + profileScore * 0.6;
+  
+  // Если нет данных, возвращаем базовый рейтинг
+  if (totalWeight === 0) return baseScore;
+  
+  const profileScore = weightedScore / totalWeight;
+  
+  // Штраф за отсутствие ключевых показателей
+  const missingPenalty = (7 - presentCount) * 3;
+  
+  return baseScore * 0.3 + profileScore * 0.7 - missingPenalty;
 }
 
 function compareForRanking(a, b, profile) {
-  const scoreA = scoreWater(a), scoreB = scoreWater(b);
-  if (scoreA.presentCount !== scoreB.presentCount) return scoreB.presentCount - scoreA.presentCount;
-  const profileScoreA = getProfileScore(a, profile), profileScoreB = getProfileScore(b, profile);
-  if (Math.abs(profileScoreB - profileScoreA) > 0.01) return profileScoreB - profileScoreA;
-  return scoreB.score - scoreA.score;
+  const scoreA = getProfileScore(a, profile);
+  const scoreB = getProfileScore(b, profile);
+  
+  // Сортировка по профильному рейтингу (от большего к меньшему)
+  if (Math.abs(scoreB - scoreA) > 0.001) {
+    return scoreB - scoreA;
+  }
+  
+  // При равных - по количеству показателей
+  const countA = scoreWater(a).presentCount;
+  const countB = scoreWater(b).presentCount;
+  if (countA !== countB) return countB - countA;
+  
+  // При равных - по алфавиту
+  return a.brand_name.localeCompare(b.brand_name);
 }
 
 function pickWinnerDaily(selected, profile) {
-  const scored = selected.map(w => ({ w, s: getProfileScore(w, profile) }));
-  const nonThera = scored.filter(x => computeCategory(x.w) !== "Therapeutic");
-  const pool = nonThera.length ? nonThera : scored;
-  pool.sort((x, y) => y.s - x.s);
-  return pool[0] ?? null;
+  if (selected.length === 0) return null;
+  
+  // Сортируем по профильному рейтингу (от большего к меньшему)
+  const sorted = [...selected].sort((a, b) => {
+    const scoreA = getProfileScore(a, profile);
+    const scoreB = getProfileScore(b, profile);
+    return scoreB - scoreA;
+  });
+  
+  // Исключаем лечебные воды из победителя (но если только они есть)
+  const nonThera = sorted.filter(w => computeCategory(w) !== "Therapeutic");
+  if (nonThera.length > 0) {
+    return nonThera[0];
+  }
+  return sorted[0];
 }
 
 function parseCSV(text) { try { const rows = []; let cur = "", row = [], inQuotes = false; const pushCell = () => { row.push(cur); cur = ""; }; const pushRow = () => { if (row.length === 1 && row[0].trim() === "") return; rows.push(row); row = []; }; for (let i = 0; i < text.length; i++) { const ch = text[i], next = text[i + 1]; if (ch === '"') { if (inQuotes && next === '"') { cur += '"'; i++; } else { inQuotes = !inQuotes; } continue; } if (!inQuotes && ch === ",") { pushCell(); continue; } if (!inQuotes && (ch === "\n" || ch === "\r")) { if (ch === "\r" && next === "\n") i++; pushCell(); pushRow(); continue; } cur += ch; } pushCell(); pushRow(); if (rows.length < 2) return []; const headers = rows[0].map(h => h.trim()); const get = (r, k) => { const idx = headers.findIndex(h => h.toLowerCase() === k.toLowerCase()); if (idx < 0) return ""; return (r[idx] ?? "").trim(); }; const items = []; for (const r of rows.slice(1)) { const id = get(r, "id") || get(r, "slug") || get(r, "code"); const brand = get(r, "brand_name") || get(r, "name") || get(r, "brand"); if (!id || !brand) continue; const w = { id, brand_name: brand, country_code: get(r, "country_code") || undefined, flag_emoji: get(r, "flag_emoji") || undefined, group: get(r, "group") || undefined, source_type: get(r, "source_type") || undefined, confidence_level: get(r, "confidence_level") || undefined, notes: get(r, "notes") || undefined, ph: parseNumLoose(get(r, "ph")), tds_mg_l: parseNumLoose(get(r, "tds_mg_l")) ?? parseNumLoose(get(r, "tds")), ca_mg_l: parseNumLoose(get(r, "ca_mg_l")) ?? parseNumLoose(get(r, "ca")), mg_mg_l: parseNumLoose(get(r, "mg_mg_l")) ?? parseNumLoose(get(r, "mg")), na_mg_l: parseNumLoose(get(r, "na_mg_l")) ?? parseNumLoose(get(r, "na")), k_mg_l: parseNumLoose(get(r, "k_mg_l")) ?? parseNumLoose(get(r, "k")), cl_mg_l: parseNumLoose(get(r, "cl_mg_l")) ?? parseNumLoose(get(r, "cl")), sparkling: toBoolLoose(get(r, "sparkling")), }; items.push(normalizeWater(w)); } return items; } catch(e) { return []; } }
@@ -523,6 +586,9 @@ const SEED = [
   normalizeWater({ id: "sanpellegrino", brand_name: "San Pellegrino", country_code: "IT", group: "Europe", ph: 7.8, tds_mg_l: 915, ca_mg_l: 160, mg_mg_l: 50, na_mg_l: 33, k_mg_l: 2.0, cl_mg_l: 49, sparkling: true, source_type: "seed", confidence_level: "high", popular: true }),
   normalizeWater({ id: "volvic", brand_name: "Volvic", country_code: "FR", group: "Europe", ph: 7.0, tds_mg_l: 130, ca_mg_l: 12, mg_mg_l: 8, na_mg_l: 12, k_mg_l: 6, cl_mg_l: 15, sparkling: false, source_type: "seed", confidence_level: "medium", popular: true }),
   normalizeWater({ id: "baikal", brand_name: "Байкал", country_code: "RU", group: "Russia", ph: 7.2, tds_mg_l: 120, ca_mg_l: 25, mg_mg_l: 8, na_mg_l: 4, k_mg_l: 1, cl_mg_l: 5, sparkling: false, source_type: "seed", confidence_level: "low", popular: true }),
+  normalizeWater({ id: "vittel", brand_name: "Vittel", country_code: "FR", group: "Europe", ph: 7.5, tds_mg_l: 380, ca_mg_l: 100, mg_mg_l: 24, na_mg_l: 12, k_mg_l: 3, cl_mg_l: 20, sparkling: false, source_type: "seed", confidence_level: "high" }),
+  normalizeWater({ id: "nestle", brand_name: "Nestlé Pure Life", country_code: "CH", group: "Europe", ph: 7.1, tds_mg_l: 210, ca_mg_l: 30, mg_mg_l: 10, na_mg_l: 8, k_mg_l: 2, cl_mg_l: 12, sparkling: false, source_type: "seed", confidence_level: "high" }),
+  normalizeWater({ id: "essentia", brand_name: "Essentia", country_code: "US", group: "Europe", ph: 9.5, tds_mg_l: 200, ca_mg_l: 15, mg_mg_l: 10, na_mg_l: 15, k_mg_l: 5, cl_mg_l: 10, sparkling: false, source_type: "seed", confidence_level: "high", notes: "Высокий pH" }),
   normalizeWater({ id: "acqua_panna_partial", brand_name: "Acqua Panna", country_code: "IT", group: "Europe", ph: 8.0, tds_mg_l: 190, sparkling: false, source_type: "seed", confidence_level: "low", notes: "Неполная этикетка" }),
   normalizeWater({ id: "aquaminerale", brand_name: "Aqua Minerale", country_code: "RU", group: "Russia", ph: 7.1, tds_mg_l: 180, ca_mg_l: 35, mg_mg_l: 15, na_mg_l: 8, k_mg_l: 2, cl_mg_l: 12, sparkling: false, source_type: "seed", confidence_level: "medium" }),
   normalizeWater({ id: "arkhyz", brand_name: "Архыз", country_code: "RU", group: "Russia", ph: 7.3, tds_mg_l: 200, ca_mg_l: 40, mg_mg_l: 18, na_mg_l: 12, k_mg_l: 3, cl_mg_l: 14, sparkling: false, source_type: "seed", confidence_level: "medium" }),
@@ -530,22 +596,20 @@ const SEED = [
   normalizeWater({ id: "borjomi", brand_name: "Borjomi", country_code: "GE", group: "Therapeutic", ph: 6.6, tds_mg_l: 5500, ca_mg_l: 120, mg_mg_l: 50, na_mg_l: 1200, k_mg_l: 35, cl_mg_l: 600, sparkling: true, source_type: "seed", confidence_level: "high", notes: "Лечебно-столовая вода" }),
   normalizeWater({ id: "contrex", brand_name: "Contrex", country_code: "FR", group: "Europe", ph: 7.3, tds_mg_l: 2078, ca_mg_l: 468, mg_mg_l: 84, na_mg_l: 14, k_mg_l: 5, cl_mg_l: 15, sparkling: false, source_type: "seed", confidence_level: "high", notes: "Высокое содержание кальция" }),
   normalizeWater({ id: "cristal", brand_name: "Cristal", country_code: "RU", group: "Russia", ph: 7.0, tds_mg_l: 140, ca_mg_l: 20, mg_mg_l: 8, na_mg_l: 6, k_mg_l: 1, cl_mg_l: 7, sparkling: false, source_type: "seed", confidence_level: "low" }),
-  normalizeWater({ id: "essentia", brand_name: "Essentia", country_code: "US", group: "Europe", ph: 9.5, tds_mg_l: 200, ca_mg_l: 15, mg_mg_l: 10, na_mg_l: 15, k_mg_l: 5, cl_mg_l: 10, sparkling: false, source_type: "seed", confidence_level: "high", notes: "Высокий pH" }),
   normalizeWater({ id: "fiji", brand_name: "Fiji", country_code: "FJ", group: "Europe", ph: 7.7, tds_mg_l: 220, ca_mg_l: 18, mg_mg_l: 15, na_mg_l: 18, k_mg_l: 5, cl_mg_l: 9, sparkling: false, source_type: "seed", confidence_level: "high" }),
   normalizeWater({ id: "gerolsteiner", brand_name: "Gerolsteiner", country_code: "DE", group: "Europe", ph: 6.9, tds_mg_l: 2520, ca_mg_l: 348, mg_mg_l: 108, na_mg_l: 118, k_mg_l: 11, cl_mg_l: 45, sparkling: true, source_type: "seed", confidence_level: "high" }),
   normalizeWater({ id: "hepar", brand_name: "Hépar", country_code: "FR", group: "Europe", ph: 7.4, tds_mg_l: 2513, ca_mg_l: 555, mg_mg_l: 110, na_mg_l: 14, k_mg_l: 8, cl_mg_l: 20, sparkling: false, source_type: "seed", confidence_level: "high", notes: "Высокое содержание магния" }),
   normalizeWater({ id: "lipetsk", brand_name: "Липецкая", country_code: "RU", group: "Russia", ph: 7.2, tds_mg_l: 350, ca_mg_l: 70, mg_mg_l: 25, na_mg_l: 15, k_mg_l: 4, cl_mg_l: 18, sparkling: false, source_type: "seed", confidence_level: "low" }),
-  normalizeWater({ id: "nestle", brand_name: "Nestlé Pure Life", country_code: "CH", group: "Europe", ph: 7.1, tds_mg_l: 210, ca_mg_l: 30, mg_mg_l: 10, na_mg_l: 8, k_mg_l: 2, cl_mg_l: 12, sparkling: false, source_type: "seed", confidence_level: "high" }),
   normalizeWater({ id: "perrier", brand_name: "Perrier", country_code: "FR", group: "Europe", ph: 5.7, tds_mg_l: 475, ca_mg_l: 150, mg_mg_l: 4, na_mg_l: 9, k_mg_l: 1, cl_mg_l: 25, sparkling: true, source_type: "seed", confidence_level: "high" }),
   normalizeWater({ id: "polyana_kvasova", brand_name: "Поляна Квасова", country_code: "UA", group: "Europe", ph: 7.1, tds_mg_l: 800, ca_mg_l: 120, mg_mg_l: 40, na_mg_l: 200, k_mg_l: 10, cl_mg_l: 100, sparkling: true, source_type: "seed", confidence_level: "medium", notes: "Лечебно-столовая" }),
   normalizeWater({ id: "smartwater", brand_name: "smartwater", country_code: "US", group: "Europe", ph: 7.2, tds_mg_l: 90, ca_mg_l: 10, mg_mg_l: 5, na_mg_l: 8, k_mg_l: 2, cl_mg_l: 5, sparkling: false, source_type: "seed", confidence_level: "high" }),
   normalizeWater({ id: "svalbard", brand_name: "Svalbarði", country_code: "NO", group: "Europe", ph: 7.2, tds_mg_l: 120, ca_mg_l: 3, mg_mg_l: 0.5, na_mg_l: 2, k_mg_l: 0.5, cl_mg_l: 2, sparkling: false, source_type: "seed", confidence_level: "medium", notes: "Очень низкая минерализация" }),
   normalizeWater({ id: "svyatoy_istochnik", brand_name: "Святой Источник", country_code: "RU", group: "Russia", ph: 7.0, tds_mg_l: 150, ca_mg_l: 30, mg_mg_l: 10, na_mg_l: 10, k_mg_l: 2, cl_mg_l: 8, sparkling: false, source_type: "seed", confidence_level: "medium" }),
-  normalizeWater({ id: "vittel", brand_name: "Vittel", country_code: "FR", group: "Europe", ph: 7.5, tds_mg_l: 380, ca_mg_l: 100, mg_mg_l: 24, na_mg_l: 12, k_mg_l: 3, cl_mg_l: 20, sparkling: false, source_type: "seed", confidence_level: "high" }),
 ];
 
-// ============== UI КОМПОНЕНТЫ (сокращённые для экономии места) ==============
+// ============== UI КОМПОНЕНТЫ ==============
 function ConfidenceBadge({ c }) { return null; }
+
 function CategoryBadge({ cat }) { const lang = React.useContext(LangCtx); const tt = I18N[lang]; const styles = { Daily: { label: tt.badges.daily, icon: <ShieldCheck className="h-3 w-3 sm:h-3.5 sm:w-3.5" />, className: "bg-emerald-50 text-emerald-800 border-emerald-200" }, Rotate: { label: tt.badges.rotate, icon: <Sparkles className="h-3 w-3 sm:h-3.5 sm:w-3.5" />, className: "bg-sky-50 text-sky-800 border-sky-200" }, Therapeutic: { label: tt.badges.therapeutic, icon: <Beaker className="h-3 w-3 sm:h-3.5 sm:w-3.5" />, className: "bg-rose-50 text-rose-800 border-rose-200" }, Unknown: { label: tt.badges.unknown, icon: <AlertTriangle className="h-3 w-3 sm:h-3.5 sm:w-3.5" />, className: "bg-slate-50 text-slate-800 border-slate-200" }, }; const v = styles[cat]; return (<Tooltip><TooltipTrigger asChild><span className={`inline-flex cursor-help items-center gap-1 rounded-xl border px-1.5 py-0.5 sm:px-2 sm:py-1 text-[10px] sm:text-xs font-medium ${v.className}`}>{v.icon}{v.label}</span></TooltipTrigger><TooltipContent className="max-w-[280px] sm:max-w-[320px]"><div className="text-xs leading-snug">{tt.categoryHelp[cat]}</div></TooltipContent></Tooltip>); }
 
 function MetricHelp({ k }) { const lang = React.useContext(LangCtx); const e = EDUCATION[k]; const title = lang === "ru" ? e.titleRU : e.titleEN; const unit = lang === "ru" ? e.unitRU : e.unitEN; const descriptions = { ph: { ru: "Влияет на вкус и усвояемость. Слабощелочная вода (pH 7.3-7.5) считается оптимальной для питья.", en: "Affects taste and absorption." }, tds: { ru: "Общая минерализация. Для ежедневного питья рекомендуется до 500 мг/л.", en: "Total dissolved solids." }, ca: { ru: "Кальций. Важен для костей, зубов.", en: "Calcium." }, mg: { ru: "Магний. Участвует в работе нервной системы.", en: "Magnesium." }, na: { ru: "Натрий. Регулирует давление и водный баланс.", en: "Sodium." }, k: { ru: "Калий. Поддерживает сердце, мышцы.", en: "Potassium." }, cl: { ru: "Хлориды. Влияют на электролитный баланс.", en: "Chloride." } }; const desc = descriptions[k] || descriptions.tds; const text = lang === "ru" ? desc.ru : desc.en; return (<Dialog><DialogTrigger asChild><button className="inline-flex items-center justify-center rounded-lg border border-sky-100 bg-white/70 px-1.5 py-0.5 text-[11px] text-slate-700 hover:bg-white" aria-label="info" type="button"><Info className="h-3 w-3 sm:h-3.5 sm:w-3.5" /></button></DialogTrigger><DialogContent className="max-w-[380px] sm:max-w-[400px]"><DialogHeader><DialogTitle className="text-base sm:text-lg">{title}</DialogTitle></DialogHeader><div className="space-y-3 sm:space-y-4 p-4 sm:p-6 pt-2"><div className="text-xs sm:text-sm text-slate-700 leading-relaxed">{text}</div><div className="rounded-xl border border-sky-100 bg-sky-50/60 p-2 sm:p-3"><div className="text-xs text-slate-600 font-medium mb-1">{lang === "ru" ? "Эталон:" : "Reference:"}</div><div className="font-medium text-slate-900 text-sm sm:text-base">{e.ref}{unit ? ` ${unit}` : ""}</div></div></div></DialogContent></Dialog>); }
@@ -615,7 +679,20 @@ function CompareChart({ selected }) { const lang = React.useContext(LangCtx); co
 
 function RotationMock({ selected, profile }) { const lang = React.useContext(LangCtx); const t = I18N[lang]; if (selected.length < 2) return <div className={`${GLASS.card} p-4 sm:p-6 text-center text-slate-600 text-sm`}>{t.misc.notEnough}</div>; const sorted = [...selected].sort((a, b) => compareForRanking(a, b, profile)); const safe = sorted.filter(w => computeCategory(w) !== "Therapeutic"); const a = safe[0] ?? sorted[0]; const b = safe[1] ?? sorted[1] ?? sorted[0]; const plan = [{ day: 1, w: a }, { day: 2, w: b }, { day: 3, w: a }, { day: 4, w: b }, { day: 5, w: a }, { day: 6, w: b }, { day: 7, w: a }].filter(x => x.w); return (<div className={`${GLASS.card} p-3 sm:p-6`}><div><div className="text-base sm:text-lg font-semibold text-slate-900">{t.rotation.title}</div><div className="text-xs sm:text-sm text-slate-600">{t.rotation.hint}</div></div><div className="mt-3 sm:mt-4 overflow-hidden rounded-xl sm:rounded-2xl border border-white/60 bg-white/55 backdrop-blur"><table className="w-full text-left text-xs sm:text-sm"><thead className="bg-white/70"><tr className="text-slate-600"><th className="px-3 sm:px-4 py-2 sm:py-3">{t.rotation.day}</th><th className="px-3 sm:px-4 py-2 sm:py-3">{t.rotation.water}</th></tr></thead><tbody>{plan.map((p, idx) => (<tr key={p.day} className={idx % 2 ? "bg-white/40" : "bg-white/60"}><td className="px-3 sm:px-4 py-2 sm:py-3 font-semibold text-slate-900">{p.day}</td><td className="px-3 sm:px-4 py-2 sm:py-3"><div className="flex items-center gap-1.5 sm:gap-2"><span className="text-base sm:text-lg">{p.w.flag_emoji ?? safeCountryFlag(p.w.country_code)}</span><span className="font-medium text-slate-900 text-xs sm:text-sm">{p.w.brand_name}</span><span className="ml-0.5 sm:ml-2"><CategoryBadge cat={computeCategory(p.w)} /></span></div></td></tr>))}</tbody></table></div></div>); }
 
-function ReportAccordion({ selected, profile, mode, compact, onToggleCompact }) { const lang = React.useContext(LangCtx); const t = I18N[lang]; const [isOpen, setIsOpen] = useState(true); const winner = pickWinnerDaily(selected, profile); const sorted = [...selected].sort((a, b) => compareForRanking(a, b, profile)); if (selected.length === 0) return <div className={`${GLASS.card} p-4 sm:p-6 text-center text-slate-600 text-sm`}>{t.misc.empty}</div>; return (<div className={`${GLASS.card} p-3 sm:p-6`}><div className="flex flex-wrap items-center justify-between gap-2 cursor-pointer" onClick={() => setIsOpen(!isOpen)}><div><div className="text-base sm:text-lg font-semibold text-slate-900">{t.report.title}</div><div className="text-xs sm:text-sm text-slate-600">{t.report.dataPenalty}</div></div><div className="flex items-center gap-1 sm:gap-2"><Button variant="outline" className="h-8 sm:h-10 rounded-xl sm:rounded-2xl bg-white/70 hover:bg-white" onClick={(e) => { e.stopPropagation(); onToggleCompact(); }} type="button">{compact ? t.report.expanded : t.report.compact}</Button><button className="p-1 sm:p-2 hover:bg-white/50 rounded-full">{isOpen ? <ChevronUp className="h-4 w-4 sm:h-5 sm:w-5" /> : <ChevronDown className="h-4 w-4 sm:h-5 sm:w-5" />}</button></div></div>{isOpen && (<div className="mt-3 sm:mt-4 space-y-4 sm:space-y-5">{winner && (<div><div className="text-xs sm:text-sm font-medium text-slate-600 mb-1.5 sm:mb-2">{t.report.bestDaily}</div><WaterProfileCard w={winner.w} profile={profile} rank={1} isWinner={true} /></div>)}<div><div className="text-xs sm:text-sm font-medium text-slate-600 mb-1.5 sm:mb-2">{t.report.profilesBlock}</div><div className="space-y-2 sm:space-y-3">{compact ? (<div className="space-y-2 sm:space-y-3">{sorted.map((w, index) => (<WaterProfileCompactRow key={w.id} w={w} profile={profile} rank={index + 1} />))}</div>) : (<div className="grid gap-3 sm:gap-4 grid-cols-1 md:grid-cols-2">{sorted.map((w, index) => (<WaterProfileCard key={w.id} w={w} profile={profile} rank={index + 1} />))}</div>)}</div></div></div>)}</div>); }
+function ReportAccordion({ selected, profile, mode, compact, onToggleCompact }) {
+  const lang = React.useContext(LangCtx);
+  const t = I18N[lang];
+  const [isOpen, setIsOpen] = useState(true);
+  
+  const winner = pickWinnerDaily(selected, profile);
+  const sorted = [...selected].sort((a, b) => compareForRanking(a, b, profile));
+  
+  if (selected.length === 0) {
+    return <div className={`${GLASS.card} p-4 sm:p-6 text-center text-slate-600 text-sm`}>{t.misc.empty}</div>;
+  }
+  
+  return (<div className={`${GLASS.card} p-3 sm:p-6`}><div className="flex flex-wrap items-center justify-between gap-2 cursor-pointer" onClick={() => setIsOpen(!isOpen)}><div><div className="text-base sm:text-lg font-semibold text-slate-900">{t.report.title}</div><div className="text-xs sm:text-sm text-slate-600">{t.report.dataPenalty}</div></div><div className="flex items-center gap-1 sm:gap-2"><Button variant="outline" className="h-8 sm:h-10 rounded-xl sm:rounded-2xl bg-white/70 hover:bg-white" onClick={(e) => { e.stopPropagation(); onToggleCompact(); }} type="button">{compact ? t.report.expanded : t.report.compact}</Button><button className="p-1 sm:p-2 hover:bg-white/50 rounded-full">{isOpen ? <ChevronUp className="h-4 w-4 sm:h-5 sm:w-5" /> : <ChevronDown className="h-4 w-4 sm:h-5 sm:w-5" />}</button></div></div>{isOpen && (<div className="mt-3 sm:mt-4 space-y-4 sm:space-y-5">{winner && (<div><div className="text-xs sm:text-sm font-medium text-slate-600 mb-1.5 sm:mb-2">{lang === "ru" ? `Лучший выбор для профиля "${t.profiles[profile].toLowerCase()}"` : `Best choice for "${t.profiles[profile].toLowerCase()}" profile`}</div><WaterProfileCard w={winner} profile={profile} rank={1} isWinner={true} /></div>)}<div><div className="text-xs sm:text-sm font-medium text-slate-600 mb-1.5 sm:mb-2">{t.report.profilesBlock}</div><div className="space-y-2 sm:space-y-3">{compact ? (<div className="space-y-2 sm:space-y-3">{sorted.map((w, index) => (<WaterProfileCompactRow key={w.id} w={w} profile={profile} rank={index + 1} />))}</div>) : (<div className="grid gap-3 sm:gap-4 grid-cols-1 md:grid-cols-2">{sorted.map((w, index) => (<WaterProfileCard key={w.id} w={w} profile={profile} rank={index + 1} />))}</div>)}</div></div></div>)}</div>);
+}
 
 function runSelfTests() { try { const evian = SEED.find(x => x.id === "evian"); const borjomi = SEED.find(x => x.id === "borjomi"); const partial = SEED.find(x => x.id === "acqua_panna_partial"); if (evian && borjomi) { const w = pickWinnerDaily([evian, borjomi], "Everyday"); console.assert(w && w.w.id !== "borjomi"); } if (partial && evian) { const cmp = compareForRanking(partial, evian, "Everyday"); console.assert(cmp > 0); } if (borjomi) { const s = scoreWater(borjomi); console.assert(s.score >= 0 && s.score <= 100); } } catch(e) { console.log("Self tests passed"); } }
 
@@ -639,5 +716,5 @@ export default function App() {
   const canCompare = selected.length >= 2;
   const onCompare = () => { if (!canCompare) return; setScreen("B"); };
   const onMerge = incoming => setWaters(prev => mergeById(prev, incoming));
-  return (<LangCtx.Provider value={lang}><TooltipProvider><div className={GLASS.page}><div className="mx-auto max-w-7xl px-3 sm:px-4 pb-24 sm:pb-28 pt-4 sm:pt-6"><div className={`${GLASS.card} p-3 sm:p-6`}><div className="flex flex-wrap items-center justify-between gap-2 sm:gap-3"><div><div className="text-base sm:text-xl font-semibold text-slate-900">{t.appName}</div><div className="text-xs sm:text-sm text-slate-600">{t.tagline}</div></div><div className="flex flex-wrap items-center gap-1.5 sm:gap-2"><Button variant="outline" className="h-8 sm:h-10 rounded-xl sm:rounded-2xl bg-white/70 hover:bg-white inline-flex items-center" onClick={() => setLang(v => v === "ru" ? "en" : "ru")} type="button"><Languages className="mr-1 sm:mr-2 h-3 w-3 sm:h-4 sm:w-4" /><span className="text-xs sm:text-sm">{t.langLabel}: {lang.toUpperCase()}</span></Button><DropdownMenu><DropdownMenuTrigger asChild><Button variant="outline" className="h-8 sm:h-10 rounded-xl sm:rounded-2xl bg-white/70 hover:bg-white inline-flex items-center" type="button"><Lock className="mr-1 sm:mr-2 h-3 w-3 sm:h-4 sm:w-4" /><span className="text-xs sm:text-sm">{t.modeLabel}: {t.modes[mode]}</span></Button></DropdownMenuTrigger><DropdownMenuContent><DropdownMenuItem onClick={() => setMode("consumer")}>{t.modes.consumer}</DropdownMenuItem><DropdownMenuItem onClick={() => setMode("pro")}>{t.modes.pro}</DropdownMenuItem></DropdownMenuContent></DropdownMenu><DropdownMenu><DropdownMenuTrigger asChild><Button variant="outline" className="h-8 sm:h-10 rounded-xl sm:rounded-2xl bg-white/70 hover:bg-white inline-flex items-center" type="button"><UserProfileIcon /><span className="ml-1 sm:ml-2 text-xs sm:text-sm">{t.profileLabel}: {t.profiles[profile]}</span></Button></DropdownMenuTrigger><DropdownMenuContent>{Object.keys(t.profiles).map(k => (<DropdownMenuItem key={k} onClick={() => setProfile(k)}>{t.profiles[k]}</DropdownMenuItem>))}</DropdownMenuContent></DropdownMenu><ImportDialog onMerge={onMerge} /><ScannerDialog onScanComplete={scannedWater => { setWaters(prev => mergeById(prev, [scannedWater])); setSelectedIds(prev => { if (prev.length >= 5) return prev; if (!prev.includes(scannedWater.id)) return [...prev, scannedWater.id]; return prev; }); }} /><div className={`ml-0.5 sm:ml-2 px-2 sm:px-3 py-0.5 sm:py-1 rounded-full text-[10px] sm:text-xs font-medium ${profile === "Everyday" ? "bg-emerald-100 text-emerald-700" : profile === "Sport" ? "bg-blue-100 text-blue-700" : profile === "Kid" ? "bg-amber-100 text-amber-700" : "bg-purple-100 text-purple-700"}`}>{profile === "Everyday" && "🍃 Ежедневный"}{profile === "Sport" && "🏃 Спорт"}{profile === "Kid" && "🧒 Детский"}{profile === "Sensitive" && "🌸 ЖКТ"}</div></div></div><div className="mt-4 sm:mt-5"><Tabs value={screen} onValueChange={v => setScreen(v)}><TabsList className="rounded-xl sm:rounded-2xl bg-white/70"><TabsTrigger value="A">{t.screenA}</TabsTrigger><TabsTrigger value="B" disabled={!canCompare}>{t.screenB}</TabsTrigger><TabsTrigger value="C" disabled={!canCompare}>{t.screenC}</TabsTrigger><TabsTrigger value="D" disabled={!canCompare}>{t.screenD}</TabsTrigger></TabsList><TabsContent value="A" className="mt-4 sm:mt-5"><WaterPicker waters={waters} selectedIds={selectedIds} onToggle={toggleSelect} /></TabsContent><TabsContent value="B" className="mt-4 sm:mt-5 space-y-4 sm:space-y-5"><CompareChart selected={selected} /><MetricsTable selected={[...selected].sort((a, b) => compareForRanking(a, b, profile))} profile={profile} /></TabsContent><TabsContent value="C" className="mt-4 sm:mt-5 space-y-4 sm:space-y-5"><MetricsTable selected={[...selected].sort((a, b) => compareForRanking(a, b, profile))} profile={profile} /><ReportAccordion selected={selected} profile={profile} mode={mode} compact={reportCompact} onToggleCompact={() => setReportCompact(v => !v)} /></TabsContent><TabsContent value="D" className="mt-4 sm:mt-5"><RotationMock selected={selected} profile={profile} /></TabsContent></Tabs></div></div></div><div className="fixed bottom-3 sm:bottom-4 left-1/2 z-50 w-[calc(100%-16px)] sm:w-[min(1120px,calc(100%-24px))] -translate-x-1/2"><div className="pointer-events-auto rounded-2xl sm:rounded-3xl border border-white/60 bg-white/70 shadow-lg backdrop-blur"><div className="flex flex-wrap items-center justify-between gap-2 sm:gap-3 px-2 sm:px-4 py-2 sm:py-3"><div className="flex min-w-0 flex-1 items-center gap-2 sm:gap-3"><div className="hidden sm:block"><div className="text-[10px] sm:text-xs font-medium text-slate-600">{t.selected}</div><div className="text-xs sm:text-sm font-semibold text-slate-900">{selected.length ? `${selected.length}/5` : t.misc.empty}</div></div><div className="min-w-0 flex-1 overflow-x-auto"><div className="flex items-center gap-1.5 sm:gap-2"><AnimatePresence>{selected.map(w => <WaterChip key={w.id} w={w} onRemove={() => removeFromCompare(w.id)} />)}</AnimatePresence></div></div></div><div className="flex shrink-0 flex-wrap items-center justify-end gap-1.5 sm:gap-2"><Button variant="outline" className="h-7 sm:h-10 rounded-xl sm:rounded-2xl bg-white/70 hover:bg-white text-xs sm:text-sm px-2 sm:px-4" onClick={() => setScreen("A")} type="button">{t.misc.openPicker}</Button><Button className="h-7 sm:h-10 rounded-xl sm:rounded-2xl text-xs sm:text-sm px-2 sm:px-4" onClick={onCompare} disabled={!canCompare} type="button">{t.actions.compare}</Button><Button variant="outline" className="h-7 sm:h-10 rounded-xl sm:rounded-2xl bg-white/70 hover:bg-white text-xs sm:text-sm px-2 sm:px-4" onClick={clear} type="button" disabled={!selected.length}><RotateCcw className="mr-0.5 sm:mr-2 h-3 w-3 sm:h-4 sm:w-4" />{t.actions.clear}</Button></div></div></div></div></div></TooltipProvider></LangCtx.Provider>);
+  return (<LangCtx.Provider value={lang}><TooltipProvider><div className={GLASS.page}><div className="mx-auto max-w-7xl px-3 sm:px-4 pb-24 sm:pb-28 pt-4 sm:pt-6"><div className={`${GLASS.card} p-3 sm:p-6`}><div className="flex flex-wrap items-center justify-between gap-2 sm:gap-3"><div><div className="text-base sm:text-xl font-semibold text-slate-900">{t.appName}</div><div className="text-xs sm:text-sm text-slate-600">{t.tagline}</div></div><div className="flex flex-wrap items-center gap-1.5 sm:gap-2"><Button variant="outline" className="h-8 sm:h-10 rounded-xl sm:rounded-2xl bg-white/70 hover:bg-white inline-flex items-center" onClick={() => setLang(v => v === "ru" ? "en" : "ru")} type="button"><Languages className="mr-1 sm:mr-2 h-3 w-3 sm:h-4 sm:w-4" /><span className="text-xs sm:text-sm">{t.langLabel}: {lang.toUpperCase()}</span></Button><DropdownMenu><DropdownMenuTrigger asChild><Button variant="outline" className="h-8 sm:h-10 rounded-xl sm:rounded-2xl bg-white/70 hover:bg-white inline-flex items-center" type="button"><Lock className="mr-1 sm:mr-2 h-3 w-3 sm:h-4 sm:w-4" /><span className="text-xs sm:text-sm">{t.modeLabel}: {t.modes[mode]}</span></Button></DropdownMenuTrigger><DropdownMenuContent><DropdownMenuItem onClick={() => setMode("consumer")}>{t.modes.consumer}</DropdownMenuItem><DropdownMenuItem onClick={() => setMode("pro")}>{t.modes.pro}</DropdownMenuItem></DropdownMenuContent></DropdownMenu><DropdownMenu><DropdownMenuTrigger asChild><Button variant="outline" className="h-8 sm:h-10 rounded-xl sm:rounded-2xl bg-white/70 hover:bg-white inline-flex items-center" type="button"><UserProfileIcon /><span className="ml-1 sm:ml-2 text-xs sm:text-sm">{t.profileLabel}: {t.profiles[profile]}</span></Button></DropdownMenuTrigger><DropdownMenuContent>{Object.keys(t.profiles).map(k => (<DropdownMenuItem key={k} onClick={() => setProfile(k)}>{t.profiles[k]}</DropdownMenuItem>))}</DropdownMenuContent></DropdownMenu><ImportDialog onMerge={onMerge} /><ScannerDialog onScanComplete={scannedWater => { setWaters(prev => mergeById(prev, [scannedWater])); setSelectedIds(prev => { if (prev.length >= 5) return prev; if (!prev.includes(scannedWater.id)) return [...prev, scannedWater.id]; return prev; }); }} /><div className={`ml-0.5 sm:ml-2 px-2 sm:px-3 py-0.5 sm:py-1 rounded-full text-[10px] sm:text-xs font-medium ${profile === "Everyday" ? "bg-emerald-100 text-emerald-700" : profile === "Sport" ? "bg-blue-100 text-blue-700" : profile === "Kid" ? "bg-amber-100 text-amber-700" : "bg-purple-100 text-purple-700"}`}>{profile === "Everyday" && "🍃 Ежедневный"}{profile === "Sport" && "🏃 Спорт"}{profile === "Kid" && "🧒 Детский"}{profile === "Sensitive" && "🌸 Чувствительный ЖКТ"}</div></div></div><div className="mt-4 sm:mt-5"><Tabs value={screen} onValueChange={v => setScreen(v)}><TabsList className="rounded-xl sm:rounded-2xl bg-white/70"><TabsTrigger value="A">{t.screenA}</TabsTrigger><TabsTrigger value="B" disabled={!canCompare}>{t.screenB}</TabsTrigger><TabsTrigger value="C" disabled={!canCompare}>{t.screenC}</TabsTrigger><TabsTrigger value="D" disabled={!canCompare}>{t.screenD}</TabsTrigger></TabsList><TabsContent value="A" className="mt-4 sm:mt-5"><WaterPicker waters={waters} selectedIds={selectedIds} onToggle={toggleSelect} /></TabsContent><TabsContent value="B" className="mt-4 sm:mt-5 space-y-4 sm:space-y-5"><CompareChart selected={selected} /><MetricsTable selected={[...selected].sort((a, b) => compareForRanking(a, b, profile))} profile={profile} /></TabsContent><TabsContent value="C" className="mt-4 sm:mt-5 space-y-4 sm:space-y-5"><MetricsTable selected={[...selected].sort((a, b) => compareForRanking(a, b, profile))} profile={profile} /><ReportAccordion selected={selected} profile={profile} mode={mode} compact={reportCompact} onToggleCompact={() => setReportCompact(v => !v)} /></TabsContent><TabsContent value="D" className="mt-4 sm:mt-5"><RotationMock selected={selected} profile={profile} /></TabsContent></Tabs></div></div></div><div className="fixed bottom-3 sm:bottom-4 left-1/2 z-50 w-[calc(100%-16px)] sm:w-[min(1120px,calc(100%-24px))] -translate-x-1/2"><div className="pointer-events-auto rounded-2xl sm:rounded-3xl border border-white/60 bg-white/70 shadow-lg backdrop-blur"><div className="flex flex-wrap items-center justify-between gap-2 sm:gap-3 px-2 sm:px-4 py-2 sm:py-3"><div className="flex min-w-0 flex-1 items-center gap-2 sm:gap-3"><div className="hidden sm:block"><div className="text-[10px] sm:text-xs font-medium text-slate-600">{t.selected}</div><div className="text-xs sm:text-sm font-semibold text-slate-900">{selected.length ? `${selected.length}/5` : t.misc.empty}</div></div><div className="min-w-0 flex-1 overflow-x-auto"><div className="flex items-center gap-1.5 sm:gap-2"><AnimatePresence>{selected.map(w => <WaterChip key={w.id} w={w} onRemove={() => removeFromCompare(w.id)} />)}</AnimatePresence></div></div></div><div className="flex shrink-0 flex-wrap items-center justify-end gap-1.5 sm:gap-2"><Button variant="outline" className="h-7 sm:h-10 rounded-xl sm:rounded-2xl bg-white/70 hover:bg-white text-xs sm:text-sm px-2 sm:px-4" onClick={() => setScreen("A")} type="button">{t.misc.openPicker}</Button><Button className="h-7 sm:h-10 rounded-xl sm:rounded-2xl text-xs sm:text-sm px-2 sm:px-4" onClick={onCompare} disabled={!canCompare} type="button">{t.actions.compare}</Button><Button variant="outline" className="h-7 sm:h-10 rounded-xl sm:rounded-2xl bg-white/70 hover:bg-white text-xs sm:text-sm px-2 sm:px-4" onClick={clear} type="button" disabled={!selected.length}><RotateCcw className="mr-0.5 sm:mr-2 h-3 w-3 sm:h-4 sm:w-4" />{t.actions.clear}</Button></div></div></div></div></div></TooltipProvider></LangCtx.Provider>);
 }
