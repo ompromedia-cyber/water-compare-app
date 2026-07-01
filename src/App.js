@@ -580,7 +580,7 @@ const ACHIEVEMENT_RULES = [
 
 function getAchievements(w) { return ACHIEVEMENT_RULES.filter(r => r.when(w)); }
 
-// ============== ДАННЫЕ ==============
+// ============== ДАННЫЕ (без Поляны Квасовой) ==============
 const SEED = [
   normalizeWater({ id: "evian", brand_name: "Evian", country_code: "FR", group: "Europe", ph: 7.2, tds_mg_l: 345, ca_mg_l: 80, mg_mg_l: 26, na_mg_l: 6.5, k_mg_l: 1.0, cl_mg_l: 10, sparkling: false, source_type: "seed", confidence_level: "high", popular: true }),
   normalizeWater({ id: "sanpellegrino", brand_name: "San Pellegrino", country_code: "IT", group: "Europe", ph: 7.8, tds_mg_l: 915, ca_mg_l: 160, mg_mg_l: 50, na_mg_l: 33, k_mg_l: 2.0, cl_mg_l: 49, sparkling: true, source_type: "seed", confidence_level: "high", popular: true }),
@@ -601,7 +601,6 @@ const SEED = [
   normalizeWater({ id: "hepar", brand_name: "Hépar", country_code: "FR", group: "Europe", ph: 7.4, tds_mg_l: 2513, ca_mg_l: 555, mg_mg_l: 110, na_mg_l: 14, k_mg_l: 8, cl_mg_l: 20, sparkling: false, source_type: "seed", confidence_level: "high", notes: "Высокое содержание магния" }),
   normalizeWater({ id: "lipetsk", brand_name: "Липецкая", country_code: "RU", group: "Russia", ph: 7.2, tds_mg_l: 350, ca_mg_l: 70, mg_mg_l: 25, na_mg_l: 15, k_mg_l: 4, cl_mg_l: 18, sparkling: false, source_type: "seed", confidence_level: "low" }),
   normalizeWater({ id: "perrier", brand_name: "Perrier", country_code: "FR", group: "Europe", ph: 5.7, tds_mg_l: 475, ca_mg_l: 150, mg_mg_l: 4, na_mg_l: 9, k_mg_l: 1, cl_mg_l: 25, sparkling: true, source_type: "seed", confidence_level: "high" }),
-  normalizeWater({ id: "polyana_kvasova", brand_name: "Поляна Квасова", country_code: "UA", group: "Europe", ph: 7.1, tds_mg_l: 800, ca_mg_l: 120, mg_mg_l: 40, na_mg_l: 200, k_mg_l: 10, cl_mg_l: 100, sparkling: true, source_type: "seed", confidence_level: "medium", notes: "Лечебно-столовая" }),
   normalizeWater({ id: "smartwater", brand_name: "smartwater", country_code: "US", group: "Europe", ph: 7.2, tds_mg_l: 90, ca_mg_l: 10, mg_mg_l: 5, na_mg_l: 8, k_mg_l: 2, cl_mg_l: 5, sparkling: false, source_type: "seed", confidence_level: "high" }),
   normalizeWater({ id: "svalbard", brand_name: "Svalbarði", country_code: "NO", group: "Europe", ph: 7.2, tds_mg_l: 120, ca_mg_l: 3, mg_mg_l: 0.5, na_mg_l: 2, k_mg_l: 0.5, cl_mg_l: 2, sparkling: false, source_type: "seed", confidence_level: "medium", notes: "Очень низкая минерализация" }),
   normalizeWater({ id: "svyatoy_istochnik", brand_name: "Святой Источник", country_code: "RU", group: "Russia", ph: 7.0, tds_mg_l: 150, ca_mg_l: 30, mg_mg_l: 10, na_mg_l: 10, k_mg_l: 2, cl_mg_l: 8, sparkling: false, source_type: "seed", confidence_level: "medium" }),
@@ -648,7 +647,87 @@ function MetricsTable({ selected, profile }) {
     { key: "cl", label: "Cl", ref: String(REF.cl), unit: "мг/сутки*", getValue: w => w.cl_mg_l ?? null },
   ];
   if (selected.length === 0) return <div className={`${GLASS.card} p-4 sm:p-6 text-center text-slate-600`}>{t.misc.empty}</div>;
-  return (<div className={`${GLASS.card} p-3 sm:p-6`}><div className="flex items-center justify-between gap-3"><div><div className="text-base sm:text-lg font-semibold text-slate-900">{t.table.title}</div></div></div><div className="mt-3 sm:mt-4 overflow-x-auto rounded-xl sm:rounded-2xl border-2 border-slate-300 bg-white/55 backdrop-blur"><table className="w-full text-left text-[10px] sm:text-sm border-collapse min-w-[600px] sm:min-w-full"><thead><tr className="bg-slate-100"><th className="px-2 sm:px-4 py-2 sm:py-3 border border-slate-300 font-medium">Показатель</th><th className="px-2 sm:px-4 py-2 sm:py-3 border border-slate-300 font-medium">Эталон</th><th className="px-2 sm:px-4 py-2 sm:py-3 border border-slate-300 font-medium">Ед.</th>{selected.map(w => (<th key={w.id} className={`px-2 sm:px-4 py-2 sm:py-3 border border-slate-300 font-medium ${w.id === winnerId ? 'bg-amber-100' : ''}`}><div className="flex items-center gap-1 sm:gap-2"><span className="text-xs sm:text-base">{w.flag_emoji ?? safeCountryFlag(w.country_code)}</span><span className="max-w-[80px] sm:max-w-[160px] truncate text-slate-900 text-xs sm:text-sm">{w.brand_name}</span>{w.id === winnerId && <span className="ml-0.5 sm:ml-1 text-amber-600 text-xs sm:text-base">🏆</span>}</div></th>))}</tr></thead><tbody>{rows.map((r, rowIdx) => (<tr key={r.key} className={rowIdx % 2 === 0 ? 'bg-white/60' : 'bg-white/40'}><td className="px-2 sm:px-4 py-2 sm:py-3 border border-slate-300"><div className="flex items-center gap-1 sm:gap-2"><span className="font-medium text-slate-900">{r.label}</span><MetricHelp k={r.key} /></div></td><td className="px-2 sm:px-4 py-2 sm:py-3 border border-slate-300 text-slate-700">{r.ref}</td><td className="px-2 sm:px-4 py-2 sm:py-3 border border-slate-300 text-slate-700">{r.unit}</td>{selected.map(w => { const v = r.getValue(w); const st = metricStatus(r.key, v); return (<td key={w.id + r.key} className={`px-2 sm:px-4 py-2 sm:py-3 border border-slate-300 ${w.id === winnerId ? 'bg-amber-50/30' : ''}`}><div className="flex flex-col gap-0.5 sm:gap-1"><div className="flex items-center justify-between"><span className="font-semibold text-slate-900 text-xs sm:text-sm">{fmt(v, r.digits ?? 0)}</span><MetricPill kind={st} /></div></div></td>); })}</tr>))}<tr className="bg-slate-50/80"><td className="px-2 sm:px-4 py-2 sm:py-3 border border-slate-300 font-medium" colSpan={3}><div className="flex items-center gap-1 sm:gap-2"><span className="text-xs sm:text-sm">🏆 Рейтинг</span><Tooltip><TooltipTrigger asChild><Info className="h-3 w-3 sm:h-4 sm:w-4 text-slate-500 cursor-help" /></TooltipTrigger><TooltipContent><div className="text-xs max-w-[200px]">Чем выше рейтинг, тем ближе состав воды к оптимальному. Максимум 100.</div></TooltipContent></Tooltip></div></td>{selected.map(w => { const scoreData = scoreWater(w); let ratingColor = "text-slate-700"; if (scoreData.score >= 80) ratingColor = "text-emerald-700"; else if (scoreData.score >= 60) ratingColor = "text-sky-700"; else if (scoreData.score >= 40) ratingColor = "text-amber-700"; else ratingColor = "text-rose-700"; return (<td key={`rating-${w.id}`} className={`px-2 sm:px-4 py-2 sm:py-3 border border-slate-300 ${w.id === winnerId ? 'bg-amber-100' : ''}`}><div className="flex flex-col"><div className="flex items-center justify-between"><span className={`text-sm sm:text-lg font-bold ${ratingColor}`}>{scoreData.score.toFixed(1)}</span>{scoreData.missingCount > 0 && (<Tooltip><TooltipTrigger asChild><span className="ml-0.5 sm:ml-1 text-amber-600 cursor-help text-xs sm:text-sm">⚠️</span></TooltipTrigger><TooltipContent><div className="text-xs">Нет данных по {scoreData.missingCount} показателям. Рейтинг занижен.</div></TooltipContent></Tooltip>)}</div><div className="mt-0.5 sm:mt-1 h-1 sm:h-1.5 w-full bg-slate-200 rounded-full overflow-hidden"><div className={`h-full rounded-full ${scoreData.score >= 80 ? 'bg-emerald-500' : scoreData.score >= 60 ? 'bg-sky-500' : scoreData.score >= 40 ? 'bg-amber-500' : 'bg-rose-500'}`} style={{ width: `${scoreData.score}%` }} /></div></div></td>); })}</tr></tbody></table></div><div className="mt-3 sm:mt-4 flex flex-wrap gap-2 sm:gap-3 text-[9px] sm:text-xs"><div className="flex items-center gap-1 sm:gap-2"><span className="w-2 h-2 sm:w-3 sm:h-3 rounded-full bg-emerald-50 border border-emerald-200"></span><span>Норма</span></div><div className="flex items-center gap-1 sm:gap-2"><span className="w-2 h-2 sm:w-3 sm:h-3 rounded-full bg-sky-50 border border-sky-200"></span><span>Средний</span></div><div className="flex items-center gap-1 sm:gap-2"><span className="w-2 h-2 sm:w-3 sm:h-3 rounded-full bg-amber-50 border border-amber-200"></span><span>Низкий</span></div><div className="flex items-center gap-1 sm:gap-2"><span className="w-2 h-2 sm:w-3 sm:h-3 rounded-full bg-orange-50 border border-orange-200"></span><span>Высокий</span></div><div className="flex items-center gap-1 sm:gap-2"><span className="w-2 h-2 sm:w-3 sm:h-3 rounded-full bg-rose-50 border border-rose-200"></span><span>Избыток</span></div></div><div className="mt-2 sm:mt-3 text-[9px] sm:text-xs text-slate-600">* ориентир по суточной норме, ** натрий зависит от профиля</div></div>);
+  return (<div className={`${GLASS.card} p-3 sm:p-6`}><div className="flex items-center justify-between gap-3"><div><div className="text-base sm:text-lg font-semibold text-slate-900">{t.table.title}</div></div></div>
+    {/* Десктопная таблица */}
+    <div className="hidden sm:block mt-3 sm:mt-4 overflow-x-auto rounded-xl sm:rounded-2xl border-2 border-slate-300 bg-white/55 backdrop-blur">
+      <table className="w-full text-left text-[10px] sm:text-sm border-collapse min-w-[600px] sm:min-w-full">
+        <thead><tr className="bg-slate-100"><th className="px-2 sm:px-4 py-2 sm:py-3 border border-slate-300 font-medium">Показатель</th><th className="px-2 sm:px-4 py-2 sm:py-3 border border-slate-300 font-medium">Эталон</th><th className="px-2 sm:px-4 py-2 sm:py-3 border border-slate-300 font-medium">Ед.</th>{selected.map(w => (<th key={w.id} className={`px-2 sm:px-4 py-2 sm:py-3 border border-slate-300 font-medium ${w.id === winnerId ? 'bg-amber-100' : ''}`}><div className="flex items-center gap-1 sm:gap-2"><span className="text-xs sm:text-base">{w.flag_emoji ?? safeCountryFlag(w.country_code)}</span><span className="max-w-[80px] sm:max-w-[160px] truncate text-slate-900 text-xs sm:text-sm">{w.brand_name}</span>{w.id === winnerId && <span className="ml-0.5 sm:ml-1 text-amber-600 text-xs sm:text-base">🏆</span>}</div></th>))}</tr></thead>
+        <tbody>{rows.map((r, rowIdx) => (<tr key={r.key} className={rowIdx % 2 === 0 ? 'bg-white/60' : 'bg-white/40'}><td className="px-2 sm:px-4 py-2 sm:py-3 border border-slate-300"><div className="flex items-center gap-1 sm:gap-2"><span className="font-medium text-slate-900">{r.label}</span><MetricHelp k={r.key} /></div></td><td className="px-2 sm:px-4 py-2 sm:py-3 border border-slate-300 text-slate-700">{r.ref}</td><td className="px-2 sm:px-4 py-2 sm:py-3 border border-slate-300 text-slate-700">{r.unit}</td>{selected.map(w => { const v = r.getValue(w); const st = metricStatus(r.key, v); return (<td key={w.id + r.key} className={`px-2 sm:px-4 py-2 sm:py-3 border border-slate-300 ${w.id === winnerId ? 'bg-amber-50/30' : ''}`}><div className="flex flex-col gap-0.5 sm:gap-1"><div className="flex items-center justify-between"><span className="font-semibold text-slate-900 text-xs sm:text-sm">{fmt(v, r.digits ?? 0)}</span><MetricPill kind={st} /></div></div></td>); })}</tr>))}
+        <tr className="bg-slate-50/80"><td className="px-2 sm:px-4 py-2 sm:py-3 border border-slate-300 font-medium" colSpan={3}><div className="flex items-center gap-1 sm:gap-2"><span className="text-xs sm:text-sm">🏆 Рейтинг</span><Tooltip><TooltipTrigger asChild><Info className="h-3 w-3 sm:h-4 sm:w-4 text-slate-500 cursor-help" /></TooltipTrigger><TooltipContent><div className="text-xs max-w-[200px]">Чем выше рейтинг, тем ближе состав воды к оптимальному. Максимум 100.</div></TooltipContent></Tooltip></div></td>{selected.map(w => { const scoreData = scoreWater(w); let ratingColor = "text-slate-700"; if (scoreData.score >= 80) ratingColor = "text-emerald-700"; else if (scoreData.score >= 60) ratingColor = "text-sky-700"; else if (scoreData.score >= 40) ratingColor = "text-amber-700"; else ratingColor = "text-rose-700"; return (<td key={`rating-${w.id}`} className={`px-2 sm:px-4 py-2 sm:py-3 border border-slate-300 ${w.id === winnerId ? 'bg-amber-100' : ''}`}><div className="flex flex-col"><div className="flex items-center justify-between"><span className={`text-sm sm:text-lg font-bold ${ratingColor}`}>{scoreData.score.toFixed(1)}</span>{scoreData.missingCount > 0 && (<Tooltip><TooltipTrigger asChild><span className="ml-0.5 sm:ml-1 text-amber-600 cursor-help text-xs sm:text-sm">⚠️</span></TooltipTrigger><TooltipContent><div className="text-xs">Нет данных по {scoreData.missingCount} показателям. Рейтинг занижен.</div></TooltipContent></Tooltip>)}</div><div className="mt-0.5 sm:mt-1 h-1 sm:h-1.5 w-full bg-slate-200 rounded-full overflow-hidden"><div className={`h-full rounded-full ${scoreData.score >= 80 ? 'bg-emerald-500' : scoreData.score >= 60 ? 'bg-sky-500' : scoreData.score >= 40 ? 'bg-amber-500' : 'bg-rose-500'}`} style={{ width: `${scoreData.score}%` }} /></div></div></td>); })}</tr></tbody>
+      </table>
+    </div>
+
+    {/* Мобильные карточки */}
+    <div className="block sm:hidden mt-3 space-y-4">
+      {selected.map((w) => {
+        const scoreData = scoreWater(w);
+        const isWinner = w.id === winnerId;
+        return (
+          <div key={w.id} className={`${GLASS.card} p-4 ${isWinner ? 'ring-2 ring-amber-400' : ''}`}>
+            <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center gap-2">
+                <span className="text-2xl">{w.flag_emoji ?? safeCountryFlag(w.country_code)}</span>
+                <div>
+                  <div className="font-semibold text-slate-900">{w.brand_name}</div>
+                  <div className="flex items-center gap-2 mt-0.5">
+                    <CategoryBadge cat={computeCategory(w)} />
+                    {isWinner && <span className="text-amber-600 text-sm">🏆</span>}
+                  </div>
+                </div>
+              </div>
+              <div className="text-right">
+                <div className="text-sm font-medium text-slate-600">Рейтинг</div>
+                <div className="text-xl font-bold text-slate-900">{scoreData.score.toFixed(1)}</div>
+              </div>
+            </div>
+            <div className="space-y-1.5">
+              {rows.map((r) => {
+                const v = r.getValue(w);
+                const st = metricStatus(r.key, v);
+                const percentage = getDailyPercentage(r.key, v);
+                const status = percentage ? getPercentageStatus(percentage) : { color: "text-slate-400", text: "нет данных", bg: "bg-slate-100" };
+                return (
+                  <div key={r.key} className={`${GLASS.subtle} flex items-center justify-between px-3 py-2`}>
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-sm font-medium text-slate-700">{r.label}</span>
+                      <MetricHelp k={r.key} />
+                    </div>
+                    <div className="flex items-center gap-2">
+                      {percentage !== null && (
+                        <span className={`text-xs px-2 py-0.5 rounded-full ${status.bg} ${status.color}`}>
+                          {percentage}%
+                        </span>
+                      )}
+                      <span className="text-sm font-semibold text-slate-900">
+                        {fmt(v, r.digits ?? 0)}
+                        {r.unit && <span className="ml-0.5 text-xs font-medium text-slate-500">{r.unit}</span>}
+                      </span>
+                      <MetricPill kind={st} />
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+            {scoreData.missingCount > 0 && (
+              <div className="mt-2 text-xs text-amber-600 flex items-center gap-1">
+                <AlertTriangle className="h-3 w-3" />
+                <span>Нет данных по {scoreData.missingCount} показателям</span>
+              </div>
+            )}
+          </div>
+        );
+      })}
+    </div>
+
+    <div className="mt-3 sm:mt-4 flex flex-wrap gap-2 sm:gap-3 text-[9px] sm:text-xs">
+      <div className="flex items-center gap-1 sm:gap-2"><span className="w-2 h-2 sm:w-3 sm:h-3 rounded-full bg-emerald-50 border border-emerald-200"></span><span>Норма</span></div>
+      <div className="flex items-center gap-1 sm:gap-2"><span className="w-2 h-2 sm:w-3 sm:h-3 rounded-full bg-sky-50 border border-sky-200"></span><span>Средний</span></div>
+      <div className="flex items-center gap-1 sm:gap-2"><span className="w-2 h-2 sm:w-3 sm:h-3 rounded-full bg-amber-50 border border-amber-200"></span><span>Низкий</span></div>
+      <div className="flex items-center gap-1 sm:gap-2"><span className="w-2 h-2 sm:w-3 sm:h-3 rounded-full bg-orange-50 border border-orange-200"></span><span>Высокий</span></div>
+      <div className="flex items-center gap-1 sm:gap-2"><span className="w-2 h-2 sm:w-3 sm:h-3 rounded-full bg-rose-50 border border-rose-200"></span><span>Избыток</span></div>
+    </div>
+    <div className="mt-2 sm:mt-3 text-[9px] sm:text-xs text-slate-600">* ориентир по суточной норме, ** натрий зависит от профиля</div>
+  </div>);
 }
 
 function ImportDialog({ onMerge }) { const lang = React.useContext(LangCtx); const t = I18N[lang]; const [text, setText] = useState(""); const [status, setStatus] = useState(null); const parse = () => { try { const s = text.trim(); if (!s) return; const incoming = s.startsWith("[") || s.startsWith("{") ? parseJSON(s) : parseCSV(s); if (!incoming.length) { setStatus(t.import.bad); return; } onMerge(incoming); setStatus(`${t.import.done}: ${incoming.length} вод`); setText(""); } catch { setStatus(t.import.bad); } }; const onFile = async file => { const txt = await file.text(); setText(txt); }; return (<Dialog><DialogTrigger asChild><Button variant="outline" className="h-8 sm:h-10 rounded-xl sm:rounded-2xl bg-white/70 hover:bg-white"><Upload className="mr-1 sm:mr-2 h-3 w-3 sm:h-4 sm:w-4" />{t.actions.import}</Button></DialogTrigger><DialogContent className="max-w-[95vw] sm:max-w-[820px]"><DialogHeader><DialogTitle>{t.import.title}</DialogTitle></DialogHeader><div className="space-y-3 p-4 sm:p-6 pt-2"><div className="text-xs sm:text-sm text-slate-600">{t.import.hint}</div><Textarea value={text} onChange={e => setText(e.target.value)} placeholder={t.import.placeholder} className="min-h-[150px] sm:min-h-[220px]" /><div className="flex flex-wrap items-center gap-2"><Button onClick={parse} className="h-8 sm:h-10 rounded-xl sm:rounded-2xl"><ClipboardPaste className="mr-1 sm:mr-2 h-3 w-3 sm:h-4 sm:w-4" />{t.import.parse}</Button><label className="inline-flex cursor-pointer items-center gap-1 sm:gap-2 rounded-xl sm:rounded-2xl border border-white/60 bg-white/70 px-2 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm font-medium text-slate-800 hover:bg-white"><Upload className="h-3 w-3 sm:h-4 sm:w-4" /><input type="file" accept=".json,.csv,text/csv,application/json" className="hidden" onChange={e => { const f = e.target.files?.[0]; if (f) onFile(f); }} />{lang === "ru" ? "Загрузить файл" : "Upload file"}</label>{status && <span className="text-xs sm:text-sm text-slate-700">{status}</span>}</div></div></DialogContent></Dialog>); }
