@@ -267,6 +267,13 @@ const CHART_COLORS = ["#38BDF8", "#34D399", "#FBBF24", "#FB7185", "#A78BFA"];
 const LangCtx = React.createContext("ru");
 const ADMIN_PATH = '/admin';
 
+// Конфигурация администратора (пароль зашифрован в base64)
+const ADMIN_CREDENTIALS = {
+  login: 'admin',
+  // Пароль 'water123' закодирован в base64
+  passwordHash: 'd2F0ZXIxMjM=', // water123 в base64
+};
+
 // ============== ЛОКАЛИЗАЦИЯ ==============
 const I18N = {
   ru: {
@@ -663,6 +670,84 @@ const SEED = [
   // ===== САУДОВСКАЯ АРАВИЯ =====
   normalizeWater({ id: "hada", brand_name: "Hada", country_code: "SA", group: "Europe", ph: 7.5, tds_mg_l: 200, ca_mg_l: 35, mg_mg_l: 15, na_mg_l: 12, k_mg_l: 4, cl_mg_l: 14, sparkling: false, source_type: "seed", confidence_level: "medium" }),
 ];
+// ============== ЛОГИН ДЛЯ АДМИНКИ ==============
+function AdminLogin({ onLogin }) {
+  const lang = React.useContext(LangCtx);
+  const [login, setLogin] = useState('');
+  const [password, setPassword] = useState('');
+  const [error, setError] = useState('');
+
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    // Хешируем введённый пароль в base64 и сравниваем с сохранённым хешем
+    const enteredHash = btoa(password);
+    if (login === ADMIN_CREDENTIALS.login && enteredHash === ADMIN_CREDENTIALS.passwordHash) {
+      onLogin(true);
+      setError('');
+      try {
+        localStorage.setItem('admin_session', 'true');
+      } catch (e) {}
+    } else {
+      setError(lang === "ru" ? "Неверный логин или пароль" : "Invalid login or password");
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 bg-black/30 backdrop-blur-sm flex items-center justify-center p-4">
+      <div className="bg-white rounded-2xl sm:rounded-3xl shadow-2xl max-w-md w-full p-6 sm:p-8">
+        <div className="text-center mb-6">
+          <div className="text-4xl mb-3">🔐</div>
+          <h2 className="text-xl sm:text-2xl font-semibold text-slate-900">
+            {lang === "ru" ? "Вход в админ-панель" : "Admin Login"}
+          </h2>
+          <p className="text-sm text-slate-500 mt-1">
+            {lang === "ru" ? "Введите логин и пароль для доступа" : "Enter login and password to access"}
+          </p>
+        </div>
+
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-1">
+              {lang === "ru" ? "Логин" : "Login"}
+            </label>
+            <Input
+              type="text"
+              value={login}
+              onChange={e => setLogin(e.target.value)}
+              placeholder={lang === "ru" ? "Введите логин" : "Enter login"}
+              className="w-full"
+              autoFocus
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-1">
+              {lang === "ru" ? "Пароль" : "Password"}
+            </label>
+            <Input
+              type="password"
+              value={password}
+              onChange={e => setPassword(e.target.value)}
+              placeholder={lang === "ru" ? "Введите пароль" : "Enter password"}
+              className="w-full"
+            />
+          </div>
+          {error && (
+            <div className="text-rose-600 text-sm bg-rose-50 p-2 rounded-lg">
+              {error}
+            </div>
+          )}
+          <Button type="submit" className="w-full h-10 rounded-xl sm:rounded-2xl">
+            {lang === "ru" ? "Войти" : "Login"}
+          </Button>
+          <div className="text-xs text-slate-400 text-center mt-2">
+            {lang === "ru" ? "По умолчанию: admin / water123" : "Default: admin / water123"}
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
+
 // ============== АДМИНКА ==============
 function AdminPanel({ waters, onUpdateWaters, onClose }) {
   const lang = React.useContext(LangCtx);
@@ -1356,14 +1441,33 @@ export default function App() {
   const [selectedIds, setSelectedIds] = useState([]);
   const [reportCompact, setReportCompact] = useState(true);
   const [showAdmin, setShowAdmin] = useState(false);
+  const [isAuthorized, setIsAuthorized] = useState(false);
 
   const t = I18N[lang];
 
+  // Проверка авторизации при загрузке
+  useEffect(() => {
+    try {
+      const session = localStorage.getItem('admin_session');
+      if (session === 'true') {
+        setIsAuthorized(true);
+      }
+    } catch (e) {}
+  }, []);
+
+  // Проверяем URL при загрузке и при изменении
   useEffect(() => {
     const checkAdminAccess = () => {
       const path = window.location.pathname;
       if (path === ADMIN_PATH || path === ADMIN_PATH + '/') {
-        setShowAdmin(true);
+        const session = localStorage.getItem('admin_session');
+        if (session === 'true') {
+          setIsAuthorized(true);
+          setShowAdmin(true);
+        } else {
+          setIsAuthorized(false);
+          setShowAdmin(true);
+        }
       } else {
         setShowAdmin(false);
       }
@@ -1386,20 +1490,28 @@ export default function App() {
   const onCompare = () => { if (!canCompare) return; setScreen("B"); };
   const onMerge = incoming => setWaters(prev => mergeById(prev, incoming));
 
-  // Если админка открыта — показываем только её
+  // Если админка открыта — показываем логин или панель
   if (showAdmin) {
     return (
       <LangCtx.Provider value={lang}>
         <TooltipProvider>
           <div className={GLASS.page}>
-            <AdminPanel 
-              waters={waters} 
-              onUpdateWaters={setWaters} 
-              onClose={() => {
-                setShowAdmin(false);
-                window.history.pushState({}, '', '/');
-              }}
-            />
+            {isAuthorized ? (
+              <AdminPanel 
+                waters={waters} 
+                onUpdateWaters={setWaters} 
+                onClose={() => {
+                  setShowAdmin(false);
+                  setIsAuthorized(false);
+                  localStorage.removeItem('admin_session');
+                  window.history.pushState({}, '', '/');
+                }}
+              />
+            ) : (
+              <AdminLogin onLogin={() => {
+                setIsAuthorized(true);
+              }} />
+            )}
           </div>
         </TooltipProvider>
       </LangCtx.Provider>
