@@ -25,6 +25,9 @@ import {
   Check,
   ChevronUp,
   Star,
+  Save,
+  Edit,
+  Trash2,
 } from "lucide-react";
 import {
   CartesianGrid,
@@ -262,6 +265,7 @@ const GLASS = {
 const CHART_COLORS = ["#38BDF8", "#34D399", "#FBBF24", "#FB7185", "#A78BFA"];
 
 const LangCtx = React.createContext("ru");
+const ADMIN_PATH = '/admin';
 
 // ============== ЛОКАЛИЗАЦИЯ ==============
 const I18N = {
@@ -460,7 +464,6 @@ function scoreWater(w) {
 function getProfileScore(w, profile) {
   const baseScore = scoreWater(w).score;
   
-  // Веса для каждого профиля
   let profileWeights = { ca: 1.0, mg: 1.0, k: 0.8, na: 1.2, cl: 1.0, ph: 0.4, tds: 0.6 };
   
   if (profile === "Kid") {
@@ -470,7 +473,6 @@ function getProfileScore(w, profile) {
   } else if (profile === "Sport") {
     profileWeights = { ca: 1.5, mg: 1.8, k: 2.0, na: 2.2, cl: 1.5, ph: 0.8, tds: 1.5 };
   }
-  // Для Everyday веса остаются базовыми
   
   const get = {
     ca: w.ca_mg_l ?? null, mg: w.mg_mg_l ?? null, k: w.k_mg_l ?? null,
@@ -486,23 +488,18 @@ function getProfileScore(w, profile) {
     if (x !== null && x !== undefined) {
       const ref = key === "ph" ? REF.ph : key === "tds" ? REF.tds : REF[key];
       
-      // Расчёт близости к эталону (0-100)
       let score = 100;
       const deviation = Math.abs(x - ref) / ref;
       score = Math.max(0, 100 - deviation * 100);
       
-      // Для некоторых профилей меняем логику оценки
       if (profile === "Kid" || profile === "Sensitive") {
         if (key === "tds") {
-          // Чем ниже TDS, тем лучше (для детей и ЖКТ)
           score = Math.max(0, 100 - (x / 10));
         } else if (key === "na") {
-          // Чем ниже натрий, тем лучше
           score = Math.max(0, 100 - (x * 2));
         }
       } else if (profile === "Sport") {
         if (key === "k" || key === "na" || key === "mg") {
-          // Для спортсменов оптимальные значения выше на 30%
           const optimal = ref * 1.3;
           const deviation2 = Math.abs(x - optimal) / optimal;
           score = Math.max(0, 100 - deviation2 * 80);
@@ -515,12 +512,9 @@ function getProfileScore(w, profile) {
     }
   }
   
-  // Если нет данных, возвращаем базовый рейтинг
   if (totalWeight === 0) return baseScore;
   
   const profileScore = weightedScore / totalWeight;
-  
-  // Штраф за отсутствие ключевых показателей
   const missingPenalty = (7 - presentCount) * 3;
   
   return baseScore * 0.3 + profileScore * 0.7 - missingPenalty;
@@ -530,31 +524,26 @@ function compareForRanking(a, b, profile) {
   const scoreA = getProfileScore(a, profile);
   const scoreB = getProfileScore(b, profile);
   
-  // Сортировка по профильному рейтингу (от большего к меньшему)
   if (Math.abs(scoreB - scoreA) > 0.001) {
     return scoreB - scoreA;
   }
   
-  // При равных - по количеству показателей
   const countA = scoreWater(a).presentCount;
   const countB = scoreWater(b).presentCount;
   if (countA !== countB) return countB - countA;
   
-  // При равных - по алфавиту
   return a.brand_name.localeCompare(b.brand_name);
 }
 
 function pickWinnerDaily(selected, profile) {
   if (selected.length === 0) return null;
   
-  // Сортируем по профильному рейтингу (от большего к меньшему)
   const sorted = [...selected].sort((a, b) => {
     const scoreA = getProfileScore(a, profile);
     const scoreB = getProfileScore(b, profile);
     return scoreB - scoreA;
   });
   
-  // Исключаем лечебные воды из победителя (но если только они есть)
   const nonThera = sorted.filter(w => computeCategory(w) !== "Therapeutic");
   if (nonThera.length > 0) {
     return nonThera[0];
@@ -580,99 +569,428 @@ const ACHIEVEMENT_RULES = [
 
 function getAchievements(w) { return ACHIEVEMENT_RULES.filter(r => r.when(w)); }
 
-// ============== ДАННЫЕ (50+ МАРОК ВОДЫ) ==============
+// ============== ДАННЫЕ ==============
 const SEED = [
-  // ===== ПОПУЛЯРНЫЕ МАРКИ =====
   normalizeWater({ id: "evian", brand_name: "Evian", country_code: "FR", group: "Europe", ph: 7.2, tds_mg_l: 345, ca_mg_l: 80, mg_mg_l: 26, na_mg_l: 6.5, k_mg_l: 1.0, cl_mg_l: 10, sparkling: false, source_type: "seed", confidence_level: "high", popular: true }),
   normalizeWater({ id: "sanpellegrino", brand_name: "San Pellegrino", country_code: "IT", group: "Europe", ph: 7.8, tds_mg_l: 915, ca_mg_l: 160, mg_mg_l: 50, na_mg_l: 33, k_mg_l: 2.0, cl_mg_l: 49, sparkling: true, source_type: "seed", confidence_level: "high", popular: true }),
   normalizeWater({ id: "volvic", brand_name: "Volvic", country_code: "FR", group: "Europe", ph: 7.0, tds_mg_l: 130, ca_mg_l: 12, mg_mg_l: 8, na_mg_l: 12, k_mg_l: 6, cl_mg_l: 15, sparkling: false, source_type: "seed", confidence_level: "medium", popular: true }),
   normalizeWater({ id: "baikal", brand_name: "Байкал", country_code: "RU", group: "Russia", ph: 7.2, tds_mg_l: 120, ca_mg_l: 25, mg_mg_l: 8, na_mg_l: 4, k_mg_l: 1, cl_mg_l: 5, sparkling: false, source_type: "seed", confidence_level: "low", popular: true }),
-
-  // ===== ФРАНЦИЯ =====
   normalizeWater({ id: "vittel", brand_name: "Vittel", country_code: "FR", group: "Europe", ph: 7.5, tds_mg_l: 380, ca_mg_l: 100, mg_mg_l: 24, na_mg_l: 12, k_mg_l: 3, cl_mg_l: 20, sparkling: false, source_type: "seed", confidence_level: "high" }),
-  normalizeWater({ id: "contrex", brand_name: "Contrex", country_code: "FR", group: "Europe", ph: 7.3, tds_mg_l: 2078, ca_mg_l: 468, mg_mg_l: 84, na_mg_l: 14, k_mg_l: 5, cl_mg_l: 15, sparkling: false, source_type: "seed", confidence_level: "high", notes: "Высокое содержание кальция" }),
-  normalizeWater({ id: "hepar", brand_name: "Hépar", country_code: "FR", group: "Europe", ph: 7.4, tds_mg_l: 2513, ca_mg_l: 555, mg_mg_l: 110, na_mg_l: 14, k_mg_l: 8, cl_mg_l: 20, sparkling: false, source_type: "seed", confidence_level: "high", notes: "Высокое содержание магния" }),
-  normalizeWater({ id: "perrier", brand_name: "Perrier", country_code: "FR", group: "Europe", ph: 5.7, tds_mg_l: 475, ca_mg_l: 150, mg_mg_l: 4, na_mg_l: 9, k_mg_l: 1, cl_mg_l: 25, sparkling: true, source_type: "seed", confidence_level: "high" }),
-  normalizeWater({ id: "cristaline", brand_name: "Cristaline", country_code: "FR", group: "Europe", ph: 7.2, tds_mg_l: 200, ca_mg_l: 40, mg_mg_l: 12, na_mg_l: 8, k_mg_l: 2, cl_mg_l: 10, sparkling: false, source_type: "seed", confidence_level: "medium" }),
-  normalizeWater({ id: "plancoet", brand_name: "Plancoët", country_code: "FR", group: "Europe", ph: 7.2, tds_mg_l: 250, ca_mg_l: 55, mg_mg_l: 18, na_mg_l: 10, k_mg_l: 3, cl_mg_l: 12, sparkling: false, source_type: "seed", confidence_level: "medium" }),
-
-  // ===== ИТАЛИЯ =====
-  normalizeWater({ id: "acqua_panna_partial", brand_name: "Acqua Panna", country_code: "IT", group: "Europe", ph: 8.0, tds_mg_l: 190, sparkling: false, source_type: "seed", confidence_level: "low", notes: "Неполная этикетка" }),
-  normalizeWater({ id: "levissima", brand_name: "Levissima", country_code: "IT", group: "Europe", ph: 7.6, tds_mg_l: 120, ca_mg_l: 20, mg_mg_l: 8, na_mg_l: 5, k_mg_l: 2, cl_mg_l: 8, sparkling: false, source_type: "seed", confidence_level: "high" }),
-  normalizeWater({ id: "ferrarelle", brand_name: "Ferrarelle", country_code: "IT", group: "Europe", ph: 7.3, tds_mg_l: 1200, ca_mg_l: 200, mg_mg_l: 60, na_mg_l: 40, k_mg_l: 8, cl_mg_l: 50, sparkling: true, source_type: "seed", confidence_level: "high", notes: "Природная газированная" }),
-  normalizeWater({ id: "uliveto", brand_name: "Uliveto", country_code: "IT", group: "Europe", ph: 7.5, tds_mg_l: 400, ca_mg_l: 80, mg_mg_l: 25, na_mg_l: 15, k_mg_l: 4, cl_mg_l: 20, sparkling: true, source_type: "seed", confidence_level: "high" }),
-
-  // ===== ГЕРМАНИЯ =====
-  normalizeWater({ id: "gerolsteiner", brand_name: "Gerolsteiner", country_code: "DE", group: "Europe", ph: 6.9, tds_mg_l: 2520, ca_mg_l: 348, mg_mg_l: 108, na_mg_l: 118, k_mg_l: 11, cl_mg_l: 45, sparkling: true, source_type: "seed", confidence_level: "high" }),
-  normalizeWater({ id: "apollinaris", brand_name: "Apollinaris", country_code: "DE", group: "Europe", ph: 6.8, tds_mg_l: 1500, ca_mg_l: 180, mg_mg_l: 70, na_mg_l: 200, k_mg_l: 15, cl_mg_l: 100, sparkling: true, source_type: "seed", confidence_level: "high", notes: "Богата натрием" }),
-  normalizeWater({ id: "saskia", brand_name: "Saskia", country_code: "DE", group: "Europe", ph: 7.1, tds_mg_l: 180, ca_mg_l: 35, mg_mg_l: 10, na_mg_l: 8, k_mg_l: 2, cl_mg_l: 10, sparkling: false, source_type: "seed", confidence_level: "medium" }),
-
-  // ===== ШВЕЙЦАРИЯ =====
   normalizeWater({ id: "nestle", brand_name: "Nestlé Pure Life", country_code: "CH", group: "Europe", ph: 7.1, tds_mg_l: 210, ca_mg_l: 30, mg_mg_l: 10, na_mg_l: 8, k_mg_l: 2, cl_mg_l: 12, sparkling: false, source_type: "seed", confidence_level: "high" }),
-  normalizeWater({ id: "viva", brand_name: "Viva", country_code: "CH", group: "Europe", ph: 7.3, tds_mg_l: 250, ca_mg_l: 45, mg_mg_l: 15, na_mg_l: 10, k_mg_l: 3, cl_mg_l: 14, sparkling: false, source_type: "seed", confidence_level: "medium" }),
-
-  // ===== ВЕЛИКОБРИТАНИЯ =====
-  normalizeWater({ id: "highland_spring", brand_name: "Highland Spring", country_code: "GB", group: "Europe", ph: 7.5, tds_mg_l: 180, ca_mg_l: 30, mg_mg_l: 10, na_mg_l: 6, k_mg_l: 2, cl_mg_l: 8, sparkling: false, source_type: "seed", confidence_level: "high" }),
-  normalizeWater({ id: "buxton", brand_name: "Buxton", country_code: "GB", group: "Europe", ph: 7.4, tds_mg_l: 220, ca_mg_l: 40, mg_mg_l: 12, na_mg_l: 8, k_mg_l: 2, cl_mg_l: 10, sparkling: false, source_type: "seed", confidence_level: "high" }),
-
-  // ===== НОРВЕГИЯ =====
-  normalizeWater({ id: "svalbard", brand_name: "Svalbarði", country_code: "NO", group: "Europe", ph: 7.2, tds_mg_l: 120, ca_mg_l: 3, mg_mg_l: 0.5, na_mg_l: 2, k_mg_l: 0.5, cl_mg_l: 2, sparkling: false, source_type: "seed", confidence_level: "medium", notes: "Очень низкая минерализация" }),
-  normalizeWater({ id: "voss", brand_name: "Voss", country_code: "NO", group: "Europe", ph: 7.2, tds_mg_l: 150, ca_mg_l: 10, mg_mg_l: 5, na_mg_l: 6, k_mg_l: 2, cl_mg_l: 8, sparkling: false, source_type: "seed", confidence_level: "high" }),
-
-  // ===== ФИНЛЯНДИЯ =====
-  normalizeWater({ id: "fuji", brand_name: "Fuji", country_code: "FI", group: "Europe", ph: 7.7, tds_mg_l: 220, ca_mg_l: 18, mg_mg_l: 15, na_mg_l: 18, k_mg_l: 5, cl_mg_l: 9, sparkling: false, source_type: "seed", confidence_level: "high" }),
-
-  // ===== США =====
   normalizeWater({ id: "essentia", brand_name: "Essentia", country_code: "US", group: "Europe", ph: 9.5, tds_mg_l: 200, ca_mg_l: 15, mg_mg_l: 10, na_mg_l: 15, k_mg_l: 5, cl_mg_l: 10, sparkling: false, source_type: "seed", confidence_level: "high", notes: "Высокий pH" }),
-  normalizeWater({ id: "smartwater", brand_name: "smartwater", country_code: "US", group: "Europe", ph: 7.2, tds_mg_l: 90, ca_mg_l: 10, mg_mg_l: 5, na_mg_l: 8, k_mg_l: 2, cl_mg_l: 5, sparkling: false, source_type: "seed", confidence_level: "high" }),
-  normalizeWater({ id: "fiji_usa", brand_name: "Fiji", country_code: "FJ", group: "Europe", ph: 7.7, tds_mg_l: 220, ca_mg_l: 18, mg_mg_l: 15, na_mg_l: 18, k_mg_l: 5, cl_mg_l: 9, sparkling: false, source_type: "seed", confidence_level: "high" }),
-  normalizeWater({ id: "mountain_valley", brand_name: "Mountain Valley", country_code: "US", group: "Europe", ph: 7.6, tds_mg_l: 180, ca_mg_l: 35, mg_mg_l: 12, na_mg_l: 8, k_mg_l: 3, cl_mg_l: 10, sparkling: false, source_type: "seed", confidence_level: "medium" }),
-
-  // ===== КАНАДА =====
-  normalizeWater({ id: "ice_age", brand_name: "Ice Age", country_code: "CA", group: "Europe", ph: 7.5, tds_mg_l: 140, ca_mg_l: 20, mg_mg_l: 8, na_mg_l: 6, k_mg_l: 2, cl_mg_l: 7, sparkling: false, source_type: "seed", confidence_level: "medium" }),
-
-  // ===== АВСТРАЛИЯ =====
-  normalizeWater({ id: "mount_franklin", brand_name: "Mount Franklin", country_code: "AU", group: "Europe", ph: 7.1, tds_mg_l: 160, ca_mg_l: 25, mg_mg_l: 10, na_mg_l: 8, k_mg_l: 2, cl_mg_l: 10, sparkling: false, source_type: "seed", confidence_level: "medium" }),
-
-  // ===== НОВАЯ ЗЕЛАНДИЯ =====
-  normalizeWater({ id: "pump", brand_name: "Pump", country_code: "NZ", group: "Europe", ph: 7.4, tds_mg_l: 170, ca_mg_l: 28, mg_mg_l: 12, na_mg_l: 8, k_mg_l: 3, cl_mg_l: 11, sparkling: false, source_type: "seed", confidence_level: "medium" }),
-
-  // ===== РОССИЯ =====
+  normalizeWater({ id: "acqua_panna_partial", brand_name: "Acqua Panna", country_code: "IT", group: "Europe", ph: 8.0, tds_mg_l: 190, sparkling: false, source_type: "seed", confidence_level: "low", notes: "Неполная этикетка" }),
   normalizeWater({ id: "aquaminerale", brand_name: "Aqua Minerale", country_code: "RU", group: "Russia", ph: 7.1, tds_mg_l: 180, ca_mg_l: 35, mg_mg_l: 15, na_mg_l: 8, k_mg_l: 2, cl_mg_l: 12, sparkling: false, source_type: "seed", confidence_level: "medium" }),
   normalizeWater({ id: "arkhyz", brand_name: "Архыз", country_code: "RU", group: "Russia", ph: 7.3, tds_mg_l: 200, ca_mg_l: 40, mg_mg_l: 18, na_mg_l: 12, k_mg_l: 3, cl_mg_l: 14, sparkling: false, source_type: "seed", confidence_level: "medium" }),
   normalizeWater({ id: "bonacqua", brand_name: "BonAqua", country_code: "RU", group: "Russia", ph: 7.1, tds_mg_l: 160, ca_mg_l: 28, mg_mg_l: 9, na_mg_l: 9, k_mg_l: 1.5, cl_mg_l: 10, sparkling: false, source_type: "seed", confidence_level: "medium" }),
   normalizeWater({ id: "borjomi", brand_name: "Borjomi", country_code: "GE", group: "Therapeutic", ph: 6.6, tds_mg_l: 5500, ca_mg_l: 120, mg_mg_l: 50, na_mg_l: 1200, k_mg_l: 35, cl_mg_l: 600, sparkling: true, source_type: "seed", confidence_level: "high", notes: "Лечебно-столовая вода" }),
+  normalizeWater({ id: "contrex", brand_name: "Contrex", country_code: "FR", group: "Europe", ph: 7.3, tds_mg_l: 2078, ca_mg_l: 468, mg_mg_l: 84, na_mg_l: 14, k_mg_l: 5, cl_mg_l: 15, sparkling: false, source_type: "seed", confidence_level: "high", notes: "Высокое содержание кальция" }),
   normalizeWater({ id: "cristal", brand_name: "Cristal", country_code: "RU", group: "Russia", ph: 7.0, tds_mg_l: 140, ca_mg_l: 20, mg_mg_l: 8, na_mg_l: 6, k_mg_l: 1, cl_mg_l: 7, sparkling: false, source_type: "seed", confidence_level: "low" }),
+  normalizeWater({ id: "fiji", brand_name: "Fiji", country_code: "FJ", group: "Europe", ph: 7.7, tds_mg_l: 220, ca_mg_l: 18, mg_mg_l: 15, na_mg_l: 18, k_mg_l: 5, cl_mg_l: 9, sparkling: false, source_type: "seed", confidence_level: "high" }),
+  normalizeWater({ id: "gerolsteiner", brand_name: "Gerolsteiner", country_code: "DE", group: "Europe", ph: 6.9, tds_mg_l: 2520, ca_mg_l: 348, mg_mg_l: 108, na_mg_l: 118, k_mg_l: 11, cl_mg_l: 45, sparkling: true, source_type: "seed", confidence_level: "high" }),
+  normalizeWater({ id: "hepar", brand_name: "Hépar", country_code: "FR", group: "Europe", ph: 7.4, tds_mg_l: 2513, ca_mg_l: 555, mg_mg_l: 110, na_mg_l: 14, k_mg_l: 8, cl_mg_l: 20, sparkling: false, source_type: "seed", confidence_level: "high", notes: "Высокое содержание магния" }),
   normalizeWater({ id: "lipetsk", brand_name: "Липецкая", country_code: "RU", group: "Russia", ph: 7.2, tds_mg_l: 350, ca_mg_l: 70, mg_mg_l: 25, na_mg_l: 15, k_mg_l: 4, cl_mg_l: 18, sparkling: false, source_type: "seed", confidence_level: "low" }),
+  normalizeWater({ id: "perrier", brand_name: "Perrier", country_code: "FR", group: "Europe", ph: 5.7, tds_mg_l: 475, ca_mg_l: 150, mg_mg_l: 4, na_mg_l: 9, k_mg_l: 1, cl_mg_l: 25, sparkling: true, source_type: "seed", confidence_level: "high" }),
+  normalizeWater({ id: "smartwater", brand_name: "smartwater", country_code: "US", group: "Europe", ph: 7.2, tds_mg_l: 90, ca_mg_l: 10, mg_mg_l: 5, na_mg_l: 8, k_mg_l: 2, cl_mg_l: 5, sparkling: false, source_type: "seed", confidence_level: "high" }),
+  normalizeWater({ id: "svalbard", brand_name: "Svalbarði", country_code: "NO", group: "Europe", ph: 7.2, tds_mg_l: 120, ca_mg_l: 3, mg_mg_l: 0.5, na_mg_l: 2, k_mg_l: 0.5, cl_mg_l: 2, sparkling: false, source_type: "seed", confidence_level: "medium", notes: "Очень низкая минерализация" }),
   normalizeWater({ id: "svyatoy_istochnik", brand_name: "Святой Источник", country_code: "RU", group: "Russia", ph: 7.0, tds_mg_l: 150, ca_mg_l: 30, mg_mg_l: 10, na_mg_l: 10, k_mg_l: 2, cl_mg_l: 8, sparkling: false, source_type: "seed", confidence_level: "medium" }),
   normalizeWater({ id: "narzan", brand_name: "Нарзан", country_code: "RU", group: "Russia", ph: 6.8, tds_mg_l: 2800, ca_mg_l: 350, mg_mg_l: 80, na_mg_l: 200, k_mg_l: 20, cl_mg_l: 150, sparkling: true, source_type: "seed", confidence_level: "high", notes: "Лечебно-столовая" }),
   normalizeWater({ id: "essentuki_4", brand_name: "Ессентуки №4", country_code: "RU", group: "Russia", ph: 6.9, tds_mg_l: 3200, ca_mg_l: 100, mg_mg_l: 50, na_mg_l: 800, k_mg_l: 30, cl_mg_l: 400, sparkling: true, source_type: "seed", confidence_level: "high", notes: "Лечебно-столовая" }),
   normalizeWater({ id: "essentuki_17", brand_name: "Ессентуки №17", country_code: "RU", group: "Russia", ph: 6.9, tds_mg_l: 4000, ca_mg_l: 150, mg_mg_l: 80, na_mg_l: 1200, k_mg_l: 40, cl_mg_l: 600, sparkling: true, source_type: "seed", confidence_level: "high", notes: "Лечебно-столовая" }),
-
-  // ===== ГРУЗИЯ =====
   normalizeWater({ id: "nabeglavi", brand_name: "Набеглави", country_code: "GE", group: "Therapeutic", ph: 7.1, tds_mg_l: 1800, ca_mg_l: 80, mg_mg_l: 40, na_mg_l: 400, k_mg_l: 15, cl_mg_l: 200, sparkling: true, source_type: "seed", confidence_level: "high", notes: "Лечебно-столовая" }),
-
-  // ===== АРМЕНИЯ =====
   normalizeWater({ id: "jermuk", brand_name: "Jermuk", country_code: "AM", group: "Therapeutic", ph: 7.0, tds_mg_l: 2200, ca_mg_l: 90, mg_mg_l: 45, na_mg_l: 500, k_mg_l: 20, cl_mg_l: 250, sparkling: true, source_type: "seed", confidence_level: "high", notes: "Лечебно-столовая" }),
-
-  // ===== ИЗРАИЛЬ =====
   normalizeWater({ id: "mey_eden", brand_name: "Mey Eden", country_code: "IL", group: "Europe", ph: 7.5, tds_mg_l: 180, ca_mg_l: 30, mg_mg_l: 12, na_mg_l: 8, k_mg_l: 3, cl_mg_l: 10, sparkling: false, source_type: "seed", confidence_level: "medium" }),
-
-  // ===== ЯПОНИЯ =====
   normalizeWater({ id: "fuji_japan", brand_name: "Fuji", country_code: "JP", group: "Europe", ph: 7.7, tds_mg_l: 220, ca_mg_l: 18, mg_mg_l: 15, na_mg_l: 18, k_mg_l: 5, cl_mg_l: 9, sparkling: false, source_type: "seed", confidence_level: "medium" }),
-
-  // ===== КИТАЙ =====
   normalizeWater({ id: "nongfu_spring", brand_name: "Nongfu Spring", country_code: "CN", group: "Europe", ph: 7.3, tds_mg_l: 160, ca_mg_l: 25, mg_mg_l: 10, na_mg_l: 8, k_mg_l: 2, cl_mg_l: 10, sparkling: false, source_type: "seed", confidence_level: "medium" }),
-
-  // ===== ИНДИЯ =====
   normalizeWater({ id: "bisleri", brand_name: "Bisleri", country_code: "IN", group: "Europe", ph: 7.2, tds_mg_l: 170, ca_mg_l: 28, mg_mg_l: 12, na_mg_l: 8, k_mg_l: 3, cl_mg_l: 11, sparkling: false, source_type: "seed", confidence_level: "medium" }),
-
-  // ===== ОАЭ =====
   normalizeWater({ id: "al_ain", brand_name: "Al Ain", country_code: "AE", group: "Europe", ph: 7.4, tds_mg_l: 190, ca_mg_l: 32, mg_mg_l: 14, na_mg_l: 10, k_mg_l: 3, cl_mg_l: 12, sparkling: false, source_type: "seed", confidence_level: "medium" }),
-
-  // ===== САУДОВСКАЯ АРАВИЯ =====
   normalizeWater({ id: "hada", brand_name: "Hada", country_code: "SA", group: "Europe", ph: 7.5, tds_mg_l: 200, ca_mg_l: 35, mg_mg_l: 15, na_mg_l: 12, k_mg_l: 4, cl_mg_l: 14, sparkling: false, source_type: "seed", confidence_level: "medium" }),
 ];
+
+// ============== АДМИНКА ==============
+function AdminPanel({ waters, onUpdateWaters, onClose }) {
+  const lang = React.useContext(LangCtx);
+  const t = I18N[lang];
+  const [editingId, setEditingId] = useState(null);
+  const [formData, setFormData] = useState({
+    id: "",
+    brand_name: "",
+    country_code: "",
+    group: "Europe",
+    ph: "",
+    tds_mg_l: "",
+    ca_mg_l: "",
+    mg_mg_l: "",
+    na_mg_l: "",
+    k_mg_l: "",
+    cl_mg_l: "",
+    sparkling: "false",
+    confidence_level: "medium",
+    notes: "",
+    popular: false,
+  });
+
+  const resetForm = () => {
+    setFormData({
+      id: "",
+      brand_name: "",
+      country_code: "",
+      group: "Europe",
+      ph: "",
+      tds_mg_l: "",
+      ca_mg_l: "",
+      mg_mg_l: "",
+      na_mg_l: "",
+      k_mg_l: "",
+      cl_mg_l: "",
+      sparkling: "false",
+      confidence_level: "medium",
+      notes: "",
+      popular: false,
+    });
+    setEditingId(null);
+  };
+
+  const startEdit = (w) => {
+    setEditingId(w.id);
+    setFormData({
+      id: w.id,
+      brand_name: w.brand_name,
+      country_code: w.country_code || "",
+      group: w.group || "Europe",
+      ph: w.ph !== null && w.ph !== undefined ? String(w.ph) : "",
+      tds_mg_l: w.tds_mg_l !== null && w.tds_mg_l !== undefined ? String(w.tds_mg_l) : "",
+      ca_mg_l: w.ca_mg_l !== null && w.ca_mg_l !== undefined ? String(w.ca_mg_l) : "",
+      mg_mg_l: w.mg_mg_l !== null && w.mg_mg_l !== undefined ? String(w.mg_mg_l) : "",
+      na_mg_l: w.na_mg_l !== null && w.na_mg_l !== undefined ? String(w.na_mg_l) : "",
+      k_mg_l: w.k_mg_l !== null && w.k_mg_l !== undefined ? String(w.k_mg_l) : "",
+      cl_mg_l: w.cl_mg_l !== null && w.cl_mg_l !== undefined ? String(w.cl_mg_l) : "",
+      sparkling: w.sparkling !== null && w.sparkling !== undefined ? String(w.sparkling) : "false",
+      confidence_level: w.confidence_level || "medium",
+      notes: w.notes || "",
+      popular: w.popular || false,
+    });
+  };
+
+  const saveWater = () => {
+    const newWater = {
+      id: formData.id || `water_${Date.now()}`,
+      brand_name: formData.brand_name.trim(),
+      country_code: formData.country_code.trim().toUpperCase() || undefined,
+      group: formData.group,
+      ph: formData.ph ? parseFloat(formData.ph) : null,
+      tds_mg_l: formData.tds_mg_l ? parseFloat(formData.tds_mg_l) : null,
+      ca_mg_l: formData.ca_mg_l ? parseFloat(formData.ca_mg_l) : null,
+      mg_mg_l: formData.mg_mg_l ? parseFloat(formData.mg_mg_l) : null,
+      na_mg_l: formData.na_mg_l ? parseFloat(formData.na_mg_l) : null,
+      k_mg_l: formData.k_mg_l ? parseFloat(formData.k_mg_l) : null,
+      cl_mg_l: formData.cl_mg_l ? parseFloat(formData.cl_mg_l) : null,
+      sparkling: formData.sparkling === "true",
+      confidence_level: formData.confidence_level,
+      notes: formData.notes || undefined,
+      popular: formData.popular,
+      source_type: "admin",
+    };
+
+    if (!newWater.brand_name) {
+      alert(lang === "ru" ? "Введите название бренда" : "Enter brand name");
+      return;
+    }
+
+    let updatedWaters;
+    if (editingId) {
+      updatedWaters = waters.map(w => w.id === editingId ? normalizeWater(newWater) : w);
+    } else {
+      const existing = waters.find(w => w.id === newWater.id);
+      if (existing) {
+        alert(lang === "ru" ? "Марка с таким ID уже существует" : "Water with this ID already exists");
+        return;
+      }
+      updatedWaters = [...waters, normalizeWater(newWater)];
+    }
+
+    onUpdateWaters(updatedWaters);
+    try {
+      localStorage.setItem('water_expert_waters', JSON.stringify(updatedWaters));
+    } catch (e) {}
+    
+    resetForm();
+    alert(lang === "ru" ? "Сохранено!" : "Saved!");
+  };
+
+  const deleteWater = (id) => {
+    if (window.confirm(lang === "ru" ? "Удалить эту марку?" : "Delete this water?")) {
+      const updated = waters.filter(w => w.id !== id);
+      onUpdateWaters(updated);
+      try {
+        localStorage.setItem('water_expert_waters', JSON.stringify(updated));
+      } catch (e) {}
+    }
+  };
+
+  const exportData = () => {
+    const dataStr = JSON.stringify(waters, null, 2);
+    const blob = new Blob([dataStr], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `water_expert_backup_${new Date().toISOString().slice(0,10)}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const importData = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      try {
+        const imported = JSON.parse(event.target.result);
+        if (Array.isArray(imported) && imported.length > 0) {
+          if (window.confirm(lang === "ru" ? `Импортировать ${imported.length} марок?` : `Import ${imported.length} waters?`)) {
+            onUpdateWaters(imported);
+            localStorage.setItem('water_expert_waters', JSON.stringify(imported));
+            alert(lang === "ru" ? "Импорт завершён!" : "Import complete!");
+          }
+        } else {
+          alert(lang === "ru" ? "Неверный формат файла" : "Invalid file format");
+        }
+      } catch (err) {
+        alert(lang === "ru" ? "Ошибка при импорте" : "Import error");
+      }
+    };
+    reader.readAsText(file);
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 bg-black/30 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4">
+      <div className="bg-white rounded-2xl sm:rounded-3xl shadow-2xl max-w-6xl w-full max-h-[95vh] overflow-auto">
+        <div className="sticky top-0 bg-white/95 backdrop-blur p-3 sm:p-4 border-b flex justify-between items-center">
+          <div>
+            <h2 className="text-base sm:text-xl font-semibold text-slate-900">
+              ⚙️ {lang === "ru" ? "Управление марками" : "Water Management"}
+            </h2>
+            <div className="text-xs text-slate-500 mt-0.5">
+              {lang === "ru" ? "Доступно по адресу" : "Available at"} <code className="bg-slate-100 px-1.5 py-0.5 rounded">/admin</code>
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={exportData}
+              className="text-xs sm:text-sm px-2 sm:px-3 py-1 sm:py-1.5 bg-emerald-50 text-emerald-700 rounded-lg hover:bg-emerald-100 transition"
+            >
+              📥 {lang === "ru" ? "Экспорт" : "Export"}
+            </button>
+            <label className="text-xs sm:text-sm px-2 sm:px-3 py-1 sm:py-1.5 bg-blue-50 text-blue-700 rounded-lg hover:bg-blue-100 transition cursor-pointer">
+              📤 {lang === "ru" ? "Импорт" : "Import"}
+              <input
+                type="file"
+                accept=".json"
+                className="hidden"
+                onChange={importData}
+              />
+            </label>
+            <button
+              onClick={onClose}
+              className="p-1 hover:bg-slate-100 rounded-full"
+            >
+              <X className="h-5 w-5 sm:h-6 sm:w-6" />
+            </button>
+          </div>
+        </div>
+
+        <div className="p-3 sm:p-6 space-y-4 sm:space-y-6">
+          <div className={`${GLASS.card} p-3 sm:p-5`}>
+            <h3 className="text-sm sm:text-base font-semibold text-slate-900 mb-3">
+              {editingId ? "✏️ " + (lang === "ru" ? "Редактирование" : "Editing") : "➕ " + (lang === "ru" ? "Новая марка" : "New water")}
+            </h3>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2 sm:gap-3">
+              <Input
+                placeholder={lang === "ru" ? "ID (уникальный)" : "ID (unique)"}
+                value={formData.id}
+                onChange={e => setFormData({...formData, id: e.target.value})}
+                className="text-sm"
+                disabled={!!editingId}
+              />
+              <Input
+                placeholder={lang === "ru" ? "Название бренда *" : "Brand name *"}
+                value={formData.brand_name}
+                onChange={e => setFormData({...formData, brand_name: e.target.value})}
+                className="text-sm"
+              />
+              <Input
+                placeholder={lang === "ru" ? "Код страны (FR, RU)" : "Country code (FR, RU)"}
+                value={formData.country_code}
+                onChange={e => setFormData({...formData, country_code: e.target.value.toUpperCase()})}
+                className="text-sm"
+              />
+              <select
+                value={formData.group}
+                onChange={e => setFormData({...formData, group: e.target.value})}
+                className="px-3 sm:px-4 py-1.5 sm:py-2 rounded-xl sm:rounded-2xl border border-white/60 bg-white/70 focus:outline-none focus:ring-2 focus:ring-sky-200 text-sm"
+              >
+                <option value="Europe">Europe</option>
+                <option value="Russia">Russia</option>
+                <option value="Therapeutic">Therapeutic</option>
+              </select>
+              <select
+                value={formData.confidence_level}
+                onChange={e => setFormData({...formData, confidence_level: e.target.value})}
+                className="px-3 sm:px-4 py-1.5 sm:py-2 rounded-xl sm:rounded-2xl border border-white/60 bg-white/70 focus:outline-none focus:ring-2 focus:ring-sky-200 text-sm"
+              >
+                <option value="high">High</option>
+                <option value="medium">Medium</option>
+                <option value="low">Low</option>
+              </select>
+              <select
+                value={formData.sparkling}
+                onChange={e => setFormData({...formData, sparkling: e.target.value})}
+                className="px-3 sm:px-4 py-1.5 sm:py-2 rounded-xl sm:rounded-2xl border border-white/60 bg-white/70 focus:outline-none focus:ring-2 focus:ring-sky-200 text-sm"
+              >
+                <option value="false">Still</option>
+                <option value="true">Sparkling</option>
+              </select>
+              <label className="flex items-center gap-2 text-sm text-slate-700">
+                <input
+                  type="checkbox"
+                  checked={formData.popular}
+                  onChange={e => setFormData({...formData, popular: e.target.checked})}
+                />
+                {lang === "ru" ? "Популярная" : "Popular"}
+              </label>
+            </div>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mt-2">
+              <Input
+                placeholder="pH"
+                value={formData.ph}
+                onChange={e => setFormData({...formData, ph: e.target.value})}
+                className="text-sm"
+                type="number"
+                step="0.1"
+              />
+              <Input
+                placeholder="TDS"
+                value={formData.tds_mg_l}
+                onChange={e => setFormData({...formData, tds_mg_l: e.target.value})}
+                className="text-sm"
+                type="number"
+                step="1"
+              />
+              <Input
+                placeholder="Ca"
+                value={formData.ca_mg_l}
+                onChange={e => setFormData({...formData, ca_mg_l: e.target.value})}
+                className="text-sm"
+                type="number"
+                step="1"
+              />
+              <Input
+                placeholder="Mg"
+                value={formData.mg_mg_l}
+                onChange={e => setFormData({...formData, mg_mg_l: e.target.value})}
+                className="text-sm"
+                type="number"
+                step="1"
+              />
+              <Input
+                placeholder="Na"
+                value={formData.na_mg_l}
+                onChange={e => setFormData({...formData, na_mg_l: e.target.value})}
+                className="text-sm"
+                type="number"
+                step="1"
+              />
+              <Input
+                placeholder="K"
+                value={formData.k_mg_l}
+                onChange={e => setFormData({...formData, k_mg_l: e.target.value})}
+                className="text-sm"
+                type="number"
+                step="0.1"
+              />
+              <Input
+                placeholder="Cl"
+                value={formData.cl_mg_l}
+                onChange={e => setFormData({...formData, cl_mg_l: e.target.value})}
+                className="text-sm"
+                type="number"
+                step="1"
+              />
+              <Input
+                placeholder={lang === "ru" ? "Заметки" : "Notes"}
+                value={formData.notes}
+                onChange={e => setFormData({...formData, notes: e.target.value})}
+                className="text-sm"
+              />
+            </div>
+            <div className="flex gap-2 mt-3">
+              <Button onClick={saveWater} className="h-8 sm:h-10 rounded-xl sm:rounded-2xl">
+                <Save className="mr-1 sm:mr-2 h-3 w-3 sm:h-4 sm:w-4" />
+                {editingId ? (lang === "ru" ? "Обновить" : "Update") : (lang === "ru" ? "Добавить" : "Add")}
+              </Button>
+              <Button variant="outline" onClick={resetForm} className="h-8 sm:h-10 rounded-xl sm:rounded-2xl">
+                {lang === "ru" ? "Отмена" : "Cancel"}
+              </Button>
+            </div>
+          </div>
+
+          <div className={`${GLASS.card} p-3 sm:p-5`}>
+            <h3 className="text-sm sm:text-base font-semibold text-slate-900 mb-3">
+              📋 {lang === "ru" ? "Все марки" : "All waters"} ({waters.length})
+            </h3>
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-xs sm:text-sm">
+                <thead className="bg-slate-100">
+                  <tr>
+                    <th className="px-2 py-1 sm:px-3 sm:py-2">#</th>
+                    <th className="px-2 py-1 sm:px-3 sm:py-2">Флаг</th>
+                    <th className="px-2 py-1 sm:px-3 sm:py-2">Название</th>
+                    <th className="px-2 py-1 sm:px-3 sm:py-2 hidden sm:table-cell">Группа</th>
+                    <th className="px-2 py-1 sm:px-3 sm:py-2 hidden md:table-cell">TDS</th>
+                    <th className="px-2 py-1 sm:px-3 sm:py-2 hidden md:table-cell">pH</th>
+                    <th className="px-2 py-1 sm:px-3 sm:py-2">Действия</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {waters.map((w, idx) => (
+                    <tr key={w.id} className="border-b border-slate-200 hover:bg-slate-50/50">
+                      <td className="px-2 py-1 sm:px-3 sm:py-2 text-slate-400 text-[10px] sm:text-xs">{idx + 1}</td>
+                      <td className="px-2 py-1 sm:px-3 sm:py-2 text-base sm:text-lg">{w.flag_emoji}</td>
+                      <td className="px-2 py-1 sm:px-3 sm:py-2 font-medium truncate max-w-[80px] sm:max-w-[150px]">{w.brand_name}</td>
+                      <td className="px-2 py-1 sm:px-3 sm:py-2 hidden sm:table-cell text-xs">{w.group}</td>
+                      <td className="px-2 py-1 sm:px-3 sm:py-2 hidden md:table-cell">{w.tds_mg_l || "—"}</td>
+                      <td className="px-2 py-1 sm:px-3 sm:py-2 hidden md:table-cell">{w.ph || "—"}</td>
+                      <td className="px-2 py-1 sm:px-3 sm:py-2">
+                        <div className="flex gap-1">
+                          <button
+                            onClick={() => startEdit(w)}
+                            className="p-1 hover:bg-sky-100 rounded-full text-sky-600"
+                          >
+                            <Edit className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+                          </button>
+                          <button
+                            onClick={() => deleteWater(w.id)}
+                            className="p-1 hover:bg-rose-100 rounded-full text-rose-600"
+                          >
+                            <Trash2 className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            {waters.length === 0 && (
+              <div className="text-center text-slate-500 py-4 text-sm">
+                {lang === "ru" ? "Нет марок. Добавьте первую!" : "No waters. Add the first one!"}
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 // ============== UI КОМПОНЕНТЫ ==============
 function ConfidenceBadge({ c }) { return null; }
@@ -716,7 +1034,6 @@ function MetricsTable({ selected, profile }) {
     { key: "cl", label: "Cl", ref: String(REF.cl), unit: "мг/сутки*", getValue: w => w.cl_mg_l ?? null },
   ];
 
-  // Вспомогательные функции внутри компонента
   const getDailyPercentage = (key, value) => {
     if (value === null || value === undefined) return null;
     const liters = 2;
@@ -904,7 +1221,6 @@ function MetricsTable({ selected, profile }) {
         })}
       </div>
 
-      {/* Легенда */}
       <div className="mt-3 sm:mt-4 flex flex-wrap gap-2 sm:gap-3 text-[9px] sm:text-xs">
         <div className="flex items-center gap-1 sm:gap-2"><span className="w-2 h-2 sm:w-3 sm:h-3 rounded-full bg-emerald-50 border border-emerald-200"></span><span>Норма</span></div>
         <div className="flex items-center gap-1 sm:gap-2"><span className="w-2 h-2 sm:w-3 sm:h-3 rounded-full bg-sky-50 border border-sky-200"></span><span>Средний</span></div>
@@ -970,17 +1286,185 @@ export default function App() {
   const [mode, setMode] = useState("consumer");
   const [profile, setProfile] = useState("Everyday");
   const [screen, setScreen] = useState("A");
-  const [waters, setWaters] = useState(SEED);
+  const [waters, setWaters] = useState(() => {
+    try {
+      const saved = localStorage.getItem('water_expert_waters');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (parsed.length > 0) return parsed;
+      }
+    } catch (e) {}
+    return SEED;
+  });
   const [selectedIds, setSelectedIds] = useState([]);
   const [reportCompact, setReportCompact] = useState(true);
+  const [showAdmin, setShowAdmin] = useState(false);
+
   const t = I18N[lang];
+
+  useEffect(() => {
+    const checkAdminAccess = () => {
+      const path = window.location.pathname;
+      if (path === ADMIN_PATH || path === ADMIN_PATH + '/') {
+        setShowAdmin(true);
+      } else {
+        setShowAdmin(false);
+      }
+    };
+    
+    checkAdminAccess();
+    const handlePopState = () => checkAdminAccess();
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, []);
+
   useEffect(() => { runSelfTests(); }, []);
+
   const selected = useMemo(() => { const m = new Map(waters.map(w => [w.id, w])); return selectedIds.map(id => m.get(id)).filter(Boolean); }, [waters, selectedIds]);
+
   const toggleSelect = w => setSelectedIds(prev => { const has = prev.includes(w.id); if (has) return prev.filter(x => x !== w.id); if (prev.length >= 5) return prev; return [...prev, w.id]; });
   const removeFromCompare = id => setSelectedIds(prev => prev.filter(x => x !== id));
   const clear = () => setSelectedIds([]);
   const canCompare = selected.length >= 2;
   const onCompare = () => { if (!canCompare) return; setScreen("B"); };
   const onMerge = incoming => setWaters(prev => mergeById(prev, incoming));
-  return (<LangCtx.Provider value={lang}><TooltipProvider><div className={GLASS.page}><div className="mx-auto max-w-7xl px-3 sm:px-4 pb-24 sm:pb-28 pt-4 sm:pt-6"><div className={`${GLASS.card} p-3 sm:p-6`}><div className="flex flex-wrap items-center justify-between gap-2 sm:gap-3"><div><div className="text-base sm:text-xl font-semibold text-slate-900">{t.appName}</div><div className="text-xs sm:text-sm text-slate-600">{t.tagline}</div></div><div className="flex flex-wrap items-center gap-1.5 sm:gap-2"><Button variant="outline" className="h-8 sm:h-10 rounded-xl sm:rounded-2xl bg-white/70 hover:bg-white inline-flex items-center" onClick={() => setLang(v => v === "ru" ? "en" : "ru")} type="button"><Languages className="mr-1 sm:mr-2 h-3 w-3 sm:h-4 sm:w-4" /><span className="text-xs sm:text-sm">{t.langLabel}: {lang.toUpperCase()}</span></Button><DropdownMenu><DropdownMenuTrigger asChild><Button variant="outline" className="h-8 sm:h-10 rounded-xl sm:rounded-2xl bg-white/70 hover:bg-white inline-flex items-center" type="button"><Lock className="mr-1 sm:mr-2 h-3 w-3 sm:h-4 sm:w-4" /><span className="text-xs sm:text-sm">{t.modeLabel}: {t.modes[mode]}</span></Button></DropdownMenuTrigger><DropdownMenuContent><DropdownMenuItem onClick={() => setMode("consumer")}>{t.modes.consumer}</DropdownMenuItem><DropdownMenuItem onClick={() => setMode("pro")}>{t.modes.pro}</DropdownMenuItem></DropdownMenuContent></DropdownMenu><DropdownMenu><DropdownMenuTrigger asChild><Button variant="outline" className="h-8 sm:h-10 rounded-xl sm:rounded-2xl bg-white/70 hover:bg-white inline-flex items-center" type="button"><UserProfileIcon /><span className="ml-1 sm:ml-2 text-xs sm:text-sm">{t.profileLabel}: {t.profiles[profile]}</span></Button></DropdownMenuTrigger><DropdownMenuContent>{Object.keys(t.profiles).map(k => (<DropdownMenuItem key={k} onClick={() => setProfile(k)}>{t.profiles[k]}</DropdownMenuItem>))}</DropdownMenuContent></DropdownMenu><ImportDialog onMerge={onMerge} /><ScannerDialog onScanComplete={scannedWater => { setWaters(prev => mergeById(prev, [scannedWater])); setSelectedIds(prev => { if (prev.length >= 5) return prev; if (!prev.includes(scannedWater.id)) return [...prev, scannedWater.id]; return prev; }); }} /><div className={`ml-0.5 sm:ml-2 px-2 sm:px-3 py-0.5 sm:py-1 rounded-full text-[10px] sm:text-xs font-medium ${profile === "Everyday" ? "bg-emerald-100 text-emerald-700" : profile === "Sport" ? "bg-blue-100 text-blue-700" : profile === "Kid" ? "bg-amber-100 text-amber-700" : "bg-purple-100 text-purple-700"}`}>{profile === "Everyday" && "🍃 Ежедневный"}{profile === "Sport" && "🏃 Спорт"}{profile === "Kid" && "🧒 Детский"}{profile === "Sensitive" && "🌸 Чувствительный ЖКТ"}</div></div></div><div className="mt-4 sm:mt-5"><Tabs value={screen} onValueChange={v => setScreen(v)}><TabsList className="rounded-xl sm:rounded-2xl bg-white/70"><TabsTrigger value="A">{t.screenA}</TabsTrigger><TabsTrigger value="B" disabled={!canCompare}>{t.screenB}</TabsTrigger><TabsTrigger value="C" disabled={!canCompare}>{t.screenC}</TabsTrigger><TabsTrigger value="D" disabled={!canCompare}>{t.screenD}</TabsTrigger></TabsList><TabsContent value="A" className="mt-4 sm:mt-5"><WaterPicker waters={waters} selectedIds={selectedIds} onToggle={toggleSelect} /></TabsContent><TabsContent value="B" className="mt-4 sm:mt-5 space-y-4 sm:space-y-5"><CompareChart selected={selected} /><MetricsTable selected={[...selected].sort((a, b) => compareForRanking(a, b, profile))} profile={profile} /></TabsContent><TabsContent value="C" className="mt-4 sm:mt-5 space-y-4 sm:space-y-5"><MetricsTable selected={[...selected].sort((a, b) => compareForRanking(a, b, profile))} profile={profile} /><ReportAccordion selected={selected} profile={profile} mode={mode} compact={reportCompact} onToggleCompact={() => setReportCompact(v => !v)} /></TabsContent><TabsContent value="D" className="mt-4 sm:mt-5"><RotationMock selected={selected} profile={profile} /></TabsContent></Tabs></div></div></div><div className="fixed bottom-3 sm:bottom-4 left-1/2 z-50 w-[calc(100%-16px)] sm:w-[min(1120px,calc(100%-24px))] -translate-x-1/2"><div className="pointer-events-auto rounded-2xl sm:rounded-3xl border border-white/60 bg-white/70 shadow-lg backdrop-blur"><div className="flex flex-wrap items-center justify-between gap-2 sm:gap-3 px-2 sm:px-4 py-2 sm:py-3"><div className="flex min-w-0 flex-1 items-center gap-2 sm:gap-3"><div className="hidden sm:block"><div className="text-[10px] sm:text-xs font-medium text-slate-600">{t.selected}</div><div className="text-xs sm:text-sm font-semibold text-slate-900">{selected.length ? `${selected.length}/5` : t.misc.empty}</div></div><div className="min-w-0 flex-1 overflow-x-auto"><div className="flex items-center gap-1.5 sm:gap-2"><AnimatePresence>{selected.map(w => <WaterChip key={w.id} w={w} onRemove={() => removeFromCompare(w.id)} />)}</AnimatePresence></div></div></div><div className="flex shrink-0 flex-wrap items-center justify-end gap-1.5 sm:gap-2"><Button variant="outline" className="h-7 sm:h-10 rounded-xl sm:rounded-2xl bg-white/70 hover:bg-white text-xs sm:text-sm px-2 sm:px-4" onClick={() => setScreen("A")} type="button">{t.misc.openPicker}</Button><Button className="h-7 sm:h-10 rounded-xl sm:rounded-2xl text-xs sm:text-sm px-2 sm:px-4" onClick={onCompare} disabled={!canCompare} type="button">{t.actions.compare}</Button><Button variant="outline" className="h-7 sm:h-10 rounded-xl sm:rounded-2xl bg-white/70 hover:bg-white text-xs sm:text-sm px-2 sm:px-4" onClick={clear} type="button" disabled={!selected.length}><RotateCcw className="mr-0.5 sm:mr-2 h-3 w-3 sm:h-4 sm:w-4" />{t.actions.clear}</Button></div></div></div></div></div></TooltipProvider></LangCtx.Provider>);
+
+  // Если админка открыта — показываем только её
+  if (showAdmin) {
+    return (
+      <LangCtx.Provider value={lang}>
+        <TooltipProvider>
+          <div className={GLASS.page}>
+            <AdminPanel 
+              waters={waters} 
+              onUpdateWaters={setWaters} 
+              onClose={() => {
+                setShowAdmin(false);
+                window.history.pushState({}, '', '/');
+              }}
+            />
+          </div>
+        </TooltipProvider>
+      </LangCtx.Provider>
+    );
+  }
+
+  return (
+    <LangCtx.Provider value={lang}>
+      <TooltipProvider>
+        <div className={GLASS.page}>
+          <div className="mx-auto max-w-7xl px-3 sm:px-4 pb-24 sm:pb-28 pt-4 sm:pt-6">
+            <div className={`${GLASS.card} p-3 sm:p-6`}>
+              <div className="flex flex-wrap items-center justify-between gap-2 sm:gap-3">
+                <div>
+                  <div className="text-base sm:text-xl font-semibold text-slate-900">{t.appName}</div>
+                  <div className="text-xs sm:text-sm text-slate-600">{t.tagline}</div>
+                </div>
+
+                <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
+                  <Button
+                    variant="outline"
+                    className="h-8 sm:h-10 rounded-xl sm:rounded-2xl bg-white/70 hover:bg-white inline-flex items-center"
+                    onClick={() => setLang(v => v === "ru" ? "en" : "ru")}
+                    type="button"
+                  >
+                    <Languages className="mr-1 sm:mr-2 h-3 w-3 sm:h-4 sm:w-4" />
+                    <span className="text-xs sm:text-sm">{t.langLabel}: {lang.toUpperCase()}</span>
+                  </Button>
+
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button variant="outline" className="h-8 sm:h-10 rounded-xl sm:rounded-2xl bg-white/70 hover:bg-white inline-flex items-center" type="button">
+                        <Lock className="mr-1 sm:mr-2 h-3 w-3 sm:h-4 sm:w-4" />
+                        <span className="text-xs sm:text-sm">{t.modeLabel}: {t.modes[mode]}</span>
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent>
+                      <DropdownMenuItem onClick={() => setMode("consumer")}>{t.modes.consumer}</DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => setMode("pro")}>{t.modes.pro}</DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button variant="outline" className="h-8 sm:h-10 rounded-xl sm:rounded-2xl bg-white/70 hover:bg-white inline-flex items-center" type="button">
+                        <UserProfileIcon />
+                        <span className="ml-1 sm:ml-2 text-xs sm:text-sm">{t.profileLabel}: {t.profiles[profile]}</span>
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent>
+                      {Object.keys(t.profiles).map(k => (<DropdownMenuItem key={k} onClick={() => setProfile(k)}>{t.profiles[k]}</DropdownMenuItem>))}
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+
+                  <ImportDialog onMerge={onMerge} />
+                  <ScannerDialog onScanComplete={scannedWater => { setWaters(prev => mergeById(prev, [scannedWater])); setSelectedIds(prev => { if (prev.length >= 5) return prev; if (!prev.includes(scannedWater.id)) return [...prev, scannedWater.id]; return prev; }); }} />
+
+                  <div className={`ml-0.5 sm:ml-2 px-2 sm:px-3 py-0.5 sm:py-1 rounded-full text-[10px] sm:text-xs font-medium ${profile === "Everyday" ? "bg-emerald-100 text-emerald-700" : profile === "Sport" ? "bg-blue-100 text-blue-700" : profile === "Kid" ? "bg-amber-100 text-amber-700" : "bg-purple-100 text-purple-700"}`}>
+                    {profile === "Everyday" && "🍃 Ежедневный"}
+                    {profile === "Sport" && "🏃 Спорт"}
+                    {profile === "Kid" && "🧒 Детский"}
+                    {profile === "Sensitive" && "🌸 Чувствительный ЖКТ"}
+                  </div>
+                </div>
+              </div>
+
+              <div className="mt-4 sm:mt-5">
+                <Tabs value={screen} onValueChange={v => setScreen(v)}>
+                  <TabsList className="rounded-xl sm:rounded-2xl bg-white/70">
+                    <TabsTrigger value="A">{t.screenA}</TabsTrigger>
+                    <TabsTrigger value="B" disabled={!canCompare}>{t.screenB}</TabsTrigger>
+                    <TabsTrigger value="C" disabled={!canCompare}>{t.screenC}</TabsTrigger>
+                    <TabsTrigger value="D" disabled={!canCompare}>{t.screenD}</TabsTrigger>
+                  </TabsList>
+
+                  <TabsContent value="A" className="mt-4 sm:mt-5">
+                    <WaterPicker waters={waters} selectedIds={selectedIds} onToggle={toggleSelect} />
+                  </TabsContent>
+
+                  <TabsContent value="B" className="mt-4 sm:mt-5 space-y-4 sm:space-y-5">
+                    <CompareChart selected={selected} />
+                    <MetricsTable selected={[...selected].sort((a, b) => compareForRanking(a, b, profile))} profile={profile} />
+                  </TabsContent>
+
+                  <TabsContent value="C" className="mt-4 sm:mt-5 space-y-4 sm:space-y-5">
+                    <MetricsTable selected={[...selected].sort((a, b) => compareForRanking(a, b, profile))} profile={profile} />
+                    <ReportAccordion selected={selected} profile={profile} mode={mode} compact={reportCompact} onToggleCompact={() => setReportCompact(v => !v)} />
+                  </TabsContent>
+
+                  <TabsContent value="D" className="mt-4 sm:mt-5">
+                    <RotationMock selected={selected} profile={profile} />
+                  </TabsContent>
+                </Tabs>
+              </div>
+            </div>
+          </div>
+
+          <div className="fixed bottom-3 sm:bottom-4 left-1/2 z-50 w-[calc(100%-16px)] sm:w-[min(1120px,calc(100%-24px))] -translate-x-1/2">
+            <div className="pointer-events-auto rounded-2xl sm:rounded-3xl border border-white/60 bg-white/70 shadow-lg backdrop-blur">
+              <div className="flex flex-wrap items-center justify-between gap-2 sm:gap-3 px-2 sm:px-4 py-2 sm:py-3">
+                <div className="flex min-w-0 flex-1 items-center gap-2 sm:gap-3">
+                  <div className="hidden sm:block">
+                    <div className="text-[10px] sm:text-xs font-medium text-slate-600">{t.selected}</div>
+                    <div className="text-xs sm:text-sm font-semibold text-slate-900">{selected.length ? `${selected.length}/5` : t.misc.empty}</div>
+                  </div>
+                  <div className="min-w-0 flex-1 overflow-x-auto">
+                    <div className="flex items-center gap-1.5 sm:gap-2">
+                      <AnimatePresence>{selected.map(w => <WaterChip key={w.id} w={w} onRemove={() => removeFromCompare(w.id)} />)}</AnimatePresence>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex shrink-0 flex-wrap items-center justify-end gap-1.5 sm:gap-2">
+                  <Button variant="outline" className="h-7 sm:h-10 rounded-xl sm:rounded-2xl bg-white/70 hover:bg-white text-xs sm:text-sm px-2 sm:px-4" onClick={() => setScreen("A")} type="button">{t.misc.openPicker}</Button>
+                  <Button className="h-7 sm:h-10 rounded-xl sm:rounded-2xl text-xs sm:text-sm px-2 sm:px-4" onClick={onCompare} disabled={!canCompare} type="button">{t.actions.compare}</Button>
+                  <Button variant="outline" className="h-7 sm:h-10 rounded-xl sm:rounded-2xl bg-white/70 hover:bg-white text-xs sm:text-sm px-2 sm:px-4" onClick={clear} type="button" disabled={!selected.length}><RotateCcw className="mr-0.5 sm:mr-2 h-3 w-3 sm:h-4 sm:w-4" />{t.actions.clear}</Button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </TooltipProvider>
+    </LangCtx.Provider>
+  );
 }
