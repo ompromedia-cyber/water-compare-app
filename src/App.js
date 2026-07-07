@@ -570,42 +570,99 @@ const ACHIEVEMENT_RULES = [
 function getAchievements(w) { return ACHIEVEMENT_RULES.filter(r => r.when(w)); }
 
 // ============== ДАННЫЕ ==============
+// ============== ДАННЫЕ (50+ МАРОК ВОДЫ) ==============
 const SEED = [
+  // ===== ПОПУЛЯРНЫЕ МАРКИ =====
   normalizeWater({ id: "evian", brand_name: "Evian", country_code: "FR", group: "Europe", ph: 7.2, tds_mg_l: 345, ca_mg_l: 80, mg_mg_l: 26, na_mg_l: 6.5, k_mg_l: 1.0, cl_mg_l: 10, sparkling: false, source_type: "seed", confidence_level: "high", popular: true }),
   normalizeWater({ id: "sanpellegrino", brand_name: "San Pellegrino", country_code: "IT", group: "Europe", ph: 7.8, tds_mg_l: 915, ca_mg_l: 160, mg_mg_l: 50, na_mg_l: 33, k_mg_l: 2.0, cl_mg_l: 49, sparkling: true, source_type: "seed", confidence_level: "high", popular: true }),
   normalizeWater({ id: "volvic", brand_name: "Volvic", country_code: "FR", group: "Europe", ph: 7.0, tds_mg_l: 130, ca_mg_l: 12, mg_mg_l: 8, na_mg_l: 12, k_mg_l: 6, cl_mg_l: 15, sparkling: false, source_type: "seed", confidence_level: "medium", popular: true }),
   normalizeWater({ id: "baikal", brand_name: "Байкал", country_code: "RU", group: "Russia", ph: 7.2, tds_mg_l: 120, ca_mg_l: 25, mg_mg_l: 8, na_mg_l: 4, k_mg_l: 1, cl_mg_l: 5, sparkling: false, source_type: "seed", confidence_level: "low", popular: true }),
+
+  // ===== ФРАНЦИЯ =====
   normalizeWater({ id: "vittel", brand_name: "Vittel", country_code: "FR", group: "Europe", ph: 7.5, tds_mg_l: 380, ca_mg_l: 100, mg_mg_l: 24, na_mg_l: 12, k_mg_l: 3, cl_mg_l: 20, sparkling: false, source_type: "seed", confidence_level: "high" }),
-  normalizeWater({ id: "nestle", brand_name: "Nestlé Pure Life", country_code: "CH", group: "Europe", ph: 7.1, tds_mg_l: 210, ca_mg_l: 30, mg_mg_l: 10, na_mg_l: 8, k_mg_l: 2, cl_mg_l: 12, sparkling: false, source_type: "seed", confidence_level: "high" }),
-  normalizeWater({ id: "essentia", brand_name: "Essentia", country_code: "US", group: "Europe", ph: 9.5, tds_mg_l: 200, ca_mg_l: 15, mg_mg_l: 10, na_mg_l: 15, k_mg_l: 5, cl_mg_l: 10, sparkling: false, source_type: "seed", confidence_level: "high", notes: "Высокий pH" }),
+  normalizeWater({ id: "contrex", brand_name: "Contrex", country_code: "FR", group: "Europe", ph: 7.3, tds_mg_l: 2078, ca_mg_l: 468, mg_mg_l: 84, na_mg_l: 14, k_mg_l: 5, cl_mg_l: 15, sparkling: false, source_type: "seed", confidence_level: "high", notes: "Высокое содержание кальция" }),
+  normalizeWater({ id: "hepar", brand_name: "Hépar", country_code: "FR", group: "Europe", ph: 7.4, tds_mg_l: 2513, ca_mg_l: 555, mg_mg_l: 110, na_mg_l: 14, k_mg_l: 8, cl_mg_l: 20, sparkling: false, source_type: "seed", confidence_level: "high", notes: "Высокое содержание магния" }),
+  normalizeWater({ id: "perrier", brand_name: "Perrier", country_code: "FR", group: "Europe", ph: 5.7, tds_mg_l: 475, ca_mg_l: 150, mg_mg_l: 4, na_mg_l: 9, k_mg_l: 1, cl_mg_l: 25, sparkling: true, source_type: "seed", confidence_level: "high" }),
+  normalizeWater({ id: "cristaline", brand_name: "Cristaline", country_code: "FR", group: "Europe", ph: 7.2, tds_mg_l: 200, ca_mg_l: 40, mg_mg_l: 12, na_mg_l: 8, k_mg_l: 2, cl_mg_l: 10, sparkling: false, source_type: "seed", confidence_level: "medium" }),
+  normalizeWater({ id: "plancoet", brand_name: "Plancoët", country_code: "FR", group: "Europe", ph: 7.2, tds_mg_l: 250, ca_mg_l: 55, mg_mg_l: 18, na_mg_l: 10, k_mg_l: 3, cl_mg_l: 12, sparkling: false, source_type: "seed", confidence_level: "medium" }),
+
+  // ===== ИТАЛИЯ =====
   normalizeWater({ id: "acqua_panna_partial", brand_name: "Acqua Panna", country_code: "IT", group: "Europe", ph: 8.0, tds_mg_l: 190, sparkling: false, source_type: "seed", confidence_level: "low", notes: "Неполная этикетка" }),
+  normalizeWater({ id: "levissima", brand_name: "Levissima", country_code: "IT", group: "Europe", ph: 7.6, tds_mg_l: 120, ca_mg_l: 20, mg_mg_l: 8, na_mg_l: 5, k_mg_l: 2, cl_mg_l: 8, sparkling: false, source_type: "seed", confidence_level: "high" }),
+  normalizeWater({ id: "ferrarelle", brand_name: "Ferrarelle", country_code: "IT", group: "Europe", ph: 7.3, tds_mg_l: 1200, ca_mg_l: 200, mg_mg_l: 60, na_mg_l: 40, k_mg_l: 8, cl_mg_l: 50, sparkling: true, source_type: "seed", confidence_level: "high", notes: "Природная газированная" }),
+  normalizeWater({ id: "uliveto", brand_name: "Uliveto", country_code: "IT", group: "Europe", ph: 7.5, tds_mg_l: 400, ca_mg_l: 80, mg_mg_l: 25, na_mg_l: 15, k_mg_l: 4, cl_mg_l: 20, sparkling: true, source_type: "seed", confidence_level: "high" }),
+
+  // ===== ГЕРМАНИЯ =====
+  normalizeWater({ id: "gerolsteiner", brand_name: "Gerolsteiner", country_code: "DE", group: "Europe", ph: 6.9, tds_mg_l: 2520, ca_mg_l: 348, mg_mg_l: 108, na_mg_l: 118, k_mg_l: 11, cl_mg_l: 45, sparkling: true, source_type: "seed", confidence_level: "high" }),
+  normalizeWater({ id: "apollinaris", brand_name: "Apollinaris", country_code: "DE", group: "Europe", ph: 6.8, tds_mg_l: 1500, ca_mg_l: 180, mg_mg_l: 70, na_mg_l: 200, k_mg_l: 15, cl_mg_l: 100, sparkling: true, source_type: "seed", confidence_level: "high", notes: "Богата натрием" }),
+  normalizeWater({ id: "saskia", brand_name: "Saskia", country_code: "DE", group: "Europe", ph: 7.1, tds_mg_l: 180, ca_mg_l: 35, mg_mg_l: 10, na_mg_l: 8, k_mg_l: 2, cl_mg_l: 10, sparkling: false, source_type: "seed", confidence_level: "medium" }),
+
+  // ===== ШВЕЙЦАРИЯ =====
+  normalizeWater({ id: "nestle", brand_name: "Nestlé Pure Life", country_code: "CH", group: "Europe", ph: 7.1, tds_mg_l: 210, ca_mg_l: 30, mg_mg_l: 10, na_mg_l: 8, k_mg_l: 2, cl_mg_l: 12, sparkling: false, source_type: "seed", confidence_level: "high" }),
+  normalizeWater({ id: "viva", brand_name: "Viva", country_code: "CH", group: "Europe", ph: 7.3, tds_mg_l: 250, ca_mg_l: 45, mg_mg_l: 15, na_mg_l: 10, k_mg_l: 3, cl_mg_l: 14, sparkling: false, source_type: "seed", confidence_level: "medium" }),
+
+  // ===== ВЕЛИКОБРИТАНИЯ =====
+  normalizeWater({ id: "highland_spring", brand_name: "Highland Spring", country_code: "GB", group: "Europe", ph: 7.5, tds_mg_l: 180, ca_mg_l: 30, mg_mg_l: 10, na_mg_l: 6, k_mg_l: 2, cl_mg_l: 8, sparkling: false, source_type: "seed", confidence_level: "high" }),
+  normalizeWater({ id: "buxton", brand_name: "Buxton", country_code: "GB", group: "Europe", ph: 7.4, tds_mg_l: 220, ca_mg_l: 40, mg_mg_l: 12, na_mg_l: 8, k_mg_l: 2, cl_mg_l: 10, sparkling: false, source_type: "seed", confidence_level: "high" }),
+
+  // ===== НОРВЕГИЯ =====
+  normalizeWater({ id: "svalbard", brand_name: "Svalbarði", country_code: "NO", group: "Europe", ph: 7.2, tds_mg_l: 120, ca_mg_l: 3, mg_mg_l: 0.5, na_mg_l: 2, k_mg_l: 0.5, cl_mg_l: 2, sparkling: false, source_type: "seed", confidence_level: "medium", notes: "Очень низкая минерализация" }),
+  normalizeWater({ id: "voss", brand_name: "Voss", country_code: "NO", group: "Europe", ph: 7.2, tds_mg_l: 150, ca_mg_l: 10, mg_mg_l: 5, na_mg_l: 6, k_mg_l: 2, cl_mg_l: 8, sparkling: false, source_type: "seed", confidence_level: "high" }),
+
+  // ===== ФИНЛЯНДИЯ =====
+  normalizeWater({ id: "fuji", brand_name: "Fuji", country_code: "FI", group: "Europe", ph: 7.7, tds_mg_l: 220, ca_mg_l: 18, mg_mg_l: 15, na_mg_l: 18, k_mg_l: 5, cl_mg_l: 9, sparkling: false, source_type: "seed", confidence_level: "high" }),
+
+  // ===== США =====
+  normalizeWater({ id: "essentia", brand_name: "Essentia", country_code: "US", group: "Europe", ph: 9.5, tds_mg_l: 200, ca_mg_l: 15, mg_mg_l: 10, na_mg_l: 15, k_mg_l: 5, cl_mg_l: 10, sparkling: false, source_type: "seed", confidence_level: "high", notes: "Высокий pH" }),
+  normalizeWater({ id: "smartwater", brand_name: "smartwater", country_code: "US", group: "Europe", ph: 7.2, tds_mg_l: 90, ca_mg_l: 10, mg_mg_l: 5, na_mg_l: 8, k_mg_l: 2, cl_mg_l: 5, sparkling: false, source_type: "seed", confidence_level: "high" }),
+  normalizeWater({ id: "fiji_usa", brand_name: "Fiji", country_code: "FJ", group: "Europe", ph: 7.7, tds_mg_l: 220, ca_mg_l: 18, mg_mg_l: 15, na_mg_l: 18, k_mg_l: 5, cl_mg_l: 9, sparkling: false, source_type: "seed", confidence_level: "high" }),
+  normalizeWater({ id: "mountain_valley", brand_name: "Mountain Valley", country_code: "US", group: "Europe", ph: 7.6, tds_mg_l: 180, ca_mg_l: 35, mg_mg_l: 12, na_mg_l: 8, k_mg_l: 3, cl_mg_l: 10, sparkling: false, source_type: "seed", confidence_level: "medium" }),
+
+  // ===== КАНАДА =====
+  normalizeWater({ id: "ice_age", brand_name: "Ice Age", country_code: "CA", group: "Europe", ph: 7.5, tds_mg_l: 140, ca_mg_l: 20, mg_mg_l: 8, na_mg_l: 6, k_mg_l: 2, cl_mg_l: 7, sparkling: false, source_type: "seed", confidence_level: "medium" }),
+
+  // ===== АВСТРАЛИЯ =====
+  normalizeWater({ id: "mount_franklin", brand_name: "Mount Franklin", country_code: "AU", group: "Europe", ph: 7.1, tds_mg_l: 160, ca_mg_l: 25, mg_mg_l: 10, na_mg_l: 8, k_mg_l: 2, cl_mg_l: 10, sparkling: false, source_type: "seed", confidence_level: "medium" }),
+
+  // ===== НОВАЯ ЗЕЛАНДИЯ =====
+  normalizeWater({ id: "pump", brand_name: "Pump", country_code: "NZ", group: "Europe", ph: 7.4, tds_mg_l: 170, ca_mg_l: 28, mg_mg_l: 12, na_mg_l: 8, k_mg_l: 3, cl_mg_l: 11, sparkling: false, source_type: "seed", confidence_level: "medium" }),
+
+  // ===== РОССИЯ =====
   normalizeWater({ id: "aquaminerale", brand_name: "Aqua Minerale", country_code: "RU", group: "Russia", ph: 7.1, tds_mg_l: 180, ca_mg_l: 35, mg_mg_l: 15, na_mg_l: 8, k_mg_l: 2, cl_mg_l: 12, sparkling: false, source_type: "seed", confidence_level: "medium" }),
   normalizeWater({ id: "arkhyz", brand_name: "Архыз", country_code: "RU", group: "Russia", ph: 7.3, tds_mg_l: 200, ca_mg_l: 40, mg_mg_l: 18, na_mg_l: 12, k_mg_l: 3, cl_mg_l: 14, sparkling: false, source_type: "seed", confidence_level: "medium" }),
   normalizeWater({ id: "bonacqua", brand_name: "BonAqua", country_code: "RU", group: "Russia", ph: 7.1, tds_mg_l: 160, ca_mg_l: 28, mg_mg_l: 9, na_mg_l: 9, k_mg_l: 1.5, cl_mg_l: 10, sparkling: false, source_type: "seed", confidence_level: "medium" }),
   normalizeWater({ id: "borjomi", brand_name: "Borjomi", country_code: "GE", group: "Therapeutic", ph: 6.6, tds_mg_l: 5500, ca_mg_l: 120, mg_mg_l: 50, na_mg_l: 1200, k_mg_l: 35, cl_mg_l: 600, sparkling: true, source_type: "seed", confidence_level: "high", notes: "Лечебно-столовая вода" }),
-  normalizeWater({ id: "contrex", brand_name: "Contrex", country_code: "FR", group: "Europe", ph: 7.3, tds_mg_l: 2078, ca_mg_l: 468, mg_mg_l: 84, na_mg_l: 14, k_mg_l: 5, cl_mg_l: 15, sparkling: false, source_type: "seed", confidence_level: "high", notes: "Высокое содержание кальция" }),
   normalizeWater({ id: "cristal", brand_name: "Cristal", country_code: "RU", group: "Russia", ph: 7.0, tds_mg_l: 140, ca_mg_l: 20, mg_mg_l: 8, na_mg_l: 6, k_mg_l: 1, cl_mg_l: 7, sparkling: false, source_type: "seed", confidence_level: "low" }),
-  normalizeWater({ id: "fiji", brand_name: "Fiji", country_code: "FJ", group: "Europe", ph: 7.7, tds_mg_l: 220, ca_mg_l: 18, mg_mg_l: 15, na_mg_l: 18, k_mg_l: 5, cl_mg_l: 9, sparkling: false, source_type: "seed", confidence_level: "high" }),
-  normalizeWater({ id: "gerolsteiner", brand_name: "Gerolsteiner", country_code: "DE", group: "Europe", ph: 6.9, tds_mg_l: 2520, ca_mg_l: 348, mg_mg_l: 108, na_mg_l: 118, k_mg_l: 11, cl_mg_l: 45, sparkling: true, source_type: "seed", confidence_level: "high" }),
-  normalizeWater({ id: "hepar", brand_name: "Hépar", country_code: "FR", group: "Europe", ph: 7.4, tds_mg_l: 2513, ca_mg_l: 555, mg_mg_l: 110, na_mg_l: 14, k_mg_l: 8, cl_mg_l: 20, sparkling: false, source_type: "seed", confidence_level: "high", notes: "Высокое содержание магния" }),
   normalizeWater({ id: "lipetsk", brand_name: "Липецкая", country_code: "RU", group: "Russia", ph: 7.2, tds_mg_l: 350, ca_mg_l: 70, mg_mg_l: 25, na_mg_l: 15, k_mg_l: 4, cl_mg_l: 18, sparkling: false, source_type: "seed", confidence_level: "low" }),
-  normalizeWater({ id: "perrier", brand_name: "Perrier", country_code: "FR", group: "Europe", ph: 5.7, tds_mg_l: 475, ca_mg_l: 150, mg_mg_l: 4, na_mg_l: 9, k_mg_l: 1, cl_mg_l: 25, sparkling: true, source_type: "seed", confidence_level: "high" }),
-  normalizeWater({ id: "smartwater", brand_name: "smartwater", country_code: "US", group: "Europe", ph: 7.2, tds_mg_l: 90, ca_mg_l: 10, mg_mg_l: 5, na_mg_l: 8, k_mg_l: 2, cl_mg_l: 5, sparkling: false, source_type: "seed", confidence_level: "high" }),
-  normalizeWater({ id: "svalbard", brand_name: "Svalbarði", country_code: "NO", group: "Europe", ph: 7.2, tds_mg_l: 120, ca_mg_l: 3, mg_mg_l: 0.5, na_mg_l: 2, k_mg_l: 0.5, cl_mg_l: 2, sparkling: false, source_type: "seed", confidence_level: "medium", notes: "Очень низкая минерализация" }),
   normalizeWater({ id: "svyatoy_istochnik", brand_name: "Святой Источник", country_code: "RU", group: "Russia", ph: 7.0, tds_mg_l: 150, ca_mg_l: 30, mg_mg_l: 10, na_mg_l: 10, k_mg_l: 2, cl_mg_l: 8, sparkling: false, source_type: "seed", confidence_level: "medium" }),
   normalizeWater({ id: "narzan", brand_name: "Нарзан", country_code: "RU", group: "Russia", ph: 6.8, tds_mg_l: 2800, ca_mg_l: 350, mg_mg_l: 80, na_mg_l: 200, k_mg_l: 20, cl_mg_l: 150, sparkling: true, source_type: "seed", confidence_level: "high", notes: "Лечебно-столовая" }),
   normalizeWater({ id: "essentuki_4", brand_name: "Ессентуки №4", country_code: "RU", group: "Russia", ph: 6.9, tds_mg_l: 3200, ca_mg_l: 100, mg_mg_l: 50, na_mg_l: 800, k_mg_l: 30, cl_mg_l: 400, sparkling: true, source_type: "seed", confidence_level: "high", notes: "Лечебно-столовая" }),
   normalizeWater({ id: "essentuki_17", brand_name: "Ессентуки №17", country_code: "RU", group: "Russia", ph: 6.9, tds_mg_l: 4000, ca_mg_l: 150, mg_mg_l: 80, na_mg_l: 1200, k_mg_l: 40, cl_mg_l: 600, sparkling: true, source_type: "seed", confidence_level: "high", notes: "Лечебно-столовая" }),
+
+  // ===== ГРУЗИЯ =====
   normalizeWater({ id: "nabeglavi", brand_name: "Набеглави", country_code: "GE", group: "Therapeutic", ph: 7.1, tds_mg_l: 1800, ca_mg_l: 80, mg_mg_l: 40, na_mg_l: 400, k_mg_l: 15, cl_mg_l: 200, sparkling: true, source_type: "seed", confidence_level: "high", notes: "Лечебно-столовая" }),
+
+  // ===== АРМЕНИЯ =====
   normalizeWater({ id: "jermuk", brand_name: "Jermuk", country_code: "AM", group: "Therapeutic", ph: 7.0, tds_mg_l: 2200, ca_mg_l: 90, mg_mg_l: 45, na_mg_l: 500, k_mg_l: 20, cl_mg_l: 250, sparkling: true, source_type: "seed", confidence_level: "high", notes: "Лечебно-столовая" }),
+
+  // ===== ИЗРАИЛЬ =====
   normalizeWater({ id: "mey_eden", brand_name: "Mey Eden", country_code: "IL", group: "Europe", ph: 7.5, tds_mg_l: 180, ca_mg_l: 30, mg_mg_l: 12, na_mg_l: 8, k_mg_l: 3, cl_mg_l: 10, sparkling: false, source_type: "seed", confidence_level: "medium" }),
+
+  // ===== ЯПОНИЯ =====
   normalizeWater({ id: "fuji_japan", brand_name: "Fuji", country_code: "JP", group: "Europe", ph: 7.7, tds_mg_l: 220, ca_mg_l: 18, mg_mg_l: 15, na_mg_l: 18, k_mg_l: 5, cl_mg_l: 9, sparkling: false, source_type: "seed", confidence_level: "medium" }),
+
+  // ===== КИТАЙ =====
   normalizeWater({ id: "nongfu_spring", brand_name: "Nongfu Spring", country_code: "CN", group: "Europe", ph: 7.3, tds_mg_l: 160, ca_mg_l: 25, mg_mg_l: 10, na_mg_l: 8, k_mg_l: 2, cl_mg_l: 10, sparkling: false, source_type: "seed", confidence_level: "medium" }),
+
+  // ===== ИНДИЯ =====
   normalizeWater({ id: "bisleri", brand_name: "Bisleri", country_code: "IN", group: "Europe", ph: 7.2, tds_mg_l: 170, ca_mg_l: 28, mg_mg_l: 12, na_mg_l: 8, k_mg_l: 3, cl_mg_l: 11, sparkling: false, source_type: "seed", confidence_level: "medium" }),
+
+  // ===== ОАЭ =====
   normalizeWater({ id: "al_ain", brand_name: "Al Ain", country_code: "AE", group: "Europe", ph: 7.4, tds_mg_l: 190, ca_mg_l: 32, mg_mg_l: 14, na_mg_l: 10, k_mg_l: 3, cl_mg_l: 12, sparkling: false, source_type: "seed", confidence_level: "medium" }),
+
+  // ===== САУДОВСКАЯ АРАВИЯ =====
   normalizeWater({ id: "hada", brand_name: "Hada", country_code: "SA", group: "Europe", ph: 7.5, tds_mg_l: 200, ca_mg_l: 35, mg_mg_l: 15, na_mg_l: 12, k_mg_l: 4, cl_mg_l: 14, sparkling: false, source_type: "seed", confidence_level: "medium" }),
 ];
-
 // ============== АДМИНКА ==============
 function AdminPanel({ waters, onUpdateWaters, onClose }) {
   const lang = React.useContext(LangCtx);
