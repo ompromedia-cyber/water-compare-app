@@ -270,8 +270,7 @@ const ADMIN_PATH = '/admin';
 // Конфигурация администратора (пароль зашифрован в base64)
 const ADMIN_CREDENTIALS = {
   login: 'admin',
-  // Пароль 'water123' закодирован в base64
-  passwordHash: 'd2F0ZXIxMjM=', // water123 в base64
+  passwordHash: 'd2F0ZXIxMjM=',
 };
 
 // ============== ЛОКАЛИЗАЦИЯ ==============
@@ -576,15 +575,14 @@ const ACHIEVEMENT_RULES = [
 
 function getAchievements(w) { return ACHIEVEMENT_RULES.filter(r => r.when(w)); }
 
-// ============== ДАННЫЕ ==============
-// ============== ДАННЫЕ (50+ МАРОК ВОДЫ) ==============
+// ============== ДАННЫЕ (50+ МАРОК) ==============
 const SEED = [
-  // ===== ПОПУЛЯРНЫЕ МАРКИ =====
+  // ===== ПОПУЛЯРНЫЕ =====
   normalizeWater({ id: "evian", brand_name: "Evian", country_code: "FR", group: "Europe", ph: 7.2, tds_mg_l: 345, ca_mg_l: 80, mg_mg_l: 26, na_mg_l: 6.5, k_mg_l: 1.0, cl_mg_l: 10, sparkling: false, source_type: "seed", confidence_level: "high", popular: true }),
   normalizeWater({ id: "sanpellegrino", brand_name: "San Pellegrino", country_code: "IT", group: "Europe", ph: 7.8, tds_mg_l: 915, ca_mg_l: 160, mg_mg_l: 50, na_mg_l: 33, k_mg_l: 2.0, cl_mg_l: 49, sparkling: true, source_type: "seed", confidence_level: "high", popular: true }),
   normalizeWater({ id: "volvic", brand_name: "Volvic", country_code: "FR", group: "Europe", ph: 7.0, tds_mg_l: 130, ca_mg_l: 12, mg_mg_l: 8, na_mg_l: 12, k_mg_l: 6, cl_mg_l: 15, sparkling: false, source_type: "seed", confidence_level: "medium", popular: true }),
   normalizeWater({ id: "baikal", brand_name: "Байкал", country_code: "RU", group: "Russia", ph: 7.2, tds_mg_l: 120, ca_mg_l: 25, mg_mg_l: 8, na_mg_l: 4, k_mg_l: 1, cl_mg_l: 5, sparkling: false, source_type: "seed", confidence_level: "low", popular: true }),
-
+  
   // ===== ФРАНЦИЯ =====
   normalizeWater({ id: "vittel", brand_name: "Vittel", country_code: "FR", group: "Europe", ph: 7.5, tds_mg_l: 380, ca_mg_l: 100, mg_mg_l: 24, na_mg_l: 12, k_mg_l: 3, cl_mg_l: 20, sparkling: false, source_type: "seed", confidence_level: "high" }),
   normalizeWater({ id: "contrex", brand_name: "Contrex", country_code: "FR", group: "Europe", ph: 7.3, tds_mg_l: 2078, ca_mg_l: 468, mg_mg_l: 84, na_mg_l: 14, k_mg_l: 5, cl_mg_l: 15, sparkling: false, source_type: "seed", confidence_level: "high", notes: "Высокое содержание кальция" }),
@@ -592,48 +590,47 @@ const SEED = [
   normalizeWater({ id: "perrier", brand_name: "Perrier", country_code: "FR", group: "Europe", ph: 5.7, tds_mg_l: 475, ca_mg_l: 150, mg_mg_l: 4, na_mg_l: 9, k_mg_l: 1, cl_mg_l: 25, sparkling: true, source_type: "seed", confidence_level: "high" }),
   normalizeWater({ id: "cristaline", brand_name: "Cristaline", country_code: "FR", group: "Europe", ph: 7.2, tds_mg_l: 200, ca_mg_l: 40, mg_mg_l: 12, na_mg_l: 8, k_mg_l: 2, cl_mg_l: 10, sparkling: false, source_type: "seed", confidence_level: "medium" }),
   normalizeWater({ id: "plancoet", brand_name: "Plancoët", country_code: "FR", group: "Europe", ph: 7.2, tds_mg_l: 250, ca_mg_l: 55, mg_mg_l: 18, na_mg_l: 10, k_mg_l: 3, cl_mg_l: 12, sparkling: false, source_type: "seed", confidence_level: "medium" }),
-
+  
   // ===== ИТАЛИЯ =====
   normalizeWater({ id: "acqua_panna_partial", brand_name: "Acqua Panna", country_code: "IT", group: "Europe", ph: 8.0, tds_mg_l: 190, sparkling: false, source_type: "seed", confidence_level: "low", notes: "Неполная этикетка" }),
   normalizeWater({ id: "levissima", brand_name: "Levissima", country_code: "IT", group: "Europe", ph: 7.6, tds_mg_l: 120, ca_mg_l: 20, mg_mg_l: 8, na_mg_l: 5, k_mg_l: 2, cl_mg_l: 8, sparkling: false, source_type: "seed", confidence_level: "high" }),
   normalizeWater({ id: "ferrarelle", brand_name: "Ferrarelle", country_code: "IT", group: "Europe", ph: 7.3, tds_mg_l: 1200, ca_mg_l: 200, mg_mg_l: 60, na_mg_l: 40, k_mg_l: 8, cl_mg_l: 50, sparkling: true, source_type: "seed", confidence_level: "high", notes: "Природная газированная" }),
   normalizeWater({ id: "uliveto", brand_name: "Uliveto", country_code: "IT", group: "Europe", ph: 7.5, tds_mg_l: 400, ca_mg_l: 80, mg_mg_l: 25, na_mg_l: 15, k_mg_l: 4, cl_mg_l: 20, sparkling: true, source_type: "seed", confidence_level: "high" }),
-
+  
   // ===== ГЕРМАНИЯ =====
   normalizeWater({ id: "gerolsteiner", brand_name: "Gerolsteiner", country_code: "DE", group: "Europe", ph: 6.9, tds_mg_l: 2520, ca_mg_l: 348, mg_mg_l: 108, na_mg_l: 118, k_mg_l: 11, cl_mg_l: 45, sparkling: true, source_type: "seed", confidence_level: "high" }),
   normalizeWater({ id: "apollinaris", brand_name: "Apollinaris", country_code: "DE", group: "Europe", ph: 6.8, tds_mg_l: 1500, ca_mg_l: 180, mg_mg_l: 70, na_mg_l: 200, k_mg_l: 15, cl_mg_l: 100, sparkling: true, source_type: "seed", confidence_level: "high", notes: "Богата натрием" }),
   normalizeWater({ id: "saskia", brand_name: "Saskia", country_code: "DE", group: "Europe", ph: 7.1, tds_mg_l: 180, ca_mg_l: 35, mg_mg_l: 10, na_mg_l: 8, k_mg_l: 2, cl_mg_l: 10, sparkling: false, source_type: "seed", confidence_level: "medium" }),
-
+  
   // ===== ШВЕЙЦАРИЯ =====
   normalizeWater({ id: "nestle", brand_name: "Nestlé Pure Life", country_code: "CH", group: "Europe", ph: 7.1, tds_mg_l: 210, ca_mg_l: 30, mg_mg_l: 10, na_mg_l: 8, k_mg_l: 2, cl_mg_l: 12, sparkling: false, source_type: "seed", confidence_level: "high" }),
   normalizeWater({ id: "viva", brand_name: "Viva", country_code: "CH", group: "Europe", ph: 7.3, tds_mg_l: 250, ca_mg_l: 45, mg_mg_l: 15, na_mg_l: 10, k_mg_l: 3, cl_mg_l: 14, sparkling: false, source_type: "seed", confidence_level: "medium" }),
-
+  
   // ===== ВЕЛИКОБРИТАНИЯ =====
   normalizeWater({ id: "highland_spring", brand_name: "Highland Spring", country_code: "GB", group: "Europe", ph: 7.5, tds_mg_l: 180, ca_mg_l: 30, mg_mg_l: 10, na_mg_l: 6, k_mg_l: 2, cl_mg_l: 8, sparkling: false, source_type: "seed", confidence_level: "high" }),
   normalizeWater({ id: "buxton", brand_name: "Buxton", country_code: "GB", group: "Europe", ph: 7.4, tds_mg_l: 220, ca_mg_l: 40, mg_mg_l: 12, na_mg_l: 8, k_mg_l: 2, cl_mg_l: 10, sparkling: false, source_type: "seed", confidence_level: "high" }),
-
+  
   // ===== НОРВЕГИЯ =====
   normalizeWater({ id: "svalbard", brand_name: "Svalbarði", country_code: "NO", group: "Europe", ph: 7.2, tds_mg_l: 120, ca_mg_l: 3, mg_mg_l: 0.5, na_mg_l: 2, k_mg_l: 0.5, cl_mg_l: 2, sparkling: false, source_type: "seed", confidence_level: "medium", notes: "Очень низкая минерализация" }),
   normalizeWater({ id: "voss", brand_name: "Voss", country_code: "NO", group: "Europe", ph: 7.2, tds_mg_l: 150, ca_mg_l: 10, mg_mg_l: 5, na_mg_l: 6, k_mg_l: 2, cl_mg_l: 8, sparkling: false, source_type: "seed", confidence_level: "high" }),
-
+  
   // ===== ФИНЛЯНДИЯ =====
-  normalizeWater({ id: "fuji", brand_name: "Fuji", country_code: "FI", group: "Europe", ph: 7.7, tds_mg_l: 220, ca_mg_l: 18, mg_mg_l: 15, na_mg_l: 18, k_mg_l: 5, cl_mg_l: 9, sparkling: false, source_type: "seed", confidence_level: "high" }),
-
+  normalizeWater({ id: "fiji", brand_name: "Fiji", country_code: "FJ", group: "Europe", ph: 7.7, tds_mg_l: 220, ca_mg_l: 18, mg_mg_l: 15, na_mg_l: 18, k_mg_l: 5, cl_mg_l: 9, sparkling: false, source_type: "seed", confidence_level: "high" }),
+  
   // ===== США =====
   normalizeWater({ id: "essentia", brand_name: "Essentia", country_code: "US", group: "Europe", ph: 9.5, tds_mg_l: 200, ca_mg_l: 15, mg_mg_l: 10, na_mg_l: 15, k_mg_l: 5, cl_mg_l: 10, sparkling: false, source_type: "seed", confidence_level: "high", notes: "Высокий pH" }),
   normalizeWater({ id: "smartwater", brand_name: "smartwater", country_code: "US", group: "Europe", ph: 7.2, tds_mg_l: 90, ca_mg_l: 10, mg_mg_l: 5, na_mg_l: 8, k_mg_l: 2, cl_mg_l: 5, sparkling: false, source_type: "seed", confidence_level: "high" }),
-  normalizeWater({ id: "fiji_usa", brand_name: "Fiji", country_code: "FJ", group: "Europe", ph: 7.7, tds_mg_l: 220, ca_mg_l: 18, mg_mg_l: 15, na_mg_l: 18, k_mg_l: 5, cl_mg_l: 9, sparkling: false, source_type: "seed", confidence_level: "high" }),
   normalizeWater({ id: "mountain_valley", brand_name: "Mountain Valley", country_code: "US", group: "Europe", ph: 7.6, tds_mg_l: 180, ca_mg_l: 35, mg_mg_l: 12, na_mg_l: 8, k_mg_l: 3, cl_mg_l: 10, sparkling: false, source_type: "seed", confidence_level: "medium" }),
-
+  
   // ===== КАНАДА =====
   normalizeWater({ id: "ice_age", brand_name: "Ice Age", country_code: "CA", group: "Europe", ph: 7.5, tds_mg_l: 140, ca_mg_l: 20, mg_mg_l: 8, na_mg_l: 6, k_mg_l: 2, cl_mg_l: 7, sparkling: false, source_type: "seed", confidence_level: "medium" }),
-
+  
   // ===== АВСТРАЛИЯ =====
   normalizeWater({ id: "mount_franklin", brand_name: "Mount Franklin", country_code: "AU", group: "Europe", ph: 7.1, tds_mg_l: 160, ca_mg_l: 25, mg_mg_l: 10, na_mg_l: 8, k_mg_l: 2, cl_mg_l: 10, sparkling: false, source_type: "seed", confidence_level: "medium" }),
-
+  
   // ===== НОВАЯ ЗЕЛАНДИЯ =====
   normalizeWater({ id: "pump", brand_name: "Pump", country_code: "NZ", group: "Europe", ph: 7.4, tds_mg_l: 170, ca_mg_l: 28, mg_mg_l: 12, na_mg_l: 8, k_mg_l: 3, cl_mg_l: 11, sparkling: false, source_type: "seed", confidence_level: "medium" }),
-
+  
   // ===== РОССИЯ =====
   normalizeWater({ id: "aquaminerale", brand_name: "Aqua Minerale", country_code: "RU", group: "Russia", ph: 7.1, tds_mg_l: 180, ca_mg_l: 35, mg_mg_l: 15, na_mg_l: 8, k_mg_l: 2, cl_mg_l: 12, sparkling: false, source_type: "seed", confidence_level: "medium" }),
   normalizeWater({ id: "arkhyz", brand_name: "Архыз", country_code: "RU", group: "Russia", ph: 7.3, tds_mg_l: 200, ca_mg_l: 40, mg_mg_l: 18, na_mg_l: 12, k_mg_l: 3, cl_mg_l: 14, sparkling: false, source_type: "seed", confidence_level: "medium" }),
@@ -645,31 +642,32 @@ const SEED = [
   normalizeWater({ id: "narzan", brand_name: "Нарзан", country_code: "RU", group: "Russia", ph: 6.8, tds_mg_l: 2800, ca_mg_l: 350, mg_mg_l: 80, na_mg_l: 200, k_mg_l: 20, cl_mg_l: 150, sparkling: true, source_type: "seed", confidence_level: "high", notes: "Лечебно-столовая" }),
   normalizeWater({ id: "essentuki_4", brand_name: "Ессентуки №4", country_code: "RU", group: "Russia", ph: 6.9, tds_mg_l: 3200, ca_mg_l: 100, mg_mg_l: 50, na_mg_l: 800, k_mg_l: 30, cl_mg_l: 400, sparkling: true, source_type: "seed", confidence_level: "high", notes: "Лечебно-столовая" }),
   normalizeWater({ id: "essentuki_17", brand_name: "Ессентуки №17", country_code: "RU", group: "Russia", ph: 6.9, tds_mg_l: 4000, ca_mg_l: 150, mg_mg_l: 80, na_mg_l: 1200, k_mg_l: 40, cl_mg_l: 600, sparkling: true, source_type: "seed", confidence_level: "high", notes: "Лечебно-столовая" }),
-
+  
   // ===== ГРУЗИЯ =====
   normalizeWater({ id: "nabeglavi", brand_name: "Набеглави", country_code: "GE", group: "Therapeutic", ph: 7.1, tds_mg_l: 1800, ca_mg_l: 80, mg_mg_l: 40, na_mg_l: 400, k_mg_l: 15, cl_mg_l: 200, sparkling: true, source_type: "seed", confidence_level: "high", notes: "Лечебно-столовая" }),
-
+  
   // ===== АРМЕНИЯ =====
   normalizeWater({ id: "jermuk", brand_name: "Jermuk", country_code: "AM", group: "Therapeutic", ph: 7.0, tds_mg_l: 2200, ca_mg_l: 90, mg_mg_l: 45, na_mg_l: 500, k_mg_l: 20, cl_mg_l: 250, sparkling: true, source_type: "seed", confidence_level: "high", notes: "Лечебно-столовая" }),
-
+  
   // ===== ИЗРАИЛЬ =====
   normalizeWater({ id: "mey_eden", brand_name: "Mey Eden", country_code: "IL", group: "Europe", ph: 7.5, tds_mg_l: 180, ca_mg_l: 30, mg_mg_l: 12, na_mg_l: 8, k_mg_l: 3, cl_mg_l: 10, sparkling: false, source_type: "seed", confidence_level: "medium" }),
-
+  
   // ===== ЯПОНИЯ =====
   normalizeWater({ id: "fuji_japan", brand_name: "Fuji", country_code: "JP", group: "Europe", ph: 7.7, tds_mg_l: 220, ca_mg_l: 18, mg_mg_l: 15, na_mg_l: 18, k_mg_l: 5, cl_mg_l: 9, sparkling: false, source_type: "seed", confidence_level: "medium" }),
-
+  
   // ===== КИТАЙ =====
   normalizeWater({ id: "nongfu_spring", brand_name: "Nongfu Spring", country_code: "CN", group: "Europe", ph: 7.3, tds_mg_l: 160, ca_mg_l: 25, mg_mg_l: 10, na_mg_l: 8, k_mg_l: 2, cl_mg_l: 10, sparkling: false, source_type: "seed", confidence_level: "medium" }),
-
+  
   // ===== ИНДИЯ =====
   normalizeWater({ id: "bisleri", brand_name: "Bisleri", country_code: "IN", group: "Europe", ph: 7.2, tds_mg_l: 170, ca_mg_l: 28, mg_mg_l: 12, na_mg_l: 8, k_mg_l: 3, cl_mg_l: 11, sparkling: false, source_type: "seed", confidence_level: "medium" }),
-
+  
   // ===== ОАЭ =====
   normalizeWater({ id: "al_ain", brand_name: "Al Ain", country_code: "AE", group: "Europe", ph: 7.4, tds_mg_l: 190, ca_mg_l: 32, mg_mg_l: 14, na_mg_l: 10, k_mg_l: 3, cl_mg_l: 12, sparkling: false, source_type: "seed", confidence_level: "medium" }),
-
+  
   // ===== САУДОВСКАЯ АРАВИЯ =====
   normalizeWater({ id: "hada", brand_name: "Hada", country_code: "SA", group: "Europe", ph: 7.5, tds_mg_l: 200, ca_mg_l: 35, mg_mg_l: 15, na_mg_l: 12, k_mg_l: 4, cl_mg_l: 14, sparkling: false, source_type: "seed", confidence_level: "medium" }),
 ];
+
 // ============== ЛОГИН ДЛЯ АДМИНКИ ==============
 function AdminLogin({ onLogin }) {
   const lang = React.useContext(LangCtx);
@@ -679,7 +677,6 @@ function AdminLogin({ onLogin }) {
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    // Хешируем введённый пароль в base64 и сравниваем с сохранённым хешем
     const enteredHash = btoa(password);
     if (login === ADMIN_CREDENTIALS.login && enteredHash === ADMIN_CREDENTIALS.passwordHash) {
       onLogin(true);
@@ -1134,6 +1131,144 @@ function AdminPanel({ waters, onUpdateWaters, onClose }) {
   );
 }
 
+// ============== ДЕТАЛЬНАЯ КАРТОЧКА ВОДЫ ==============
+function WaterDetailModal({ w, onClose }) {
+  const lang = React.useContext(LangCtx);
+  const t = I18N[lang];
+  const scoreData = scoreWater(w);
+  const cov = dataCoverage(w);
+
+  const allMetrics = [
+    { key: "ph", label: "pH", value: w.ph ?? null, unit: "", digits: 1 },
+    { key: "tds", label: "TDS", value: w.tds_mg_l ?? null, unit: "мг/л" },
+    { key: "ca", label: "Кальций (Ca)", value: w.ca_mg_l ?? null, unit: "мг/л" },
+    { key: "mg", label: "Магний (Mg)", value: w.mg_mg_l ?? null, unit: "мг/л" },
+    { key: "k", label: "Калий (K)", value: w.k_mg_l ?? null, unit: "мг/л" },
+    { key: "na", label: "Натрий (Na)", value: w.na_mg_l ?? null, unit: "мг/л" },
+    { key: "cl", label: "Хлориды (Cl)", value: w.cl_mg_l ?? null, unit: "мг/л" },
+  ];
+
+  const getPercentage = (key, value) => {
+    if (value === null || value === undefined) return null;
+    const liters = 2;
+    let dailyValue = value;
+    if (key !== "ph" && key !== "tds") dailyValue = value * liters;
+    const refValue = key === "ph" ? REF.ph : key === "tds" ? REF.tds : REF[key];
+    return Math.round((dailyValue / refValue) * 100);
+  };
+
+  const getStatus = (percentage) => {
+    if (percentage === null) return { color: "text-slate-400", text: "нет данных", bg: "bg-slate-100" };
+    if (percentage < 50) return { color: "text-amber-600", text: "низкий", bg: "bg-amber-50" };
+    if (percentage >= 50 && percentage < 80) return { color: "text-sky-600", text: "средний", bg: "bg-sky-50" };
+    if (percentage >= 80 && percentage <= 120) return { color: "text-emerald-600", text: "норма", bg: "bg-emerald-50" };
+    if (percentage > 120 && percentage <= 200) return { color: "text-orange-600", text: "высокий", bg: "bg-orange-50" };
+    return { color: "text-rose-600", text: "избыток", bg: "bg-rose-50" };
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 bg-black/30 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4">
+      <div className="bg-white rounded-2xl sm:rounded-3xl shadow-2xl max-w-2xl w-full max-h-[95vh] overflow-auto">
+        <div className="sticky top-0 bg-white/95 backdrop-blur p-4 border-b flex justify-between items-start">
+          <div className="flex items-center gap-3">
+            <span className="text-3xl sm:text-4xl">{w.flag_emoji}</span>
+            <div>
+              <h2 className="text-xl sm:text-2xl font-semibold text-slate-900">{w.brand_name}</h2>
+              <div className="flex flex-wrap items-center gap-2 mt-1">
+                <CategoryBadge cat={computeCategory(w)} />
+                {w.group && (
+                  <span className="text-xs bg-slate-100 px-2 py-0.5 rounded-full text-slate-600">
+                    {w.group === "Therapeutic" ? "💊 Лечебная" : w.group === "Russia" ? "🇷🇺 Россия" : "🇪🇺 Европа"}
+                  </span>
+                )}
+                {w.sparkling && (
+                  <span className="text-xs bg-sky-100 px-2 py-0.5 rounded-full text-sky-700">💨 С газом</span>
+                )}
+                {w.sparkling === false && (
+                  <span className="text-xs bg-emerald-100 px-2 py-0.5 rounded-full text-emerald-700">💧 Без газа</span>
+                )}
+              </div>
+            </div>
+          </div>
+          <button onClick={onClose} className="p-1 hover:bg-slate-100 rounded-full">
+            <X className="h-5 w-5 sm:h-6 sm:w-6" />
+          </button>
+        </div>
+
+        <div className="p-4 sm:p-6 space-y-5">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            <div className={`${GLASS.subtle} p-3 text-center`}>
+              <div className="text-2xl font-bold text-slate-900">{scoreData.score.toFixed(1)}</div>
+              <div className="text-xs text-slate-500">Рейтинг</div>
+            </div>
+            <div className={`${GLASS.subtle} p-3 text-center`}>
+              <div className="text-2xl font-bold text-slate-900">{cov.count}/{cov.total}</div>
+              <div className="text-xs text-slate-500">Показателей</div>
+            </div>
+            <div className={`${GLASS.subtle} p-3 text-center`}>
+              <div className="text-2xl font-bold text-slate-900">{w.tds_mg_l ?? "—"}</div>
+              <div className="text-xs text-slate-500">TDS, мг/л</div>
+            </div>
+            <div className={`${GLASS.subtle} p-3 text-center`}>
+              <div className="text-2xl font-bold text-slate-900">{w.ph ?? "—"}</div>
+              <div className="text-xs text-slate-500">pH</div>
+            </div>
+          </div>
+
+          <div className={`${GLASS.card} p-4`}>
+            <h3 className="text-sm font-semibold text-slate-900 mb-3">📊 Все показатели</h3>
+            <div className="space-y-2">
+              {allMetrics.map((m) => {
+                const percentage = getPercentage(m.key, m.value);
+                const status = percentage ? getStatus(percentage) : { color: "text-slate-400", text: "нет данных", bg: "bg-slate-100" };
+                const st = metricStatus(m.key, m.value);
+                return (
+                  <div key={m.key} className={`${GLASS.subtle} flex items-center justify-between px-3 py-2`}>
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm font-medium text-slate-700">{m.label}</span>
+                      <MetricHelp k={m.key} />
+                    </div>
+                    <div className="flex items-center gap-3">
+                      {percentage !== null && (
+                        <span className={`text-xs px-2 py-0.5 rounded-full ${status.bg} ${status.color}`}>
+                          {percentage}% {status.text}
+                        </span>
+                      )}
+                      <span className="text-sm font-semibold text-slate-900">
+                        {fmt(m.value, m.digits ?? 0)}
+                        {m.unit && <span className="ml-0.5 text-xs font-medium text-slate-500">{m.unit}</span>}
+                      </span>
+                      <MetricPill kind={st} />
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
+          {w.notes && (
+            <div className={`${GLASS.subtle} p-3 text-sm text-slate-600`}>
+              <span className="font-medium text-slate-700">📝 Примечание:</span> {w.notes}
+            </div>
+          )}
+          <div className={`${GLASS.subtle} p-3 text-xs text-slate-500`}>
+            <span className="font-medium">📌 Источник данных:</span> {w.source_type === "official" ? "Официальный" : w.source_type === "pickaqua" ? "PickAqua" : w.source_type === "admin" ? "Администратор" : "Базовая информация"}
+            {w.confidence_level && (
+              <span className="ml-3">
+                Достоверность: {w.confidence_level === "high" ? "Высокая ✅" : w.confidence_level === "medium" ? "Средняя" : "Низкая"}
+              </span>
+            )}
+          </div>
+
+          <Button onClick={onClose} className="w-full h-10 rounded-xl sm:rounded-2xl">
+            {lang === "ru" ? "Закрыть" : "Close"}
+          </Button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ============== UI КОМПОНЕНТЫ ==============
 function ConfidenceBadge({ c }) { return null; }
 
@@ -1160,7 +1295,7 @@ function CompactMetric({ label, value, digits, unit, k }) { const st = metricSta
 function LegendPills({ items }) { return (<div className="mt-3 flex flex-wrap gap-1.5 sm:gap-2">{items.map(x => (<span key={x.name} className={`${GLASS.chip} inline-flex items-center gap-1 sm:gap-2 px-2 sm:px-3 py-1 sm:py-1.5 text-[10px] sm:text-xs font-medium`}><span className="text-sm sm:text-base">{x.flag ?? "💧"}</span><span className="inline-block h-2 w-2 sm:h-2.5 sm:w-2.5 rounded-full" style={{ background: x.color }} /><span className="max-w-[120px] sm:max-w-[180px] truncate">{x.name}</span></span>))}</div>); }
 
 // ============== ОСНОВНЫЕ КОМПОНЕНТЫ ==============
-function MetricsTable({ selected, profile }) {
+function MetricsTable({ selected, profile, onWaterClick }) {
   const lang = React.useContext(LangCtx);
   const t = I18N[lang];
   const sortedForProfile = [...selected].sort((a, b) => compareForRanking(a, b, profile));
@@ -1203,6 +1338,7 @@ function MetricsTable({ selected, profile }) {
       <div className="flex items-center justify-between gap-3">
         <div>
           <div className="text-base sm:text-lg font-semibold text-slate-900">{t.table.title}</div>
+          <div className="text-xs text-slate-500">Кликните по строке для детальной информации</div>
         </div>
       </div>
 
@@ -1211,117 +1347,79 @@ function MetricsTable({ selected, profile }) {
         <table className="w-full text-left text-[10px] sm:text-sm border-collapse min-w-[600px] sm:min-w-full">
           <thead>
             <tr className="bg-slate-100">
-              <th className="px-2 sm:px-4 py-2 sm:py-3 border border-slate-300 font-medium">Показатель</th>
-              <th className="px-2 sm:px-4 py-2 sm:py-3 border border-slate-300 font-medium">Эталон</th>
-              <th className="px-2 sm:px-4 py-2 sm:py-3 border border-slate-300 font-medium">Ед.</th>
-              {selected.map(w => (
-                <th key={w.id} className={`px-2 sm:px-4 py-2 sm:py-3 border border-slate-300 font-medium ${w.id === winnerId ? 'bg-amber-100' : ''}`}>
-                  <div className="flex items-center gap-1 sm:gap-2">
-                    <span className="text-xs sm:text-base">{w.flag_emoji ?? safeCountryFlag(w.country_code)}</span>
-                    <span className="max-w-[80px] sm:max-w-[160px] truncate text-slate-900 text-xs sm:text-sm">{w.brand_name}</span>
-                    {w.id === winnerId && <span className="ml-0.5 sm:ml-1 text-amber-600 text-xs sm:text-base">🏆</span>}
-                  </div>
-                </th>
+              <th className="px-2 sm:px-4 py-2 sm:py-3 border border-slate-300 font-medium">#</th>
+              <th className="px-2 sm:px-4 py-2 sm:py-3 border border-slate-300 font-medium">Флаг</th>
+              <th className="px-2 sm:px-4 py-2 sm:py-3 border border-slate-300 font-medium">Название</th>
+              {rows.map(r => (
+                <th key={r.key} className="px-2 sm:px-4 py-2 sm:py-3 border border-slate-300 font-medium">{r.label}</th>
               ))}
+              <th className="px-2 sm:px-4 py-2 sm:py-3 border border-slate-300 font-medium">Рейтинг</th>
             </tr>
           </thead>
           <tbody>
-            {rows.map((r, rowIdx) => (
-              <tr key={r.key} className={rowIdx % 2 === 0 ? 'bg-white/60' : 'bg-white/40'}>
-                <td className="px-2 sm:px-4 py-2 sm:py-3 border border-slate-300">
-                  <div className="flex items-center gap-1 sm:gap-2">
-                    <span className="font-medium text-slate-900">{r.label}</span>
-                    <MetricHelp k={r.key} />
-                  </div>
-                </td>
-                <td className="px-2 sm:px-4 py-2 sm:py-3 border border-slate-300 text-slate-700">{r.ref}</td>
-                <td className="px-2 sm:px-4 py-2 sm:py-3 border border-slate-300 text-slate-700">{r.unit}</td>
-                {selected.map(w => {
-                  const v = r.getValue(w);
-                  const st = metricStatus(r.key, v);
-                  return (
-                    <td key={w.id + r.key} className={`px-2 sm:px-4 py-2 sm:py-3 border border-slate-300 ${w.id === winnerId ? 'bg-amber-50/30' : ''}`}>
-                      <div className="flex flex-col gap-0.5 sm:gap-1">
-                        <div className="flex items-center justify-between">
-                          <span className="font-semibold text-slate-900 text-xs sm:text-sm">{fmt(v, r.digits ?? 0)}</span>
+            {sortedForProfile.map((w, idx) => {
+              const isWinner = w.id === winnerId;
+              return (
+                <tr 
+                  key={w.id} 
+                  className={`${idx % 2 === 0 ? 'bg-white/60' : 'bg-white/40'} cursor-pointer hover:bg-sky-50/50 transition`}
+                  onClick={() => onWaterClick?.(w)}
+                >
+                  <td className="px-2 sm:px-4 py-2 sm:py-3 border border-slate-300">{idx + 1}</td>
+                  <td className="px-2 sm:px-4 py-2 sm:py-3 border border-slate-300"><span className="text-base">{w.flag_emoji}</span></td>
+                  <td className={`px-2 sm:px-4 py-2 sm:py-3 border border-slate-300 font-medium ${isWinner ? 'text-amber-600' : ''}`}>
+                    {w.brand_name} {isWinner && '🏆'}
+                  </td>
+                  {rows.map(r => {
+                    const v = r.getValue(w);
+                    const st = metricStatus(r.key, v);
+                    return (
+                      <td key={r.key} className="px-2 sm:px-4 py-2 sm:py-3 border border-slate-300">
+                        <div className="flex items-center gap-2">
+                          <span className="font-semibold text-slate-900">{fmt(v, r.digits ?? 0)}</span>
                           <MetricPill kind={st} />
                         </div>
-                      </div>
-                    </td>
-                  );
-                })}
-              </tr>
-            ))}
-            <tr className="bg-slate-50/80">
-              <td className="px-2 sm:px-4 py-2 sm:py-3 border border-slate-300 font-medium" colSpan={3}>
-                <div className="flex items-center gap-1 sm:gap-2">
-                  <span className="text-xs sm:text-sm">🏆 Рейтинг</span>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <Info className="h-3 w-3 sm:h-4 sm:w-4 text-slate-500 cursor-help" />
-                    </TooltipTrigger>
-                    <TooltipContent>
-                      <div className="text-xs max-w-[200px]">Чем выше рейтинг, тем ближе состав воды к оптимальному. Максимум 100.</div>
-                    </TooltipContent>
-                  </Tooltip>
-                </div>
-              </td>
-              {selected.map(w => {
-                const scoreData = scoreWater(w);
-                let ratingColor = "text-slate-700";
-                if (scoreData.score >= 80) ratingColor = "text-emerald-700";
-                else if (scoreData.score >= 60) ratingColor = "text-sky-700";
-                else if (scoreData.score >= 40) ratingColor = "text-amber-700";
-                else ratingColor = "text-rose-700";
-                return (
-                  <td key={`rating-${w.id}`} className={`px-2 sm:px-4 py-2 sm:py-3 border border-slate-300 ${w.id === winnerId ? 'bg-amber-100' : ''}`}>
-                    <div className="flex flex-col">
-                      <div className="flex items-center justify-between">
-                        <span className={`text-sm sm:text-lg font-bold ${ratingColor}`}>{scoreData.score.toFixed(1)}</span>
-                        {scoreData.missingCount > 0 && (
-                          <Tooltip>
-                            <TooltipTrigger asChild>
-                              <span className="ml-0.5 sm:ml-1 text-amber-600 cursor-help text-xs sm:text-sm">⚠️</span>
-                            </TooltipTrigger>
-                            <TooltipContent>
-                              <div className="text-xs">Нет данных по {scoreData.missingCount} показателям. Рейтинг занижен.</div>
-                            </TooltipContent>
-                          </Tooltip>
-                        )}
-                      </div>
-                      <div className="mt-0.5 sm:mt-1 h-1 sm:h-1.5 w-full bg-slate-200 rounded-full overflow-hidden">
-                        <div className={`h-full rounded-full ${scoreData.score >= 80 ? 'bg-emerald-500' : scoreData.score >= 60 ? 'bg-sky-500' : scoreData.score >= 40 ? 'bg-amber-500' : 'bg-rose-500'}`} style={{ width: `${scoreData.score}%` }} />
-                      </div>
-                    </div>
+                      </td>
+                    );
+                  })}
+                  <td className={`px-2 sm:px-4 py-2 sm:py-3 border border-slate-300 font-bold ${isWinner ? 'text-amber-600' : ''}`}>
+                    {scoreWater(w).score.toFixed(1)}
                   </td>
-                );
-              })}
-            </tr>
+                </tr>
+              );
+            })}
           </tbody>
         </table>
       </div>
 
       {/* Мобильные карточки */}
       <div className="block sm:hidden mt-3 space-y-4">
-        {selected.map((w) => {
+        {sortedForProfile.map((w, idx) => {
           const scoreData = scoreWater(w);
           const isWinner = w.id === winnerId;
           return (
-            <div key={w.id} className={`${GLASS.card} p-4 ${isWinner ? 'ring-2 ring-amber-400' : ''}`}>
-              <div className="flex items-center justify-between mb-3">
+            <div 
+              key={w.id} 
+              className={`${GLASS.card} p-4 ${isWinner ? 'ring-2 ring-amber-400' : ''} cursor-pointer hover:shadow-md transition`}
+              onClick={() => onWaterClick?.(w)}
+            >
+              <div className="flex items-center justify-between mb-2">
                 <div className="flex items-center gap-2">
-                  <span className="text-2xl">{w.flag_emoji ?? safeCountryFlag(w.country_code)}</span>
+                  <span className="text-2xl">{w.flag_emoji}</span>
                   <div>
-                    <div className="font-semibold text-slate-900">{w.brand_name}</div>
+                    <div className={`font-semibold ${isWinner ? 'text-amber-600' : 'text-slate-900'}`}>
+                      {w.brand_name} {isWinner && '🏆'}
+                    </div>
                     <div className="flex items-center gap-2 mt-0.5">
                       <CategoryBadge cat={computeCategory(w)} />
-                      {isWinner && <span className="text-amber-600 text-sm">🏆</span>}
                     </div>
                   </div>
                 </div>
                 <div className="text-right">
                   <div className="text-sm font-medium text-slate-600">Рейтинг</div>
-                  <div className="text-xl font-bold text-slate-900">{scoreData.score.toFixed(1)}</div>
+                  <div className={`text-xl font-bold ${isWinner ? 'text-amber-600' : 'text-slate-900'}`}>
+                    {scoreData.score.toFixed(1)}
+                  </div>
                 </div>
               </div>
               <div className="space-y-1.5">
@@ -1442,6 +1540,7 @@ export default function App() {
   const [reportCompact, setReportCompact] = useState(true);
   const [showAdmin, setShowAdmin] = useState(false);
   const [isAuthorized, setIsAuthorized] = useState(false);
+  const [selectedWaterDetail, setSelectedWaterDetail] = useState(null);
 
   const t = I18N[lang];
 
@@ -1593,11 +1692,19 @@ export default function App() {
 
                   <TabsContent value="B" className="mt-4 sm:mt-5 space-y-4 sm:space-y-5">
                     <CompareChart selected={selected} />
-                    <MetricsTable selected={[...selected].sort((a, b) => compareForRanking(a, b, profile))} profile={profile} />
+                    <MetricsTable 
+                      selected={[...selected].sort((a, b) => compareForRanking(a, b, profile))} 
+                      profile={profile}
+                      onWaterClick={setSelectedWaterDetail}
+                    />
                   </TabsContent>
 
                   <TabsContent value="C" className="mt-4 sm:mt-5 space-y-4 sm:space-y-5">
-                    <MetricsTable selected={[...selected].sort((a, b) => compareForRanking(a, b, profile))} profile={profile} />
+                    <MetricsTable 
+                      selected={[...selected].sort((a, b) => compareForRanking(a, b, profile))} 
+                      profile={profile}
+                      onWaterClick={setSelectedWaterDetail}
+                    />
                     <ReportAccordion selected={selected} profile={profile} mode={mode} compact={reportCompact} onToggleCompact={() => setReportCompact(v => !v)} />
                   </TabsContent>
 
@@ -1609,6 +1716,7 @@ export default function App() {
             </div>
           </div>
 
+          {/* Нижняя панель */}
           <div className="fixed bottom-3 sm:bottom-4 left-1/2 z-50 w-[calc(100%-16px)] sm:w-[min(1120px,calc(100%-24px))] -translate-x-1/2">
             <div className="pointer-events-auto rounded-2xl sm:rounded-3xl border border-white/60 bg-white/70 shadow-lg backdrop-blur">
               <div className="flex flex-wrap items-center justify-between gap-2 sm:gap-3 px-2 sm:px-4 py-2 sm:py-3">
@@ -1625,14 +1733,42 @@ export default function App() {
                 </div>
 
                 <div className="flex shrink-0 flex-wrap items-center justify-end gap-1.5 sm:gap-2">
-                  <Button variant="outline" className="h-7 sm:h-10 rounded-xl sm:rounded-2xl bg-white/70 hover:bg-white text-xs sm:text-sm px-2 sm:px-4" onClick={() => setScreen("A")} type="button">{t.misc.openPicker}</Button>
-                  <Button className="h-7 sm:h-10 rounded-xl sm:rounded-2xl text-xs sm:text-sm px-2 sm:px-4" onClick={onCompare} disabled={!canCompare} type="button">{t.actions.compare}</Button>
-                  <Button variant="outline" className="h-7 sm:h-10 rounded-xl sm:rounded-2xl bg-white/70 hover:bg-white text-xs sm:text-sm px-2 sm:px-4" onClick={clear} type="button" disabled={!selected.length}><RotateCcw className="mr-0.5 sm:mr-2 h-3 w-3 sm:h-4 sm:w-4" />{t.actions.clear}</Button>
+                  <Button variant="outline" className="h-7 sm:h-10 rounded-xl sm:rounded-2xl bg-white/70 hover:bg-white text-xs sm:text-sm px-2 sm:px-4" onClick={() => setScreen("A")} type="button">
+                    {t.misc.openPicker}
+                  </Button>
+
+                  {selected.length >= 2 ? (
+                    <>
+                      <Button className="h-7 sm:h-10 rounded-xl sm:rounded-2xl text-xs sm:text-sm px-2 sm:px-4" onClick={() => setScreen("C")} type="button">
+                        📊 {t.screenC}
+                      </Button>
+                      <Button className="h-7 sm:h-10 rounded-xl sm:rounded-2xl text-xs sm:text-sm px-2 sm:px-4" onClick={() => setScreen("B")} type="button">
+                        📋 {t.screenB}
+                      </Button>
+                    </>
+                  ) : (
+                    <Button className="h-7 sm:h-10 rounded-xl sm:rounded-2xl text-xs sm:text-sm px-2 sm:px-4" onClick={onCompare} disabled={!canCompare} type="button">
+                      {t.actions.compare}
+                    </Button>
+                  )}
+
+                  <Button variant="outline" className="h-7 sm:h-10 rounded-xl sm:rounded-2xl bg-white/70 hover:bg-white text-xs sm:text-sm px-2 sm:px-4" onClick={clear} type="button" disabled={!selected.length}>
+                    <RotateCcw className="mr-0.5 sm:mr-2 h-3 w-3 sm:h-4 sm:w-4" />
+                    {t.actions.clear}
+                  </Button>
                 </div>
               </div>
             </div>
           </div>
         </div>
+
+        {/* Детальная карточка воды */}
+        {selectedWaterDetail && (
+          <WaterDetailModal 
+            w={selectedWaterDetail} 
+            onClose={() => setSelectedWaterDetail(null)} 
+          />
+        )}
       </TooltipProvider>
     </LangCtx.Provider>
   );
