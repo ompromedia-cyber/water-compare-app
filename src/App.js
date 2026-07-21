@@ -470,14 +470,49 @@ function scoreWater(w) {
 function getProfileScore(w, profile) {
   const baseScore = scoreWater(w).score;
   
+  // Штраф за отсутствие данных
+  const cov = dataCoverage(w);
+  const missingPenalty = (cov.total - cov.count) * 8;
+  
   let profileWeights = { ca: 1.0, mg: 1.0, k: 0.8, na: 1.2, cl: 1.0, ph: 0.4, tds: 0.6 };
   
+  // Профиль "Детский" (3-10 лет) — по рекомендациям ВОЗ
   if (profile === "Kid") {
-    profileWeights = { ca: 0.8, mg: 0.8, k: 1.2, na: 2.5, cl: 1.5, ph: 0.5, tds: 2.0 };
-  } else if (profile === "Sensitive") {
-    profileWeights = { ca: 0.8, mg: 0.8, k: 1.2, na: 2.0, cl: 1.5, ph: 1.0, tds: 2.0 };
-  } else if (profile === "Sport") {
-    profileWeights = { ca: 1.5, mg: 1.8, k: 2.0, na: 2.2, cl: 1.5, ph: 0.8, tds: 1.5 };
+    profileWeights = {
+      ca: 1.2,
+      mg: 1.2,
+      k: 0.6,
+      na: 3.0,
+      cl: 1.5,
+      ph: 0.5,
+      tds: 2.5,
+    };
+  }
+  
+  // Профиль "Спорт" — по рекомендациям ВОЗ для спортсменов
+  if (profile === "Sport") {
+    profileWeights = {
+      ca: 1.5,
+      mg: 2.0,
+      k: 2.0,
+      na: 2.5,
+      cl: 1.5,
+      ph: 0.6,
+      tds: 1.5,
+    };
+  }
+  
+  // Профиль "Чувствительный ЖКТ"
+  if (profile === "Sensitive") {
+    profileWeights = {
+      ca: 0.8,
+      mg: 0.8,
+      k: 1.0,
+      na: 2.5,
+      cl: 1.5,
+      ph: 2.0,
+      tds: 2.0,
+    };
   }
   
   const get = {
@@ -498,17 +533,38 @@ function getProfileScore(w, profile) {
       const deviation = Math.abs(x - ref) / ref;
       score = Math.max(0, 100 - deviation * 100);
       
-      if (profile === "Kid" || profile === "Sensitive") {
+      // Специальная логика для Детского профиля
+      if (profile === "Kid") {
         if (key === "tds") {
-          score = Math.max(0, 100 - (x / 10));
+          if (x <= 200) score = 100;
+          else if (x <= 500) score = 100 - (x - 200) * 0.2;
+          else score = 40;
         } else if (key === "na") {
-          score = Math.max(0, 100 - (x * 2));
+          if (x <= 20) score = 100;
+          else if (x <= 50) score = 100 - (x - 20) * 1.5;
+          else score = 30;
         }
-      } else if (profile === "Sport") {
-        if (key === "k" || key === "na" || key === "mg") {
-          const optimal = ref * 1.3;
-          const deviation2 = Math.abs(x - optimal) / optimal;
-          score = Math.max(0, 100 - deviation2 * 80);
+      }
+      
+      // Специальная логика для Спортивного профиля
+      if (profile === "Sport") {
+        if (key === "na") {
+          if (x >= 30 && x <= 100) score = 100;
+          else if (x < 30) score = 70 + (x / 30) * 30;
+          else if (x > 100) score = 100 - (x - 100) * 0.3;
+        } else if (key === "mg") {
+          if (x >= 20 && x <= 80) score = 100;
+          else if (x < 20) score = 50 + (x / 20) * 50;
+          else if (x > 80) score = 100 - (x - 80) * 0.3;
+        }
+      }
+      
+      // Специальная логика для Чувствительного ЖКТ
+      if (profile === "Sensitive") {
+        if (key === "ph") {
+          if (x >= 6.5 && x <= 8.0) score = 100;
+          else if (x < 6.5) score = 100 - (6.5 - x) * 30;
+          else if (x > 8.0) score = 100 - (x - 8.0) * 30;
         }
       }
       
@@ -518,10 +574,9 @@ function getProfileScore(w, profile) {
     }
   }
   
-  if (totalWeight === 0) return baseScore;
+  if (totalWeight === 0) return baseScore - missingPenalty;
   
   const profileScore = weightedScore / totalWeight;
-  const missingPenalty = (7 - presentCount) * 3;
   
   return baseScore * 0.3 + profileScore * 0.7 - missingPenalty;
 }
@@ -1737,20 +1792,33 @@ export default function App() {
                     {t.misc.openPicker}
                   </Button>
 
-                  {selected.length >= 2 ? (
-                    <>
-                      <Button className="h-7 sm:h-10 rounded-xl sm:rounded-2xl text-xs sm:text-sm px-2 sm:px-4" onClick={() => setScreen("C")} type="button">
-                        📊 {t.screenC}
-                      </Button>
-                      <Button className="h-7 sm:h-10 rounded-xl sm:rounded-2xl text-xs sm:text-sm px-2 sm:px-4" onClick={() => setScreen("B")} type="button">
-                        📋 {t.screenB}
-                      </Button>
-                    </>
-                  ) : (
-                    <Button className="h-7 sm:h-10 rounded-xl sm:rounded-2xl text-xs sm:text-sm px-2 sm:px-4" onClick={onCompare} disabled={!canCompare} type="button">
-                      {t.actions.compare}
-                    </Button>
-                  )}
+                  {/* Кнопка "Сравнить" — активна только когда выбрано ≥2 вод */}
+                  <Button 
+                    className={`h-7 sm:h-10 rounded-xl sm:rounded-2xl text-xs sm:text-sm px-2 sm:px-4 ${selected.length >= 2 ? 'bg-slate-900 text-white hover:bg-slate-800' : 'bg-slate-200 text-slate-400 cursor-not-allowed'}`} 
+                    onClick={() => {
+                      if (selected.length >= 2) {
+                        setScreen("B");
+                        onCompare();
+                      }
+                    }} 
+                    type="button"
+                  >
+                    {t.actions.compare}
+                  </Button>
+
+                  {/* Кнопка "Отчёт" — активна только после перехода на вкладку "Сравнение" */}
+                  <Button 
+                    className={`h-7 sm:h-10 rounded-xl sm:rounded-2xl text-xs sm:text-sm px-2 sm:px-4 ${screen === "B" || screen === "C" ? 'bg-slate-900 text-white hover:bg-slate-800' : 'bg-slate-200 text-slate-400 cursor-not-allowed'}`} 
+                    onClick={() => {
+                      if (screen === "B" || screen === "C") {
+                        setScreen("C");
+                      }
+                    }} 
+                    type="button"
+                    disabled={!(screen === "B" || screen === "C")}
+                  >
+                    📊 {t.screenC}
+                  </Button>
 
                   <Button variant="outline" className="h-7 sm:h-10 rounded-xl sm:rounded-2xl bg-white/70 hover:bg-white text-xs sm:text-sm px-2 sm:px-4" onClick={clear} type="button" disabled={!selected.length}>
                     <RotateCcw className="mr-0.5 sm:mr-2 h-3 w-3 sm:h-4 sm:w-4" />
