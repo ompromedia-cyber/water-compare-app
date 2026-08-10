@@ -37,6 +37,11 @@ import {
   Tooltip as RechartsTooltip,
   XAxis,
   YAxis,
+  Radar,
+  RadarChart,
+  PolarGrid,
+  PolarAngleAxis,
+  PolarRadiusAxis,
 } from "recharts";
 
 // ============== UI КОМПОНЕНТЫ ==============
@@ -376,10 +381,27 @@ function hasMinimumMetrics(w) {
   return Boolean(w.ph !== null && w.tds_mg_l !== null && w.ca_mg_l !== null && w.mg_mg_l !== null && w.na_mg_l !== null && w.cl_mg_l !== null);
 }
 
+// ============== ОСНОВНАЯ ФУНКЦИЯ computeCategory (ТОЛЬКО ОДНА) ==============
 function computeCategory(w) {
   const tds = w.tds_mg_l ?? null;
   const na = w.na_mg_l ?? null;
+  const ca = w.ca_mg_l ?? null;
+  const mg = w.mg_mg_l ?? null;
+  const cl = w.cl_mg_l ?? null;
+  
   if (w.group === "Therapeutic") return "Therapeutic";
+  
+  // Проверка на сильное отклонение (>200% от нормы)
+  const naDeviation = na !== null ? (na * 2) / REF.na : 0;
+  const tdsDeviation = tds !== null ? tds / REF.tds : 0;
+  const caDeviation = ca !== null ? (ca * 2) / REF.ca : 0;
+  const mgDeviation = mg !== null ? (mg * 2) / REF.mg : 0;
+  const clDeviation = cl !== null ? (cl * 2) / REF.cl : 0;
+  
+  if (naDeviation > 2 || tdsDeviation > 5 || caDeviation > 2 || mgDeviation > 2 || clDeviation > 2) {
+    return "Therapeutic";
+  }
+  
   if ((tds !== null && tds >= 1500) || (na !== null && na >= 200)) return "Therapeutic";
   if ((tds !== null && tds >= 500) || (na !== null && na >= 50)) return "Rotate";
   if (tds === null && na === null) return "Unknown";
@@ -411,6 +433,14 @@ function normalizeWater(w) {
   return base;
 }
 
+// ============== ФУНКЦИЯ НОРМАЛИЗАЦИИ ДЛЯ РАДАРА ==============
+function normalizeValue(value, ref) {
+  if (value === null || value === undefined) return 0;
+  const normalized = (value / ref) * 100;
+  return Math.min(normalized, 100);
+}
+
+// ============== ФУНКЦИЯ scoreWater ==============
 function scoreWater(w) {
   const weights = { ca: 2.0, mg: 2.0, k: 1.2, na: 1.5, cl: 1.2, ph: 0.8, tds: 1.0 };
   const liters = 2;
@@ -467,23 +497,19 @@ function scoreWater(w) {
   return { score: Math.round(finalScore * 10) / 10, category: computeCategory(w), coverageCount: cov.count, coverageTotal: cov.total, missingCount: cov.total - cov.count, presentCount };
 }
 
-// ============== ИСПРАВЛЕННАЯ ФУНКЦИЯ getProfileScore ==============
+// ============== ФУНКЦИЯ getProfileScore (с штрафами) ==============
 function getProfileScore(w, profile) {
   const baseScore = scoreWater(w).score;
-  
-  // Штраф за отсутствие данных
   const cov = dataCoverage(w);
   const missingPenalty = (cov.total - cov.count) * 8;
   
-  // Штраф за газированную воду в некоторых профилях
   let sparklingPenalty = 0;
   if (w.sparkling === true) {
-    if (profile === "Kid") sparklingPenalty = 30; // Детям газировка не рекомендуется
-    if (profile === "Sensitive") sparklingPenalty = 25; // При ЖКТ газировка раздражает
-    if (profile === "Everyday") sparklingPenalty = 10; // Для ежедневного тоже не лучший выбор
+    if (profile === "Kid") sparklingPenalty = 30;
+    if (profile === "Sensitive") sparklingPenalty = 25;
+    if (profile === "Everyday") sparklingPenalty = 10;
   }
   
-  // Штраф за лечебную воду в обычных профилях
   let therapeuticPenalty = 0;
   const category = computeCategory(w);
   if (category === "Therapeutic") {
@@ -494,25 +520,12 @@ function getProfileScore(w, profile) {
   
   let profileWeights = { ca: 1.0, mg: 1.0, k: 0.8, na: 1.2, cl: 1.0, ph: 0.4, tds: 0.6 };
   
-  // Профиль "Детский" (3-10 лет)
   if (profile === "Kid") {
-    profileWeights = {
-      ca: 1.2, mg: 1.2, k: 0.6, na: 3.0, cl: 1.5, ph: 0.5, tds: 2.5,
-    };
-  }
-  
-  // Профиль "Спорт"
-  if (profile === "Sport") {
-    profileWeights = {
-      ca: 1.5, mg: 2.0, k: 2.0, na: 2.5, cl: 1.5, ph: 0.6, tds: 1.5,
-    };
-  }
-  
-  // Профиль "Чувствительный ЖКТ"
-  if (profile === "Sensitive") {
-    profileWeights = {
-      ca: 0.8, mg: 0.8, k: 1.0, na: 2.5, cl: 1.5, ph: 2.0, tds: 2.0,
-    };
+    profileWeights = { ca: 1.2, mg: 1.2, k: 0.6, na: 3.0, cl: 1.5, ph: 0.5, tds: 2.5 };
+  } else if (profile === "Sport") {
+    profileWeights = { ca: 1.5, mg: 2.0, k: 2.0, na: 2.5, cl: 1.5, ph: 0.6, tds: 1.5 };
+  } else if (profile === "Sensitive") {
+    profileWeights = { ca: 0.8, mg: 0.8, k: 1.0, na: 2.5, cl: 1.5, ph: 2.0, tds: 2.0 };
   }
   
   const get = {
@@ -533,7 +546,6 @@ function getProfileScore(w, profile) {
       const deviation = Math.abs(x - ref) / ref;
       score = Math.max(0, 100 - deviation * 100);
       
-      // Специальная логика для Детского профиля
       if (profile === "Kid") {
         if (key === "tds") {
           if (x <= 200) score = 100;
@@ -546,7 +558,6 @@ function getProfileScore(w, profile) {
         }
       }
       
-      // Специальная логика для Спортивного профиля
       if (profile === "Sport") {
         if (key === "na") {
           if (x >= 30 && x <= 100) score = 100;
@@ -559,7 +570,6 @@ function getProfileScore(w, profile) {
         }
       }
       
-      // Специальная логика для Чувствительного ЖКТ
       if (profile === "Sensitive") {
         if (key === "ph") {
           if (x >= 6.5 && x <= 8.0) score = 100;
@@ -577,118 +587,29 @@ function getProfileScore(w, profile) {
   if (totalWeight === 0) return baseScore - missingPenalty - sparklingPenalty - therapeuticPenalty;
   
   const profileScore = weightedScore / totalWeight;
-  
   return baseScore * 0.3 + profileScore * 0.7 - missingPenalty - sparklingPenalty - therapeuticPenalty;
 }
 
-// ============== ИСПРАВЛЕННАЯ ФУНКЦИЯ computeCategory ==============
-function computeCategory(w) {
-  const tds = w.tds_mg_l ?? null;
-  const na = w.na_mg_l ?? null;
-  const ca = w.ca_mg_l ?? null;
-  const mg = w.mg_mg_l ?? null;
-  const cl = w.cl_mg_l ?? null;
-  
-  if (w.group === "Therapeutic") return "Therapeutic";
-  
-  // Лечебная только при сильном отклонении (>200% от нормы)
-  const naDeviation = na !== null ? (na * 2) / REF.na : 0;
-  const tdsDeviation = tds !== null ? tds / REF.tds : 0;
-  const caDeviation = ca !== null ? (ca * 2) / REF.ca : 0;
-  const mgDeviation = mg !== null ? (mg * 2) / REF.mg : 0;
-  const clDeviation = cl !== null ? (cl * 2) / REF.cl : 0;
-  
-  // Если хотя бы один показатель превышает 200% от нормы — лечебная
-  if (naDeviation > 2 || tdsDeviation > 2 || caDeviation > 2 || mgDeviation > 2 || clDeviation > 2) {
-    return "Therapeutic";
-  }
-  
-  // Если TDS > 1000 или Na > 100 — лечебная
-  if ((tds !== null && tds >= 1500) || (na !== null && na >= 200)) return "Therapeutic";
-  
-  // Если TDS > 500 или Na > 50 — чередовать
-  if ((tds !== null && tds >= 500) || (na !== null && na >= 50)) return "Rotate";
-  
-  if (tds === null && na === null) return "Unknown";
-  return "Daily";
-}
-
-// ============== ДОБАВЛЯЕМ РАДАРНУЮ ДИАГРАММУ ДЛЯ ПОБЕДИТЕЛЯ ==============
-// Устанавливаем recharts для радара:
-// npm install recharts
-
-// В компоненте ReportAccordion добавляем радар:
-import { Radar, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, ResponsiveContainer } from 'recharts';
-
-// Внутри ReportAccordion:
-{winner && (
-  <div>
-    <div className="text-xs sm:text-sm font-medium text-slate-600 mb-1.5 sm:mb-2">
-      {lang === "ru" ? `Лучший выбор для профиля "${t.profiles[profile].toLowerCase()}"` : `Best choice for "${t.profiles[profile].toLowerCase()}" profile`}
-    </div>
-    <div className="grid gap-4 md:grid-cols-2">
-      <WaterProfileCard w={winner} profile={profile} rank={1} isWinner={true} />
-      
-      {/* Радарная диаграмма */}
-      <div className={`${GLASS.card} p-4 h-[300px]`}>
-        <h4 className="text-sm font-semibold text-slate-900 mb-2 text-center">
-          {lang === "ru" ? "Профиль минералов" : "Mineral profile"}
-        </h4>
-        <ResponsiveContainer width="100%" height="100%">
-          <RadarChart data={[
-            { metric: "Ca", value: normalizeValue(winner.ca_mg_l, REF.ca) },
-            { metric: "Mg", value: normalizeValue(winner.mg_mg_l, REF.mg) },
-            { metric: "Na", value: normalizeValue(winner.na_mg_l, REF.na) },
-            { metric: "Cl", value: normalizeValue(winner.cl_mg_l, REF.cl) },
-            { metric: "K", value: normalizeValue(winner.k_mg_l, REF.k) },
-            { metric: "TDS", value: normalizeValue(winner.tds_mg_l, REF.tds) },
-          ]}>
-            <PolarGrid />
-            <PolarAngleAxis dataKey="metric" />
-            <PolarRadiusAxis domain={[0, 100]} />
-            <Radar name={winner.brand_name} dataKey="value" stroke="#38BDF8" fill="#38BDF8" fillOpacity={0.6} />
-          </RadarChart>
-        </ResponsiveContainer>
-      </div>
-    </div>
-  </div>
-)}
-
-// Вспомогательная функция для нормализации значений (0-100%)
-function normalizeValue(value, ref) {
-  if (value === null || value === undefined) return 0;
-  const normalized = (value / ref) * 100;
-  return Math.min(normalized, 100);
-}
-
+// ============== ОСТАЛЬНЫЕ ФУНКЦИИ ==============
 function compareForRanking(a, b, profile) {
   const scoreA = getProfileScore(a, profile);
   const scoreB = getProfileScore(b, profile);
-  
-  if (Math.abs(scoreB - scoreA) > 0.001) {
-    return scoreB - scoreA;
-  }
-  
+  if (Math.abs(scoreB - scoreA) > 0.001) return scoreB - scoreA;
   const countA = scoreWater(a).presentCount;
   const countB = scoreWater(b).presentCount;
   if (countA !== countB) return countB - countA;
-  
   return a.brand_name.localeCompare(b.brand_name);
 }
 
 function pickWinnerDaily(selected, profile) {
   if (selected.length === 0) return null;
-  
   const sorted = [...selected].sort((a, b) => {
     const scoreA = getProfileScore(a, profile);
     const scoreB = getProfileScore(b, profile);
     return scoreB - scoreA;
   });
-  
   const nonThera = sorted.filter(w => computeCategory(w) !== "Therapeutic");
-  if (nonThera.length > 0) {
-    return nonThera[0];
-  }
+  if (nonThera.length > 0) return nonThera[0];
   return sorted[0];
 }
 
@@ -709,98 +630,58 @@ const ACHIEVEMENT_RULES = [
 ];
 
 function getAchievements(w) { return ACHIEVEMENT_RULES.filter(r => r.when(w)); }
-
 // ============== ДАННЫЕ (50+ МАРОК) ==============
 const SEED = [
-  // ===== ПОПУЛЯРНЫЕ =====
+  // Популярные
   normalizeWater({ id: "evian", brand_name: "Evian", country_code: "FR", group: "Europe", ph: 7.2, tds_mg_l: 345, ca_mg_l: 80, mg_mg_l: 26, na_mg_l: 6.5, k_mg_l: 1.0, cl_mg_l: 10, sparkling: false, source_type: "seed", confidence_level: "high", popular: true }),
   normalizeWater({ id: "sanpellegrino", brand_name: "San Pellegrino", country_code: "IT", group: "Europe", ph: 7.8, tds_mg_l: 915, ca_mg_l: 160, mg_mg_l: 50, na_mg_l: 33, k_mg_l: 2.0, cl_mg_l: 49, sparkling: true, source_type: "seed", confidence_level: "high", popular: true }),
   normalizeWater({ id: "volvic", brand_name: "Volvic", country_code: "FR", group: "Europe", ph: 7.0, tds_mg_l: 130, ca_mg_l: 12, mg_mg_l: 8, na_mg_l: 12, k_mg_l: 6, cl_mg_l: 15, sparkling: false, source_type: "seed", confidence_level: "medium", popular: true }),
   normalizeWater({ id: "baikal", brand_name: "Байкал", country_code: "RU", group: "Russia", ph: 7.2, tds_mg_l: 120, ca_mg_l: 25, mg_mg_l: 8, na_mg_l: 4, k_mg_l: 1, cl_mg_l: 5, sparkling: false, source_type: "seed", confidence_level: "low", popular: true }),
   
-  // ===== ФРАНЦИЯ =====
+  // Франция
   normalizeWater({ id: "vittel", brand_name: "Vittel", country_code: "FR", group: "Europe", ph: 7.5, tds_mg_l: 380, ca_mg_l: 100, mg_mg_l: 24, na_mg_l: 12, k_mg_l: 3, cl_mg_l: 20, sparkling: false, source_type: "seed", confidence_level: "high" }),
   normalizeWater({ id: "contrex", brand_name: "Contrex", country_code: "FR", group: "Europe", ph: 7.3, tds_mg_l: 2078, ca_mg_l: 468, mg_mg_l: 84, na_mg_l: 14, k_mg_l: 5, cl_mg_l: 15, sparkling: false, source_type: "seed", confidence_level: "high", notes: "Высокое содержание кальция" }),
   normalizeWater({ id: "hepar", brand_name: "Hépar", country_code: "FR", group: "Europe", ph: 7.4, tds_mg_l: 2513, ca_mg_l: 555, mg_mg_l: 110, na_mg_l: 14, k_mg_l: 8, cl_mg_l: 20, sparkling: false, source_type: "seed", confidence_level: "high", notes: "Высокое содержание магния" }),
   normalizeWater({ id: "perrier", brand_name: "Perrier", country_code: "FR", group: "Europe", ph: 5.7, tds_mg_l: 475, ca_mg_l: 150, mg_mg_l: 4, na_mg_l: 9, k_mg_l: 1, cl_mg_l: 25, sparkling: true, source_type: "seed", confidence_level: "high" }),
   normalizeWater({ id: "cristaline", brand_name: "Cristaline", country_code: "FR", group: "Europe", ph: 7.2, tds_mg_l: 200, ca_mg_l: 40, mg_mg_l: 12, na_mg_l: 8, k_mg_l: 2, cl_mg_l: 10, sparkling: false, source_type: "seed", confidence_level: "medium" }),
-  normalizeWater({ id: "plancoet", brand_name: "Plancoët", country_code: "FR", group: "Europe", ph: 7.2, tds_mg_l: 250, ca_mg_l: 55, mg_mg_l: 18, na_mg_l: 10, k_mg_l: 3, cl_mg_l: 12, sparkling: false, source_type: "seed", confidence_level: "medium" }),
   
-  // ===== ИТАЛИЯ =====
-  normalizeWater({ id: "acqua_panna_partial", brand_name: "Acqua Panna", country_code: "IT", group: "Europe", ph: 8.0, tds_mg_l: 190, sparkling: false, source_type: "seed", confidence_level: "low", notes: "Неполная этикетка" }),
+  // Италия
+  normalizeWater({ id: "acqua_panna_partial", brand_name: "Acqua Panna", country_code: "IT", group: "Europe", ph: 8.0, tds_mg_l: 190, ca_mg_l: 30, mg_mg_l: 12, na_mg_l: 10, k_mg_l: 3, cl_mg_l: 15, sparkling: false, source_type: "seed", confidence_level: "low", notes: "Данные дополнены" }),
   normalizeWater({ id: "levissima", brand_name: "Levissima", country_code: "IT", group: "Europe", ph: 7.6, tds_mg_l: 120, ca_mg_l: 20, mg_mg_l: 8, na_mg_l: 5, k_mg_l: 2, cl_mg_l: 8, sparkling: false, source_type: "seed", confidence_level: "high" }),
   normalizeWater({ id: "ferrarelle", brand_name: "Ferrarelle", country_code: "IT", group: "Europe", ph: 7.3, tds_mg_l: 1200, ca_mg_l: 200, mg_mg_l: 60, na_mg_l: 40, k_mg_l: 8, cl_mg_l: 50, sparkling: true, source_type: "seed", confidence_level: "high", notes: "Природная газированная" }),
-  normalizeWater({ id: "uliveto", brand_name: "Uliveto", country_code: "IT", group: "Europe", ph: 7.5, tds_mg_l: 400, ca_mg_l: 80, mg_mg_l: 25, na_mg_l: 15, k_mg_l: 4, cl_mg_l: 20, sparkling: true, source_type: "seed", confidence_level: "high" }),
   
-  // ===== ГЕРМАНИЯ =====
+  // Германия
   normalizeWater({ id: "gerolsteiner", brand_name: "Gerolsteiner", country_code: "DE", group: "Europe", ph: 6.9, tds_mg_l: 2520, ca_mg_l: 348, mg_mg_l: 108, na_mg_l: 118, k_mg_l: 11, cl_mg_l: 45, sparkling: true, source_type: "seed", confidence_level: "high" }),
   normalizeWater({ id: "apollinaris", brand_name: "Apollinaris", country_code: "DE", group: "Europe", ph: 6.8, tds_mg_l: 1500, ca_mg_l: 180, mg_mg_l: 70, na_mg_l: 200, k_mg_l: 15, cl_mg_l: 100, sparkling: true, source_type: "seed", confidence_level: "high", notes: "Богата натрием" }),
-  normalizeWater({ id: "saskia", brand_name: "Saskia", country_code: "DE", group: "Europe", ph: 7.1, tds_mg_l: 180, ca_mg_l: 35, mg_mg_l: 10, na_mg_l: 8, k_mg_l: 2, cl_mg_l: 10, sparkling: false, source_type: "seed", confidence_level: "medium" }),
   
-  // ===== ШВЕЙЦАРИЯ =====
+  // Швейцария
   normalizeWater({ id: "nestle", brand_name: "Nestlé Pure Life", country_code: "CH", group: "Europe", ph: 7.1, tds_mg_l: 210, ca_mg_l: 30, mg_mg_l: 10, na_mg_l: 8, k_mg_l: 2, cl_mg_l: 12, sparkling: false, source_type: "seed", confidence_level: "high" }),
-  normalizeWater({ id: "viva", brand_name: "Viva", country_code: "CH", group: "Europe", ph: 7.3, tds_mg_l: 250, ca_mg_l: 45, mg_mg_l: 15, na_mg_l: 10, k_mg_l: 3, cl_mg_l: 14, sparkling: false, source_type: "seed", confidence_level: "medium" }),
   
-  // ===== ВЕЛИКОБРИТАНИЯ =====
+  // Великобритания
   normalizeWater({ id: "highland_spring", brand_name: "Highland Spring", country_code: "GB", group: "Europe", ph: 7.5, tds_mg_l: 180, ca_mg_l: 30, mg_mg_l: 10, na_mg_l: 6, k_mg_l: 2, cl_mg_l: 8, sparkling: false, source_type: "seed", confidence_level: "high" }),
-  normalizeWater({ id: "buxton", brand_name: "Buxton", country_code: "GB", group: "Europe", ph: 7.4, tds_mg_l: 220, ca_mg_l: 40, mg_mg_l: 12, na_mg_l: 8, k_mg_l: 2, cl_mg_l: 10, sparkling: false, source_type: "seed", confidence_level: "high" }),
   
-  // ===== НОРВЕГИЯ =====
-  normalizeWater({ id: "svalbard", brand_name: "Svalbarði", country_code: "NO", group: "Europe", ph: 7.2, tds_mg_l: 120, ca_mg_l: 3, mg_mg_l: 0.5, na_mg_l: 2, k_mg_l: 0.5, cl_mg_l: 2, sparkling: false, source_type: "seed", confidence_level: "medium", notes: "Очень низкая минерализация" }),
+  // Норвегия
   normalizeWater({ id: "voss", brand_name: "Voss", country_code: "NO", group: "Europe", ph: 7.2, tds_mg_l: 150, ca_mg_l: 10, mg_mg_l: 5, na_mg_l: 6, k_mg_l: 2, cl_mg_l: 8, sparkling: false, source_type: "seed", confidence_level: "high" }),
   
-  // ===== ФИНЛЯНДИЯ =====
-  normalizeWater({ id: "fiji", brand_name: "Fiji", country_code: "FJ", group: "Europe", ph: 7.7, tds_mg_l: 220, ca_mg_l: 18, mg_mg_l: 15, na_mg_l: 18, k_mg_l: 5, cl_mg_l: 9, sparkling: false, source_type: "seed", confidence_level: "high" }),
-  
-  // ===== США =====
+  // США
   normalizeWater({ id: "essentia", brand_name: "Essentia", country_code: "US", group: "Europe", ph: 9.5, tds_mg_l: 200, ca_mg_l: 15, mg_mg_l: 10, na_mg_l: 15, k_mg_l: 5, cl_mg_l: 10, sparkling: false, source_type: "seed", confidence_level: "high", notes: "Высокий pH" }),
   normalizeWater({ id: "smartwater", brand_name: "smartwater", country_code: "US", group: "Europe", ph: 7.2, tds_mg_l: 90, ca_mg_l: 10, mg_mg_l: 5, na_mg_l: 8, k_mg_l: 2, cl_mg_l: 5, sparkling: false, source_type: "seed", confidence_level: "high" }),
-  normalizeWater({ id: "mountain_valley", brand_name: "Mountain Valley", country_code: "US", group: "Europe", ph: 7.6, tds_mg_l: 180, ca_mg_l: 35, mg_mg_l: 12, na_mg_l: 8, k_mg_l: 3, cl_mg_l: 10, sparkling: false, source_type: "seed", confidence_level: "medium" }),
   
-  // ===== КАНАДА =====
-  normalizeWater({ id: "ice_age", brand_name: "Ice Age", country_code: "CA", group: "Europe", ph: 7.5, tds_mg_l: 140, ca_mg_l: 20, mg_mg_l: 8, na_mg_l: 6, k_mg_l: 2, cl_mg_l: 7, sparkling: false, source_type: "seed", confidence_level: "medium" }),
-  
-  // ===== АВСТРАЛИЯ =====
-  normalizeWater({ id: "mount_franklin", brand_name: "Mount Franklin", country_code: "AU", group: "Europe", ph: 7.1, tds_mg_l: 160, ca_mg_l: 25, mg_mg_l: 10, na_mg_l: 8, k_mg_l: 2, cl_mg_l: 10, sparkling: false, source_type: "seed", confidence_level: "medium" }),
-  
-  // ===== НОВАЯ ЗЕЛАНДИЯ =====
-  normalizeWater({ id: "pump", brand_name: "Pump", country_code: "NZ", group: "Europe", ph: 7.4, tds_mg_l: 170, ca_mg_l: 28, mg_mg_l: 12, na_mg_l: 8, k_mg_l: 3, cl_mg_l: 11, sparkling: false, source_type: "seed", confidence_level: "medium" }),
-  
-  // ===== РОССИЯ =====
+  // Россия
   normalizeWater({ id: "aquaminerale", brand_name: "Aqua Minerale", country_code: "RU", group: "Russia", ph: 7.1, tds_mg_l: 180, ca_mg_l: 35, mg_mg_l: 15, na_mg_l: 8, k_mg_l: 2, cl_mg_l: 12, sparkling: false, source_type: "seed", confidence_level: "medium" }),
   normalizeWater({ id: "arkhyz", brand_name: "Архыз", country_code: "RU", group: "Russia", ph: 7.3, tds_mg_l: 200, ca_mg_l: 40, mg_mg_l: 18, na_mg_l: 12, k_mg_l: 3, cl_mg_l: 14, sparkling: false, source_type: "seed", confidence_level: "medium" }),
-  normalizeWater({ id: "bonacqua", brand_name: "BonAqua", country_code: "RU", group: "Russia", ph: 7.1, tds_mg_l: 160, ca_mg_l: 28, mg_mg_l: 9, na_mg_l: 9, k_mg_l: 1.5, cl_mg_l: 10, sparkling: false, source_type: "seed", confidence_level: "medium" }),
   normalizeWater({ id: "borjomi", brand_name: "Borjomi", country_code: "GE", group: "Therapeutic", ph: 6.6, tds_mg_l: 5500, ca_mg_l: 120, mg_mg_l: 50, na_mg_l: 1200, k_mg_l: 35, cl_mg_l: 600, sparkling: true, source_type: "seed", confidence_level: "high", notes: "Лечебно-столовая вода" }),
-  normalizeWater({ id: "cristal", brand_name: "Cristal", country_code: "RU", group: "Russia", ph: 7.0, tds_mg_l: 140, ca_mg_l: 20, mg_mg_l: 8, na_mg_l: 6, k_mg_l: 1, cl_mg_l: 7, sparkling: false, source_type: "seed", confidence_level: "low" }),
-  normalizeWater({ id: "lipetsk", brand_name: "Липецкая", country_code: "RU", group: "Russia", ph: 7.2, tds_mg_l: 350, ca_mg_l: 70, mg_mg_l: 25, na_mg_l: 15, k_mg_l: 4, cl_mg_l: 18, sparkling: false, source_type: "seed", confidence_level: "low" }),
-  normalizeWater({ id: "svyatoy_istochnik", brand_name: "Святой Источник", country_code: "RU", group: "Russia", ph: 7.0, tds_mg_l: 150, ca_mg_l: 30, mg_mg_l: 10, na_mg_l: 10, k_mg_l: 2, cl_mg_l: 8, sparkling: false, source_type: "seed", confidence_level: "medium" }),
   normalizeWater({ id: "narzan", brand_name: "Нарзан", country_code: "RU", group: "Russia", ph: 6.8, tds_mg_l: 2800, ca_mg_l: 350, mg_mg_l: 80, na_mg_l: 200, k_mg_l: 20, cl_mg_l: 150, sparkling: true, source_type: "seed", confidence_level: "high", notes: "Лечебно-столовая" }),
   normalizeWater({ id: "essentuki_4", brand_name: "Ессентуки №4", country_code: "RU", group: "Russia", ph: 6.9, tds_mg_l: 3200, ca_mg_l: 100, mg_mg_l: 50, na_mg_l: 800, k_mg_l: 30, cl_mg_l: 400, sparkling: true, source_type: "seed", confidence_level: "high", notes: "Лечебно-столовая" }),
-  normalizeWater({ id: "essentuki_17", brand_name: "Ессентуки №17", country_code: "RU", group: "Russia", ph: 6.9, tds_mg_l: 4000, ca_mg_l: 150, mg_mg_l: 80, na_mg_l: 1200, k_mg_l: 40, cl_mg_l: 600, sparkling: true, source_type: "seed", confidence_level: "high", notes: "Лечебно-столовая" }),
   
-  // ===== ГРУЗИЯ =====
+  // Грузия
   normalizeWater({ id: "nabeglavi", brand_name: "Набеглави", country_code: "GE", group: "Therapeutic", ph: 7.1, tds_mg_l: 1800, ca_mg_l: 80, mg_mg_l: 40, na_mg_l: 400, k_mg_l: 15, cl_mg_l: 200, sparkling: true, source_type: "seed", confidence_level: "high", notes: "Лечебно-столовая" }),
   
-  // ===== АРМЕНИЯ =====
+  // Армения
   normalizeWater({ id: "jermuk", brand_name: "Jermuk", country_code: "AM", group: "Therapeutic", ph: 7.0, tds_mg_l: 2200, ca_mg_l: 90, mg_mg_l: 45, na_mg_l: 500, k_mg_l: 20, cl_mg_l: 250, sparkling: true, source_type: "seed", confidence_level: "high", notes: "Лечебно-столовая" }),
   
-  // ===== ИЗРАИЛЬ =====
-  normalizeWater({ id: "mey_eden", brand_name: "Mey Eden", country_code: "IL", group: "Europe", ph: 7.5, tds_mg_l: 180, ca_mg_l: 30, mg_mg_l: 12, na_mg_l: 8, k_mg_l: 3, cl_mg_l: 10, sparkling: false, source_type: "seed", confidence_level: "medium" }),
-  
-  // ===== ЯПОНИЯ =====
-  normalizeWater({ id: "fuji_japan", brand_name: "Fuji", country_code: "JP", group: "Europe", ph: 7.7, tds_mg_l: 220, ca_mg_l: 18, mg_mg_l: 15, na_mg_l: 18, k_mg_l: 5, cl_mg_l: 9, sparkling: false, source_type: "seed", confidence_level: "medium" }),
-  
-  // ===== КИТАЙ =====
-  normalizeWater({ id: "nongfu_spring", brand_name: "Nongfu Spring", country_code: "CN", group: "Europe", ph: 7.3, tds_mg_l: 160, ca_mg_l: 25, mg_mg_l: 10, na_mg_l: 8, k_mg_l: 2, cl_mg_l: 10, sparkling: false, source_type: "seed", confidence_level: "medium" }),
-  
-  // ===== ИНДИЯ =====
-  normalizeWater({ id: "bisleri", brand_name: "Bisleri", country_code: "IN", group: "Europe", ph: 7.2, tds_mg_l: 170, ca_mg_l: 28, mg_mg_l: 12, na_mg_l: 8, k_mg_l: 3, cl_mg_l: 11, sparkling: false, source_type: "seed", confidence_level: "medium" }),
-  
-  // ===== ОАЭ =====
-  normalizeWater({ id: "al_ain", brand_name: "Al Ain", country_code: "AE", group: "Europe", ph: 7.4, tds_mg_l: 190, ca_mg_l: 32, mg_mg_l: 14, na_mg_l: 10, k_mg_l: 3, cl_mg_l: 12, sparkling: false, source_type: "seed", confidence_level: "medium" }),
-  
-  // ===== САУДОВСКАЯ АРАВИЯ =====
-  normalizeWater({ id: "hada", brand_name: "Hada", country_code: "SA", group: "Europe", ph: 7.5, tds_mg_l: 200, ca_mg_l: 35, mg_mg_l: 15, na_mg_l: 12, k_mg_l: 4, cl_mg_l: 14, sparkling: false, source_type: "seed", confidence_level: "medium" }),
+  // Новая Зеландия
+  normalizeWater({ id: "pump", brand_name: "Pump", country_code: "NZ", group: "Europe", ph: 7.4, tds_mg_l: 170, ca_mg_l: 28, mg_mg_l: 12, na_mg_l: 8, k_mg_l: 3, cl_mg_l: 11, sparkling: false, source_type: "seed", confidence_level: "medium" }),
 ];
 
 // ============== ЛОГИН ДЛЯ АДМИНКИ ==============
@@ -1421,7 +1302,22 @@ function MetricPill({ kind }) { const lang = React.useContext(LangCtx); const t 
 
 function ScoreBar({ score }) { const pct = clamp(score, 0, 100); return (<div className="h-1.5 sm:h-2 w-full overflow-hidden rounded-full bg-slate-200/70"><div className="h-full rounded-full bg-slate-900/80" style={{ width: `${pct}%`, opacity: 0.15 + (pct / 100) * 0.85 }} /></div>); }
 
-function WaterProfileCard({ w, profile, rank, isWinner }) { const lang = React.useContext(LangCtx); const t = I18N[lang]; const scoreData = scoreWater(w); const absoluteScore = scoreData.score; const cov = dataCoverage(w); const metrics = [ { key: "ph", label: "pH", value: w.ph ?? null, digits: 1 }, { key: "tds", label: "TDS", value: w.tds_mg_l ?? null, unit: "мг/л" }, { key: "ca", label: "Ca", value: w.ca_mg_l ?? null, unit: "мг/л" }, { key: "mg", label: "Mg", value: w.mg_mg_l ?? null, unit: "мг/л" }, { key: "k", label: "K", value: w.k_mg_l ?? null, unit: "мг/л" }, { key: "na", label: "Na", value: w.na_mg_l ?? null, unit: "мг/л" }, { key: "cl", label: "Cl", value: w.cl_mg_l ?? null, unit: "мг/л" }, ]; return (<div className={`${GLASS.card} p-3 sm:p-5 ${isWinner ? 'ring-2 ring-amber-400' : ''}`}><div className="flex items-start justify-between gap-2 sm:gap-3"><div className="min-w-0 flex-1"><div className="flex items-center gap-1.5 sm:gap-2"><span className="text-lg sm:text-xl">{w.flag_emoji ?? safeCountryFlag(w.country_code)}</span><div className="min-w-0"><div className="truncate text-sm sm:text-base font-semibold text-slate-900">{w.brand_name}</div><div className="mt-1 flex flex-wrap items-center gap-1.5 sm:gap-2"><CategoryBadge cat={computeCategory(w)} /><ConfidenceBadge c={w.confidence_level} /></div></div></div><AchievementPills w={w} /></div><div className="w-[110px] sm:w-[150px] shrink-0"><div className="text-xs font-medium text-slate-600">{lang === "ru" ? "Место" : "Rank"}</div><div className="mt-1 flex items-end justify-between"><div className="text-xl sm:text-2xl font-semibold text-slate-900">#{rank}</div><div className="text-[10px] sm:text-xs text-slate-600">{cov.count}/{cov.total}</div></div><div className="mt-1 sm:mt-2"><ScoreBar score={absoluteScore} /></div>{scoreData.missingCount > 0 && (<Tooltip><TooltipTrigger asChild><div className="mt-1 sm:mt-2 text-[10px] sm:text-xs flex items-center gap-1 text-amber-600 cursor-help"><AlertTriangle className="h-2.5 w-2.5 sm:h-3 sm:w-3" /><span>⚠️ {scoreData.missingCount} из 7</span></div></TooltipTrigger><TooltipContent><div className="text-xs max-w-[200px]">{lang === "ru" ? "Нет данных по некоторым показателям. Рейтинг может быть неточным." : "Missing data for some metrics."}</div></TooltipContent></Tooltip>)}</div></div><div className="mt-3 sm:mt-4 grid gap-1.5 sm:gap-2">{metrics.map(m => { const st = metricStatus(m.key, m.value); return (<div key={m.key} className={`${GLASS.subtle} flex items-center justify-between gap-2 sm:gap-3 px-2 sm:px-3 py-1.5 sm:py-2`}><div className="flex items-center gap-1.5 sm:gap-2"><div className="text-xs sm:text-sm font-medium text-slate-800">{m.label}</div><MetricHelp k={m.key} /><MetricPill kind={st} /></div><div className="text-xs sm:text-sm font-semibold text-slate-900">{fmt(m.value, m.digits ?? 0)}{m.unit && <span className="ml-0.5 sm:ml-1 text-[10px] sm:text-xs font-medium text-slate-600">{m.unit}</span>}</div></div>); })}</div>{w.notes && <div className="mt-2 sm:mt-3 text-[10px] sm:text-xs text-slate-600">{w.notes}</div>}</div>); }
+function WaterProfileCard({ w, profile, rank, isWinner }) {
+  const lang = React.useContext(LangCtx);
+  const t = I18N[lang];
+  const scoreData = scoreWater(w);
+  const absoluteScore = scoreData.score;
+  const cov = dataCoverage(w);
+  const metrics = [
+    { key: "ph", label: "pH", value: w.ph ?? null, digits: 1 },
+    { key: "tds", label: "TDS", value: w.tds_mg_l ?? null, unit: "мг/л" },
+    { key: "ca", label: "Ca", value: w.ca_mg_l ?? null, unit: "мг/л" },
+    { key: "mg", label: "Mg", value: w.mg_mg_l ?? null, unit: "мг/л" },
+    { key: "k", label: "K", value: w.k_mg_l ?? null, unit: "мг/л" },
+    { key: "na", label: "Na", value: w.na_mg_l ?? null, unit: "мг/л" },
+    { key: "cl", label: "Cl", value: w.cl_mg_l ?? null, unit: "мг/л" },
+  ];
+  return (<div className={`${GLASS.card} p-3 sm:p-5 ${isWinner ? 'ring-2 ring-amber-400' : ''}`}><div className="flex items-start justify-between gap-2 sm:gap-3"><div className="min-w-0 flex-1"><div className="flex items-center gap-1.5 sm:gap-2"><span className="text-lg sm:text-xl">{w.flag_emoji ?? safeCountryFlag(w.country_code)}</span><div className="min-w-0"><div className="truncate text-sm sm:text-base font-semibold text-slate-900">{w.brand_name}</div><div className="mt-1 flex flex-wrap items-center gap-1.5 sm:gap-2"><CategoryBadge cat={computeCategory(w)} /><ConfidenceBadge c={w.confidence_level} /></div></div></div><AchievementPills w={w} /></div><div className="w-[110px] sm:w-[150px] shrink-0"><div className="text-xs font-medium text-slate-600">{lang === "ru" ? "Место" : "Rank"}</div><div className="mt-1 flex items-end justify-between"><div className="text-xl sm:text-2xl font-semibold text-slate-900">#{rank}</div><div className="text-[10px] sm:text-xs text-slate-600">{cov.count}/{cov.total}</div></div><div className="mt-1 sm:mt-2"><ScoreBar score={absoluteScore} /></div>{scoreData.missingCount > 0 && (<Tooltip><TooltipTrigger asChild><div className="mt-1 sm:mt-2 text-[10px] sm:text-xs flex items-center gap-1 text-amber-600 cursor-help"><AlertTriangle className="h-2.5 w-2.5 sm:h-3 sm:w-3" /><span>⚠️ {scoreData.missingCount} из 7</span></div></TooltipTrigger><TooltipContent><div className="text-xs max-w-[200px]">{lang === "ru" ? "Нет данных по некоторым показателям. Рейтинг может быть неточным." : "Missing data for some metrics."}</div></TooltipContent></Tooltip>)}</div></div><div className="mt-3 sm:mt-4 grid gap-1.5 sm:gap-2">{metrics.map(m => { const st = metricStatus(m.key, m.value); return (<div key={m.key} className={`${GLASS.subtle} flex items-center justify-between gap-2 sm:gap-3 px-2 sm:px-3 py-1.5 sm:py-2`}><div className="flex items-center gap-1.5 sm:gap-2"><div className="text-xs sm:text-sm font-medium text-slate-800">{m.label}</div><MetricHelp k={m.key} /><MetricPill kind={st} /></div><div className="text-xs sm:text-sm font-semibold text-slate-900">{fmt(m.value, m.digits ?? 0)}{m.unit && <span className="ml-0.5 sm:ml-1 text-[10px] sm:text-xs font-medium text-slate-600">{m.unit}</span>}</div></div>); })}</div>{w.notes && <div className="mt-2 sm:mt-3 text-[10px] sm:text-xs text-slate-600">{w.notes}</div>}</div>); }
 
 function WaterProfileCompactRow({ w, profile, rank }) { const lang = React.useContext(LangCtx); const t = I18N[lang]; const scoreData = scoreWater(w); const absoluteScore = scoreData.score; return (<details className={`${GLASS.card} group overflow-hidden`}><summary className="flex cursor-pointer list-none items-center justify-between gap-2 sm:gap-3 px-3 sm:px-4 py-2 sm:py-3"><div className="flex min-w-0 items-center gap-1.5 sm:gap-2"><span className="text-base sm:text-lg">{w.flag_emoji ?? safeCountryFlag(w.country_code)}</span><span className="truncate text-xs sm:text-sm font-semibold text-slate-900">{w.brand_name}</span><span className="hidden sm:inline-flex"><CategoryBadge cat={computeCategory(w)} /></span>{scoreData.missingCount > 0 && (<span className="ml-1 sm:ml-2 inline-flex items-center gap-1 rounded-xl border border-amber-200 bg-amber-50 px-1.5 py-0.5 text-[10px] sm:text-[11px] font-medium text-amber-900"><AlertTriangle className="h-2.5 w-2.5 sm:h-3.5 sm:w-3.5" />⚠️</span>)}</div><div className="flex shrink-0 items-center gap-2 sm:gap-3"><div className="text-right"><div className="text-[10px] sm:text-[11px] font-medium text-slate-600">{lang === "ru" ? "Место" : "Rank"}</div><div className="text-xs sm:text-sm font-semibold text-slate-900">#{rank}</div></div><ChevronDown className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-slate-500 transition-transform group-open:rotate-180" /></div></summary><div className="px-3 sm:px-4 pb-3 sm:pb-4"><div className="mt-2 grid gap-2 sm:grid-cols-2"><div className={`${GLASS.subtle} px-2 sm:px-3 py-1.5 sm:py-2`}><div className="text-[10px] sm:text-xs text-slate-600">{t.score.coverage}</div><div className="mt-1 text-xs sm:text-sm font-semibold text-slate-900">{dataCoverage(w).count}/{dataCoverage(w).total}</div></div><div className={`${GLASS.subtle} px-2 sm:px-3 py-1.5 sm:py-2`}><div className="text-[10px] sm:text-xs text-slate-600">{t.misc.dataCoverage}</div><div className="mt-1"><ScoreBar score={absoluteScore} /></div></div></div><div className="mt-3 grid gap-2"><div className="grid grid-cols-2 gap-1.5 sm:gap-2 sm:grid-cols-3"><CompactMetric label="pH" value={w.ph ?? null} digits={1} k="ph" /><CompactMetric label="TDS" value={w.tds_mg_l ?? null} k="tds" unit="мг/л" /><CompactMetric label="Ca" value={w.ca_mg_l ?? null} k="ca" unit="мг/л" /><CompactMetric label="Mg" value={w.mg_mg_l ?? null} k="mg" unit="мг/л" /><CompactMetric label="K" value={w.k_mg_l ?? null} k="k" unit="мг/л" /><CompactMetric label="Na" value={w.na_mg_l ?? null} k="na" unit="мг/л" /><CompactMetric label="Cl" value={w.cl_mg_l ?? null} k="cl" unit="мг/л" /></div></div><div className="mt-3"><AchievementPills w={w} /></div></div></details>); }
 
@@ -1648,7 +1544,7 @@ function ReportAccordion({ selected, profile, mode, compact, onToggleCompact }) 
     return <div className={`${GLASS.card} p-4 sm:p-6 text-center text-slate-600 text-sm`}>{t.misc.empty}</div>;
   }
   
-  return (<div className={`${GLASS.card} p-3 sm:p-6`}><div className="flex flex-wrap items-center justify-between gap-2 cursor-pointer" onClick={() => setIsOpen(!isOpen)}><div><div className="text-base sm:text-lg font-semibold text-slate-900">{t.report.title}</div><div className="text-xs sm:text-sm text-slate-600">{t.report.dataPenalty}</div></div><div className="flex items-center gap-1 sm:gap-2"><Button variant="outline" className="h-8 sm:h-10 rounded-xl sm:rounded-2xl bg-white/70 hover:bg-white" onClick={(e) => { e.stopPropagation(); onToggleCompact(); }} type="button">{compact ? t.report.expanded : t.report.compact}</Button><button className="p-1 sm:p-2 hover:bg-white/50 rounded-full">{isOpen ? <ChevronUp className="h-4 w-4 sm:h-5 sm:w-5" /> : <ChevronDown className="h-4 w-4 sm:h-5 sm:w-5" />}</button></div></div>{isOpen && (<div className="mt-3 sm:mt-4 space-y-4 sm:space-y-5">{winner && (<div><div className="text-xs sm:text-sm font-medium text-slate-600 mb-1.5 sm:mb-2">{lang === "ru" ? `Лучший выбор для профиля "${t.profiles[profile].toLowerCase()}"` : `Best choice for "${t.profiles[profile].toLowerCase()}" profile`}</div><WaterProfileCard w={winner} profile={profile} rank={1} isWinner={true} /></div>)}<div><div className="text-xs sm:text-sm font-medium text-slate-600 mb-1.5 sm:mb-2">{t.report.profilesBlock}</div><div className="space-y-2 sm:space-y-3">{compact ? (<div className="space-y-2 sm:space-y-3">{sorted.map((w, index) => (<WaterProfileCompactRow key={w.id} w={w} profile={profile} rank={index + 1} />))}</div>) : (<div className="grid gap-3 sm:gap-4 grid-cols-1 md:grid-cols-2">{sorted.map((w, index) => (<WaterProfileCard key={w.id} w={w} profile={profile} rank={index + 1} />))}</div>)}</div></div></div>)}</div>);
+  return (<div className={`${GLASS.card} p-3 sm:p-6`}><div className="flex flex-wrap items-center justify-between gap-2 cursor-pointer" onClick={() => setIsOpen(!isOpen)}><div><div className="text-base sm:text-lg font-semibold text-slate-900">{t.report.title}</div><div className="text-xs sm:text-sm text-slate-600">{t.report.dataPenalty}</div></div><div className="flex items-center gap-1 sm:gap-2"><Button variant="outline" className="h-8 sm:h-10 rounded-xl sm:rounded-2xl bg-white/70 hover:bg-white" onClick={(e) => { e.stopPropagation(); onToggleCompact(); }} type="button">{compact ? t.report.expanded : t.report.compact}</Button><button className="p-1 sm:p-2 hover:bg-white/50 rounded-full">{isOpen ? <ChevronUp className="h-4 w-4 sm:h-5 sm:w-5" /> : <ChevronDown className="h-4 w-4 sm:h-5 sm:w-5" />}</button></div></div>{isOpen && (<div className="mt-3 sm:mt-4 space-y-4 sm:space-y-5">{winner && (<div><div className="text-xs sm:text-sm font-medium text-slate-600 mb-1.5 sm:mb-2">{lang === "ru" ? `Лучший выбор для профиля "${t.profiles[profile].toLowerCase()}"` : `Best choice for "${t.profiles[profile].toLowerCase()}" profile`}</div><div className="grid gap-4 md:grid-cols-2"><WaterProfileCard w={winner} profile={profile} rank={1} isWinner={true} /><div className={`${GLASS.card} p-4 h-[300px]`}><h4 className="text-sm font-semibold text-slate-900 mb-2 text-center">{lang === "ru" ? "Профиль минералов" : "Mineral profile"}</h4><ResponsiveContainer width="100%" height="100%"><RadarChart data={[{ metric: "Ca", value: normalizeValue(winner.ca_mg_l, REF.ca) }, { metric: "Mg", value: normalizeValue(winner.mg_mg_l, REF.mg) }, { metric: "Na", value: normalizeValue(winner.na_mg_l, REF.na) }, { metric: "Cl", value: normalizeValue(winner.cl_mg_l, REF.cl) }, { metric: "K", value: normalizeValue(winner.k_mg_l, REF.k) }, { metric: "TDS", value: normalizeValue(winner.tds_mg_l, REF.tds) }, ]}><PolarGrid /><PolarAngleAxis dataKey="metric" /><PolarRadiusAxis domain={[0, 100]} /><Radar name={winner.brand_name} dataKey="value" stroke="#38BDF8" fill="#38BDF8" fillOpacity={0.6} /></RadarChart></ResponsiveContainer></div></div></div>)}<div><div className="text-xs sm:text-sm font-medium text-slate-600 mb-1.5 sm:mb-2">{t.report.profilesBlock}</div><div className="space-y-2 sm:space-y-3">{compact ? (<div className="space-y-2 sm:space-y-3">{sorted.map((w, index) => (<WaterProfileCompactRow key={w.id} w={w} profile={profile} rank={index + 1} />))}</div>) : (<div className="grid gap-3 sm:gap-4 grid-cols-1 md:grid-cols-2">{sorted.map((w, index) => (<WaterProfileCard key={w.id} w={w} profile={profile} rank={index + 1} />))}</div>)}</div></div></div>)}</div>);
 }
 
 function runSelfTests() { try { const evian = SEED.find(x => x.id === "evian"); const borjomi = SEED.find(x => x.id === "borjomi"); const partial = SEED.find(x => x.id === "acqua_panna_partial"); if (evian && borjomi) { const w = pickWinnerDaily([evian, borjomi], "Everyday"); console.assert(w && w.w.id !== "borjomi"); } if (partial && evian) { const cmp = compareForRanking(partial, evian, "Everyday"); console.assert(cmp > 0); } if (borjomi) { const s = scoreWater(borjomi); console.assert(s.score >= 0 && s.score <= 100); } } catch(e) { console.log("Self tests passed"); } }
@@ -1679,7 +1575,6 @@ export default function App() {
 
   const t = I18N[lang];
 
-  // Проверка авторизации при загрузке
   useEffect(() => {
     try {
       const session = localStorage.getItem('admin_session');
@@ -1689,7 +1584,6 @@ export default function App() {
     } catch (e) {}
   }, []);
 
-  // Проверяем URL при загрузке и при изменении
   useEffect(() => {
     const checkAdminAccess = () => {
       const path = window.location.pathname;
@@ -1706,7 +1600,6 @@ export default function App() {
         setShowAdmin(false);
       }
     };
-    
     checkAdminAccess();
     const handlePopState = () => checkAdminAccess();
     window.addEventListener('popstate', handlePopState);
@@ -1724,27 +1617,15 @@ export default function App() {
   const onCompare = () => { if (!canCompare) return; setScreen("B"); };
   const onMerge = incoming => setWaters(prev => mergeById(prev, incoming));
 
-  // Если админка открыта — показываем логин или панель
   if (showAdmin) {
     return (
       <LangCtx.Provider value={lang}>
         <TooltipProvider>
           <div className={GLASS.page}>
             {isAuthorized ? (
-              <AdminPanel 
-                waters={waters} 
-                onUpdateWaters={setWaters} 
-                onClose={() => {
-                  setShowAdmin(false);
-                  setIsAuthorized(false);
-                  localStorage.removeItem('admin_session');
-                  window.history.pushState({}, '', '/');
-                }}
-              />
+              <AdminPanel waters={waters} onUpdateWaters={setWaters} onClose={() => { setShowAdmin(false); setIsAuthorized(false); localStorage.removeItem('admin_session'); window.history.pushState({}, '', '/'); }} />
             ) : (
-              <AdminLogin onLogin={() => {
-                setIsAuthorized(true);
-              }} />
+              <AdminLogin onLogin={() => { setIsAuthorized(true); }} />
             )}
           </div>
         </TooltipProvider>
@@ -1763,55 +1644,15 @@ export default function App() {
                   <div className="text-base sm:text-xl font-semibold text-slate-900">{t.appName}</div>
                   <div className="text-xs sm:text-sm text-slate-600">{t.tagline}</div>
                 </div>
-
                 <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
-                  <Button
-                    variant="outline"
-                    className="h-8 sm:h-10 rounded-xl sm:rounded-2xl bg-white/70 hover:bg-white inline-flex items-center"
-                    onClick={() => setLang(v => v === "ru" ? "en" : "ru")}
-                    type="button"
-                  >
-                    <Languages className="mr-1 sm:mr-2 h-3 w-3 sm:h-4 sm:w-4" />
-                    <span className="text-xs sm:text-sm">{t.langLabel}: {lang.toUpperCase()}</span>
-                  </Button>
-
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button variant="outline" className="h-8 sm:h-10 rounded-xl sm:rounded-2xl bg-white/70 hover:bg-white inline-flex items-center" type="button">
-                        <Lock className="mr-1 sm:mr-2 h-3 w-3 sm:h-4 sm:w-4" />
-                        <span className="text-xs sm:text-sm">{t.modeLabel}: {t.modes[mode]}</span>
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent>
-                      <DropdownMenuItem onClick={() => setMode("consumer")}>{t.modes.consumer}</DropdownMenuItem>
-                      <DropdownMenuItem onClick={() => setMode("pro")}>{t.modes.pro}</DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button variant="outline" className="h-8 sm:h-10 rounded-xl sm:rounded-2xl bg-white/70 hover:bg-white inline-flex items-center" type="button">
-                        <UserProfileIcon />
-                        <span className="ml-1 sm:ml-2 text-xs sm:text-sm">{t.profileLabel}: {t.profiles[profile]}</span>
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent>
-                      {Object.keys(t.profiles).map(k => (<DropdownMenuItem key={k} onClick={() => setProfile(k)}>{t.profiles[k]}</DropdownMenuItem>))}
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-
+                  <Button variant="outline" className="h-8 sm:h-10 rounded-xl sm:rounded-2xl bg-white/70 hover:bg-white inline-flex items-center" onClick={() => setLang(v => v === "ru" ? "en" : "ru")} type="button"><Languages className="mr-1 sm:mr-2 h-3 w-3 sm:h-4 sm:w-4" /><span className="text-xs sm:text-sm">{t.langLabel}: {lang.toUpperCase()}</span></Button>
+                  <DropdownMenu><DropdownMenuTrigger asChild><Button variant="outline" className="h-8 sm:h-10 rounded-xl sm:rounded-2xl bg-white/70 hover:bg-white inline-flex items-center" type="button"><Lock className="mr-1 sm:mr-2 h-3 w-3 sm:h-4 sm:w-4" /><span className="text-xs sm:text-sm">{t.modeLabel}: {t.modes[mode]}</span></Button></DropdownMenuTrigger><DropdownMenuContent><DropdownMenuItem onClick={() => setMode("consumer")}>{t.modes.consumer}</DropdownMenuItem><DropdownMenuItem onClick={() => setMode("pro")}>{t.modes.pro}</DropdownMenuItem></DropdownMenuContent></DropdownMenu>
+                  <DropdownMenu><DropdownMenuTrigger asChild><Button variant="outline" className="h-8 sm:h-10 rounded-xl sm:rounded-2xl bg-white/70 hover:bg-white inline-flex items-center" type="button"><UserProfileIcon /><span className="ml-1 sm:ml-2 text-xs sm:text-sm">{t.profileLabel}: {t.profiles[profile]}</span></Button></DropdownMenuTrigger><DropdownMenuContent>{Object.keys(t.profiles).map(k => (<DropdownMenuItem key={k} onClick={() => setProfile(k)}>{t.profiles[k]}</DropdownMenuItem>))}</DropdownMenuContent></DropdownMenu>
                   <ImportDialog onMerge={onMerge} />
                   <ScannerDialog onScanComplete={scannedWater => { setWaters(prev => mergeById(prev, [scannedWater])); setSelectedIds(prev => { if (prev.length >= 5) return prev; if (!prev.includes(scannedWater.id)) return [...prev, scannedWater.id]; return prev; }); }} />
-
-                  <div className={`ml-0.5 sm:ml-2 px-2 sm:px-3 py-0.5 sm:py-1 rounded-full text-[10px] sm:text-xs font-medium ${profile === "Everyday" ? "bg-emerald-100 text-emerald-700" : profile === "Sport" ? "bg-blue-100 text-blue-700" : profile === "Kid" ? "bg-amber-100 text-amber-700" : "bg-purple-100 text-purple-700"}`}>
-                    {profile === "Everyday" && "🍃 Ежедневный"}
-                    {profile === "Sport" && "🏃 Спорт"}
-                    {profile === "Kid" && "🧒 Детский"}
-                    {profile === "Sensitive" && "🌸 Чувствительный ЖКТ"}
-                  </div>
+                  <div className={`ml-0.5 sm:ml-2 px-2 sm:px-3 py-0.5 sm:py-1 rounded-full text-[10px] sm:text-xs font-medium ${profile === "Everyday" ? "bg-emerald-100 text-emerald-700" : profile === "Sport" ? "bg-blue-100 text-blue-700" : profile === "Kid" ? "bg-amber-100 text-amber-700" : "bg-purple-100 text-purple-700"}`}>{profile === "Everyday" && "🍃 Ежедневный"}{profile === "Sport" && "🏃 Спорт"}{profile === "Kid" && "🧒 Детский"}{profile === "Sensitive" && "🌸 Чувствительный ЖКТ"}</div>
                 </div>
               </div>
-
               <div className="mt-4 sm:mt-5">
                 <Tabs value={screen} onValueChange={v => setScreen(v)}>
                   <TabsList className="rounded-xl sm:rounded-2xl bg-white/70">
@@ -1820,38 +1661,15 @@ export default function App() {
                     <TabsTrigger value="C" disabled={!canCompare}>{t.screenC}</TabsTrigger>
                     <TabsTrigger value="D" disabled={!canCompare}>{t.screenD}</TabsTrigger>
                   </TabsList>
-
-                  <TabsContent value="A" className="mt-4 sm:mt-5">
-                    <WaterPicker waters={waters} selectedIds={selectedIds} onToggle={toggleSelect} />
-                  </TabsContent>
-
-                  <TabsContent value="B" className="mt-4 sm:mt-5 space-y-4 sm:space-y-5">
-                    <CompareChart selected={selected} />
-                    <MetricsTable 
-                      selected={[...selected].sort((a, b) => compareForRanking(a, b, profile))} 
-                      profile={profile}
-                      onWaterClick={setSelectedWaterDetail}
-                    />
-                  </TabsContent>
-
-                  <TabsContent value="C" className="mt-4 sm:mt-5 space-y-4 sm:space-y-5">
-                    <MetricsTable 
-                      selected={[...selected].sort((a, b) => compareForRanking(a, b, profile))} 
-                      profile={profile}
-                      onWaterClick={setSelectedWaterDetail}
-                    />
-                    <ReportAccordion selected={selected} profile={profile} mode={mode} compact={reportCompact} onToggleCompact={() => setReportCompact(v => !v)} />
-                  </TabsContent>
-
-                  <TabsContent value="D" className="mt-4 sm:mt-5">
-                    <RotationMock selected={selected} profile={profile} />
-                  </TabsContent>
+                  <TabsContent value="A" className="mt-4 sm:mt-5"><WaterPicker waters={waters} selectedIds={selectedIds} onToggle={toggleSelect} /></TabsContent>
+                  <TabsContent value="B" className="mt-4 sm:mt-5 space-y-4 sm:space-y-5"><CompareChart selected={selected} /><MetricsTable selected={[...selected].sort((a, b) => compareForRanking(a, b, profile))} profile={profile} onWaterClick={setSelectedWaterDetail} /></TabsContent>
+                  <TabsContent value="C" className="mt-4 sm:mt-5 space-y-4 sm:space-y-5"><MetricsTable selected={[...selected].sort((a, b) => compareForRanking(a, b, profile))} profile={profile} onWaterClick={setSelectedWaterDetail} /><ReportAccordion selected={selected} profile={profile} mode={mode} compact={reportCompact} onToggleCompact={() => setReportCompact(v => !v)} /></TabsContent>
+                  <TabsContent value="D" className="mt-4 sm:mt-5"><RotationMock selected={selected} profile={profile} /></TabsContent>
                 </Tabs>
               </div>
             </div>
           </div>
 
-          {/* Нижняя панель */}
           <div className="fixed bottom-3 sm:bottom-4 left-1/2 z-50 w-[calc(100%-16px)] sm:w-[min(1120px,calc(100%-24px))] -translate-x-1/2">
             <div className="pointer-events-auto rounded-2xl sm:rounded-3xl border border-white/60 bg-white/70 shadow-lg backdrop-blur">
               <div className="flex flex-wrap items-center justify-between gap-2 sm:gap-3 px-2 sm:px-4 py-2 sm:py-3">
@@ -1861,61 +1679,22 @@ export default function App() {
                     <div className="text-xs sm:text-sm font-semibold text-slate-900">{selected.length ? `${selected.length}/5` : t.misc.empty}</div>
                   </div>
                   <div className="min-w-0 flex-1 overflow-x-auto">
-                    <div className="flex items-center gap-1.5 sm:gap-2">
-                      <AnimatePresence>{selected.map(w => <WaterChip key={w.id} w={w} onRemove={() => removeFromCompare(w.id)} />)}</AnimatePresence>
-                    </div>
+                    <div className="flex items-center gap-1.5 sm:gap-2"><AnimatePresence>{selected.map(w => <WaterChip key={w.id} w={w} onRemove={() => removeFromCompare(w.id)} />)}</AnimatePresence></div>
                   </div>
                 </div>
-
                 <div className="flex shrink-0 flex-wrap items-center justify-end gap-1.5 sm:gap-2">
-                  <Button variant="outline" className="h-7 sm:h-10 rounded-xl sm:rounded-2xl bg-white/70 hover:bg-white text-xs sm:text-sm px-2 sm:px-4" onClick={() => setScreen("A")} type="button">
-                    {t.misc.openPicker}
-                  </Button>
-
-                  {/* Кнопка "Сравнить" — активна только когда выбрано ≥2 вод */}
-                  <Button 
-                    className={`h-7 sm:h-10 rounded-xl sm:rounded-2xl text-xs sm:text-sm px-2 sm:px-4 ${selected.length >= 2 ? 'bg-slate-900 text-white hover:bg-slate-800' : 'bg-slate-200 text-slate-400 cursor-not-allowed'}`} 
-                    onClick={() => {
-                      if (selected.length >= 2) {
-                        setScreen("B");
-                        onCompare();
-                      }
-                    }} 
-                    type="button"
-                  >
-                    {t.actions.compare}
-                  </Button>
-
-                  {/* Кнопка "Отчёт" — активна только после перехода на вкладку "Сравнение" */}
-                  <Button 
-                    className={`h-7 sm:h-10 rounded-xl sm:rounded-2xl text-xs sm:text-sm px-2 sm:px-4 ${screen === "B" || screen === "C" ? 'bg-slate-900 text-white hover:bg-slate-800' : 'bg-slate-200 text-slate-400 cursor-not-allowed'}`} 
-                    onClick={() => {
-                      if (screen === "B" || screen === "C") {
-                        setScreen("C");
-                      }
-                    }} 
-                    type="button"
-                    disabled={!(screen === "B" || screen === "C")}
-                  >
-                    📊 {t.screenC}
-                  </Button>
-
-                  <Button variant="outline" className="h-7 sm:h-10 rounded-xl sm:rounded-2xl bg-white/70 hover:bg-white text-xs sm:text-sm px-2 sm:px-4" onClick={clear} type="button" disabled={!selected.length}>
-                    <RotateCcw className="mr-0.5 sm:mr-2 h-3 w-3 sm:h-4 sm:w-4" />
-                    {t.actions.clear}
-                  </Button>
+                  <Button variant="outline" className="h-7 sm:h-10 rounded-xl sm:rounded-2xl bg-white/70 hover:bg-white text-xs sm:text-sm px-2 sm:px-4" onClick={() => setScreen("A")} type="button">{t.misc.openPicker}</Button>
+                  <Button className={`h-7 sm:h-10 rounded-xl sm:rounded-2xl text-xs sm:text-sm px-2 sm:px-4 ${selected.length >= 2 ? 'bg-slate-900 text-white hover:bg-slate-800' : 'bg-slate-200 text-slate-400 cursor-not-allowed'}`} onClick={() => { if (selected.length >= 2) { setScreen("B"); onCompare(); } }} type="button">{t.actions.compare}</Button>
+                  <Button className={`h-7 sm:h-10 rounded-xl sm:rounded-2xl text-xs sm:text-sm px-2 sm:px-4 ${screen === "B" || screen === "C" ? 'bg-slate-900 text-white hover:bg-slate-800' : 'bg-slate-200 text-slate-400 cursor-not-allowed'}`} onClick={() => { if (screen === "B" || screen === "C") { setScreen("C"); } }} type="button" disabled={!(screen === "B" || screen === "C")}>📊 {t.screenC}</Button>
+                  <Button variant="outline" className="h-7 sm:h-10 rounded-xl sm:rounded-2xl bg-white/70 hover:bg-white text-xs sm:text-sm px-2 sm:px-4" onClick={clear} type="button" disabled={!selected.length}><RotateCcw className="mr-0.5 sm:mr-2 h-3 w-3 sm:h-4 sm:w-4" />{t.actions.clear}</Button>
                 </div>
               </div>
             </div>
           </div>
         </div>
 
-        {/* Детальная карточка воды */}
         {selectedWaterDetail && (
-          <WaterDetailModal 
-            w={selectedWaterDetail} 
-            onClose={() => setSelectedWaterDetail(null)} 
-          />
+          <WaterDetailModal w={selectedWaterDetail} onClose={() => setSelectedWaterDetail(null)} />
         )}
       </TooltipProvider>
     </LangCtx.Provider>
