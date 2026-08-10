@@ -467,6 +467,7 @@ function scoreWater(w) {
   return { score: Math.round(finalScore * 10) / 10, category: computeCategory(w), coverageCount: cov.count, coverageTotal: cov.total, missingCount: cov.total - cov.count, presentCount };
 }
 
+// ============== ИСПРАВЛЕННАЯ ФУНКЦИЯ getProfileScore ==============
 function getProfileScore(w, profile) {
   const baseScore = scoreWater(w).score;
   
@@ -474,44 +475,43 @@ function getProfileScore(w, profile) {
   const cov = dataCoverage(w);
   const missingPenalty = (cov.total - cov.count) * 8;
   
+  // Штраф за газированную воду в некоторых профилях
+  let sparklingPenalty = 0;
+  if (w.sparkling === true) {
+    if (profile === "Kid") sparklingPenalty = 30; // Детям газировка не рекомендуется
+    if (profile === "Sensitive") sparklingPenalty = 25; // При ЖКТ газировка раздражает
+    if (profile === "Everyday") sparklingPenalty = 10; // Для ежедневного тоже не лучший выбор
+  }
+  
+  // Штраф за лечебную воду в обычных профилях
+  let therapeuticPenalty = 0;
+  const category = computeCategory(w);
+  if (category === "Therapeutic") {
+    if (profile === "Everyday") therapeuticPenalty = 40;
+    if (profile === "Kid") therapeuticPenalty = 50;
+    if (profile === "Sport") therapeuticPenalty = 30;
+  }
+  
   let profileWeights = { ca: 1.0, mg: 1.0, k: 0.8, na: 1.2, cl: 1.0, ph: 0.4, tds: 0.6 };
   
-  // Профиль "Детский" (3-10 лет) — по рекомендациям ВОЗ
+  // Профиль "Детский" (3-10 лет)
   if (profile === "Kid") {
     profileWeights = {
-      ca: 1.2,
-      mg: 1.2,
-      k: 0.6,
-      na: 3.0,
-      cl: 1.5,
-      ph: 0.5,
-      tds: 2.5,
+      ca: 1.2, mg: 1.2, k: 0.6, na: 3.0, cl: 1.5, ph: 0.5, tds: 2.5,
     };
   }
   
-  // Профиль "Спорт" — по рекомендациям ВОЗ для спортсменов
+  // Профиль "Спорт"
   if (profile === "Sport") {
     profileWeights = {
-      ca: 1.5,
-      mg: 2.0,
-      k: 2.0,
-      na: 2.5,
-      cl: 1.5,
-      ph: 0.6,
-      tds: 1.5,
+      ca: 1.5, mg: 2.0, k: 2.0, na: 2.5, cl: 1.5, ph: 0.6, tds: 1.5,
     };
   }
   
   // Профиль "Чувствительный ЖКТ"
   if (profile === "Sensitive") {
     profileWeights = {
-      ca: 0.8,
-      mg: 0.8,
-      k: 1.0,
-      na: 2.5,
-      cl: 1.5,
-      ph: 2.0,
-      tds: 2.0,
+      ca: 0.8, mg: 0.8, k: 1.0, na: 2.5, cl: 1.5, ph: 2.0, tds: 2.0,
     };
   }
   
@@ -574,11 +574,91 @@ function getProfileScore(w, profile) {
     }
   }
   
-  if (totalWeight === 0) return baseScore - missingPenalty;
+  if (totalWeight === 0) return baseScore - missingPenalty - sparklingPenalty - therapeuticPenalty;
   
   const profileScore = weightedScore / totalWeight;
   
-  return baseScore * 0.3 + profileScore * 0.7 - missingPenalty;
+  return baseScore * 0.3 + profileScore * 0.7 - missingPenalty - sparklingPenalty - therapeuticPenalty;
+}
+
+// ============== ИСПРАВЛЕННАЯ ФУНКЦИЯ computeCategory ==============
+function computeCategory(w) {
+  const tds = w.tds_mg_l ?? null;
+  const na = w.na_mg_l ?? null;
+  const ca = w.ca_mg_l ?? null;
+  const mg = w.mg_mg_l ?? null;
+  const cl = w.cl_mg_l ?? null;
+  
+  if (w.group === "Therapeutic") return "Therapeutic";
+  
+  // Лечебная только при сильном отклонении (>200% от нормы)
+  const naDeviation = na !== null ? (na * 2) / REF.na : 0;
+  const tdsDeviation = tds !== null ? tds / REF.tds : 0;
+  const caDeviation = ca !== null ? (ca * 2) / REF.ca : 0;
+  const mgDeviation = mg !== null ? (mg * 2) / REF.mg : 0;
+  const clDeviation = cl !== null ? (cl * 2) / REF.cl : 0;
+  
+  // Если хотя бы один показатель превышает 200% от нормы — лечебная
+  if (naDeviation > 2 || tdsDeviation > 2 || caDeviation > 2 || mgDeviation > 2 || clDeviation > 2) {
+    return "Therapeutic";
+  }
+  
+  // Если TDS > 1000 или Na > 100 — лечебная
+  if ((tds !== null && tds >= 1500) || (na !== null && na >= 200)) return "Therapeutic";
+  
+  // Если TDS > 500 или Na > 50 — чередовать
+  if ((tds !== null && tds >= 500) || (na !== null && na >= 50)) return "Rotate";
+  
+  if (tds === null && na === null) return "Unknown";
+  return "Daily";
+}
+
+// ============== ДОБАВЛЯЕМ РАДАРНУЮ ДИАГРАММУ ДЛЯ ПОБЕДИТЕЛЯ ==============
+// Устанавливаем recharts для радара:
+// npm install recharts
+
+// В компоненте ReportAccordion добавляем радар:
+import { Radar, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, ResponsiveContainer } from 'recharts';
+
+// Внутри ReportAccordion:
+{winner && (
+  <div>
+    <div className="text-xs sm:text-sm font-medium text-slate-600 mb-1.5 sm:mb-2">
+      {lang === "ru" ? `Лучший выбор для профиля "${t.profiles[profile].toLowerCase()}"` : `Best choice for "${t.profiles[profile].toLowerCase()}" profile`}
+    </div>
+    <div className="grid gap-4 md:grid-cols-2">
+      <WaterProfileCard w={winner} profile={profile} rank={1} isWinner={true} />
+      
+      {/* Радарная диаграмма */}
+      <div className={`${GLASS.card} p-4 h-[300px]`}>
+        <h4 className="text-sm font-semibold text-slate-900 mb-2 text-center">
+          {lang === "ru" ? "Профиль минералов" : "Mineral profile"}
+        </h4>
+        <ResponsiveContainer width="100%" height="100%">
+          <RadarChart data={[
+            { metric: "Ca", value: normalizeValue(winner.ca_mg_l, REF.ca) },
+            { metric: "Mg", value: normalizeValue(winner.mg_mg_l, REF.mg) },
+            { metric: "Na", value: normalizeValue(winner.na_mg_l, REF.na) },
+            { metric: "Cl", value: normalizeValue(winner.cl_mg_l, REF.cl) },
+            { metric: "K", value: normalizeValue(winner.k_mg_l, REF.k) },
+            { metric: "TDS", value: normalizeValue(winner.tds_mg_l, REF.tds) },
+          ]}>
+            <PolarGrid />
+            <PolarAngleAxis dataKey="metric" />
+            <PolarRadiusAxis domain={[0, 100]} />
+            <Radar name={winner.brand_name} dataKey="value" stroke="#38BDF8" fill="#38BDF8" fillOpacity={0.6} />
+          </RadarChart>
+        </ResponsiveContainer>
+      </div>
+    </div>
+  </div>
+)}
+
+// Вспомогательная функция для нормализации значений (0-100%)
+function normalizeValue(value, ref) {
+  if (value === null || value === undefined) return 0;
+  const normalized = (value / ref) * 100;
+  return Math.min(normalized, 100);
 }
 
 function compareForRanking(a, b, profile) {
