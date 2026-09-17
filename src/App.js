@@ -18,7 +18,7 @@ import {
   importWaters,
   login as apiLogin,
   updateWater,
-} from "./api";
+} from "./water-api";
 
 // ============== UI КОМПОНЕНТЫ ==============
 const Button = ({ children, variant, className, onClick, disabled, type = "button" }) => (
