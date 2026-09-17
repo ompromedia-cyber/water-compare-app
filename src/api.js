@@ -1,92 +1,61 @@
-// src/api.js
-const API_BASE = process.env.REACT_APP_API_URL || 'https://ваш-api.vercel.app/api';
+const API_BASE = process.env.REACT_APP_API_URL;
 
 function getToken() {
-  try {
-    return localStorage.getItem('admin_token');
-  } catch (e) {
-    return null;
+  return localStorage.getItem("admin_token");
+}
+
+async function request(path, options = {}) {
+  if (!API_BASE) {
+    throw new Error("REACT_APP_API_URL is not configured");
   }
+
+  const response = await fetch(`${API_BASE}${path}`, options);
+  if (!response.ok) {
+    throw new Error(`Request failed: ${response.status}`);
+  }
+
+  return response.status === 204 ? null : response.json();
 }
 
-// Получить все воды
-export async function fetchWaters() {
-  const res = await fetch(`${API_BASE}/waters`);
-  if (!res.ok) throw new Error('Failed to fetch waters');
-  return res.json();
-}
+export const fetchWaters = () => request("/waters");
 
-// Добавить воду
-export async function createWater(water) {
-  const res = await fetch(`${API_BASE}/waters`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${getToken()}`
-    },
-    body: JSON.stringify(water)
+export const createWater = (water) =>
+  request("/waters", {
+    method: "POST",
+    headers: { "Content-Type": "application/json", Authorization: `Bearer ${getToken()}` },
+    body: JSON.stringify(water),
   });
-  if (!res.ok) throw new Error('Failed to create water');
-  return res.json();
-}
 
-// Обновить воду
-export async function updateWater(id, water) {
-  const res = await fetch(`${API_BASE}/waters/${id}`, {
-    method: 'PUT',
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${getToken()}`
-    },
-    body: JSON.stringify(water)
+export const updateWater = (id, water) =>
+  request(`/waters/${id}`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json", Authorization: `Bearer ${getToken()}` },
+    body: JSON.stringify(water),
   });
-  if (!res.ok) throw new Error('Failed to update water');
-  return res.json();
-}
 
-// Удалить воду
-export async function deleteWater(id) {
-  const res = await fetch(`${API_BASE}/waters/${id}`, {
-    method: 'DELETE',
-    headers: {
-      'Authorization': `Bearer ${getToken()}`
-    }
+export const deleteWater = (id) =>
+  request(`/waters/${id}`, {
+    method: "DELETE",
+    headers: { Authorization: `Bearer ${getToken()}` },
   });
-  if (!res.ok) throw new Error('Failed to delete water');
-  return res.json();
-}
 
-// Импорт массива вод
-export async function importWaters(waters) {
-  const res = await fetch(`${API_BASE}/waters/import`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${getToken()}`
-    },
-    body: JSON.stringify({ waters })
+export const importWaters = (waters) =>
+  request("/waters/import", {
+    method: "POST",
+    headers: { "Content-Type": "application/json", Authorization: `Bearer ${getToken()}` },
+    body: JSON.stringify({ waters }),
   });
-  if (!res.ok) throw new Error('Failed to import');
-  return res.json();
-}
 
-// Авторизация
 export async function login(login, password) {
-  const res = await fetch(`${API_BASE}/auth/login`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ login, password })
+  const data = await request("/auth/login", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ login, password }),
   });
-  if (!res.ok) throw new Error('Invalid credentials');
-  const data = await res.json();
-  localStorage.setItem('admin_token', data.token);
+  localStorage.setItem("admin_token", data.token);
   return data;
 }
 
 export function logout() {
-  localStorage.removeItem('admin_token');
-}
-
-export function isAuthenticated() {
-  return !!getToken();
+  localStorage.removeItem("admin_token");
 }
