@@ -43,6 +43,14 @@ import {
   PolarAngleAxis,
   PolarRadiusAxis,
 } from "recharts";
+import {
+  createWater,
+  deleteWater as deleteWaterFromApi,
+  fetchWaters,
+  importWaters,
+  login as apiLogin,
+  updateWater,
+} from "./api";
 
 // ============== UI КОМПОНЕНТЫ ==============
 const Button = ({ children, variant, className, onClick, disabled, type = "button" }) => (
@@ -271,12 +279,6 @@ const CHART_COLORS = ["#38BDF8", "#34D399", "#FBBF24", "#FB7185", "#A78BFA"];
 
 const LangCtx = React.createContext("ru");
 const ADMIN_PATH = '/admin';
-
-// Конфигурация администратора (пароль зашифрован в base64)
-const ADMIN_CREDENTIALS = {
-  login: 'admin',
-  passwordHash: 'd2F0ZXIxMjM=',
-};
 
 // ============== ЛОКАЛИЗАЦИЯ ==============
 const I18N = {
@@ -731,16 +733,15 @@ function AdminLogin({ onLogin }) {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    const enteredHash = btoa(password);
-    if (login === ADMIN_CREDENTIALS.login && enteredHash === ADMIN_CREDENTIALS.passwordHash) {
+    setError("");
+
+    try {
+      await apiLogin(login, password);
+      localStorage.setItem("admin_session", "true");
       onLogin(true);
-      setError('');
-      try {
-        localStorage.setItem('admin_session', 'true');
-      } catch (e) {}
-    } else {
+    } catch {
       setError(lang === "ru" ? "Неверный логин или пароль" : "Invalid login or password");
     }
   };
@@ -792,9 +793,6 @@ function AdminLogin({ onLogin }) {
           <Button type="submit" className="w-full h-10 rounded-xl sm:rounded-2xl">
             {lang === "ru" ? "Войти" : "Login"}
           </Button>
-          <div className="text-xs text-slate-400 text-center mt-2">
-            {lang === "ru" ? "По умолчанию: admin / water123" : "Default: admin / water123"}
-          </div>
         </form>
       </div>
     </div>
@@ -866,7 +864,7 @@ function AdminPanel({ waters, onUpdateWaters, onClose }) {
     });
   };
 
-  const saveWater = () => {
+  const saveWater = async () => {
     const newWater = {
       id: formData.id || `water_${Date.now()}`,
       brand_name: formData.brand_name.trim(),
@@ -891,34 +889,34 @@ function AdminPanel({ waters, onUpdateWaters, onClose }) {
       return;
     }
 
-    let updatedWaters;
-    if (editingId) {
-      updatedWaters = waters.map(w => w.id === editingId ? normalizeWater(newWater) : w);
-    } else {
-      const existing = waters.find(w => w.id === newWater.id);
-      if (existing) {
-        alert(lang === "ru" ? "Марка с таким ID уже существует" : "Water with this ID already exists");
-        return;
-      }
-      updatedWaters = [...waters, normalizeWater(newWater)];
-    }
-
-    onUpdateWaters(updatedWaters);
     try {
-      localStorage.setItem('water_expert_waters', JSON.stringify(updatedWaters));
-    } catch (e) {}
-    
-    resetForm();
-    alert(lang === "ru" ? "Сохранено!" : "Saved!");
+      const payload = {
+        ...newWater,
+        flag_emoji: safeCountryFlag(newWater.country_code),
+        category: computeCategory(newWater),
+      };
+      if (editingId) {
+        await updateWater(editingId, payload);
+      } else {
+        await createWater(payload);
+      }
+      const freshWaters = await fetchWaters();
+      onUpdateWaters(freshWaters.map(normalizeWater));
+      resetForm();
+      alert(lang === "ru" ? "Сохранено в базе данных!" : "Saved to the database!");
+    } catch {
+      alert(lang === "ru" ? "Не удалось сохранить изменения в базе данных" : "Could not save changes to the database");
+    }
   };
 
-  const deleteWater = (id) => {
-    if (window.confirm(lang === "ru" ? "Удалить эту марку?" : "Delete this water?")) {
-      const updated = waters.filter(w => w.id !== id);
-      onUpdateWaters(updated);
-      try {
-        localStorage.setItem('water_expert_waters', JSON.stringify(updated));
-      } catch (e) {}
+  con  const deleteWater = async (id) => {
+    if (!window.confirm(lang === "ru" ? "Удалить эту марку?" : "Delete this water?")) return;
+
+    try {
+      await deleteWaterFromApi(id);
+      onUpdateWaters(waters.filter((water) => water.id !== id));
+    } catch {
+      alert(lang === "ru" ? "Не удалось удалить марку из базы данных" : "Could not delete the water from the database");
     }
   };
 
@@ -1597,21 +1595,33 @@ export default function App() {
   const [mode, setMode] = useState("consumer");
   const [profile, setProfile] = useState("Everyday");
   const [screen, setScreen] = useState("A");
-  const [waters, setWaters] = useState(() => {
-    try {
-      const saved = localStorage.getItem('water_expert_waters');
-      if (saved) {
-        const parsed = JSON.parse(saved);
-        if (parsed.length > 0) return parsed;
-      }
-    } catch (e) {}
-    return SEED;
-  });
+  const [waters, setWaters] = useState([]);
+  const [isLoadingWaters, setIsLoadingWaters] = useState(true);
+  const [watersError, setWatersError] = useState("");
   const [selectedIds, setSelectedIds] = useState([]);
   const [reportCompact, setReportCompact] = useState(true);
   const [showAdmin, setShowAdmin] = useState(false);
   const [isAuthorized, setIsAuthorized] = useState(false);
   const [selectedWaterDetail, setSelectedWaterDetail] = useState(null);
+
+  useEffect(() => {
+    let active = true;
+
+    fetchWaters()
+      .then((rows) => {
+        if (active) setWaters(rows.map(normalizeWater));
+      })
+      .catch(() => {
+        if (active) setWatersError("Не удалось загрузить марки воды из базы данных.");
+      })
+      .finally(() => {
+        if (active) setIsLoadingWaters(false);
+      });
+
+    return () => {
+      active = false;
+    };
+  }, []);
 
   const t = I18N[lang];
 
@@ -1655,7 +1665,23 @@ export default function App() {
   const clear = () => setSelectedIds([]);
   const canCompare = selected.length >= 2;
   const onCompare = () => { if (!canCompare) return; setScreen("B"); };
-  const onMerge = incoming => setWaters(prev => mergeById(prev, incoming));
+  const onMerge = async (incoming) => {
+    try {
+      await importWaters(incoming);
+      const rows = await fetchWaters();
+      setWaters(rows.map(normalizeWater));
+    } catch {
+      alert(lang === "ru" ? "Не удалось импортировать данные в базу" : "Could not import data into the database");
+    }
+  };
+
+  if (isLoadingWaters) {
+    return <div className={`${GLASS.page} flex min-h-screen items-center justify-center`}>Загрузка марок воды…</div>;
+  }
+
+  if (watersError) {
+    return <div className={`${GLASS.page} flex min-h-screen items-center justify-center p-6 text-center`}>{watersError}</div>;
+  }
 
   if (showAdmin) {
     return (
