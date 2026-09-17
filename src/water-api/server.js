@@ -1,26 +1,26 @@
-const express = require('express');
-const cors = require('cors');
-require('dotenv').config();
-
-const watersRouter = require('./routes/waters');
-const authRouter = require('./routes/auth');
+const express = require("express");
+const cors = require("cors");
+const watersRouter = require("./routes/waters");
+const authRouter = require("./routes/auth");
 
 const app = express();
+const allowedOrigins = (process.env.FRONTEND_ORIGIN || "")
+  .split(",")
+  .map((origin) => origin.trim())
+  .filter(Boolean);
 
 app.use(cors({
-  origin: ['https://ompromedia-cyber-water-compare-app-4fdf.twc1.net', 'http://localhost:3000'],
-  credentials: true
+  origin(origin, callback) {
+    if (!origin || allowedOrigins.includes(origin)) return callback(null, true);
+    return callback(new Error("Origin is not allowed by CORS"));
+  },
+  credentials: true,
 }));
-app.use(express.json({ limit: '10mb' }));
+app.use(express.json({ limit: "1mb" }));
 
-app.use('/api/waters', watersRouter);
-app.use('/api/auth', authRouter);
+app.use("/api/waters", watersRouter);
+app.use("/api/auth", authRouter);
+app.get("/api/health", (_req, res) => res.json({ status: "ok" }));
 
-app.get('/api/health', (req, res) => {
-  res.json({ status: 'ok', timestamp: new Date().toISOString() });
-});
-
-const PORT = process.env.PORT || 3001;
-app.listen(PORT, () => {
-  console.log(`✅ Water Expert API запущен на порту ${PORT}`);
-});
+const port = Number(process.env.PORT || 3001);
+app.listen(port, () => console.log(`Water Expert API listening on ${port}`));
