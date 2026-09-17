@@ -1509,4 +1509,24 @@ function ReportAccordion({ selected, profile, compact, onToggleCompact }) {
       )}
     </div>
   );
-}                
+}
+
+function App() {
+  return (
+    <LangCtx.Provider value="ru">
+      <main className={GLASS.page}>
+        <div className="mx-auto flex min-h-screen max-w-5xl items-center justify-center p-6">
+          <section className={`${GLASS.card} w-full max-w-xl p-8 text-center`}>
+            <div className="text-4xl">💧</div>
+            <h1 className="mt-4 text-2xl font-semibold">Water Expert</h1>
+            <p className="mt-2 text-slate-600">
+              Сервис сравнения минеральной воды готов к работе.
+            </p>
+          </section>
+        </div>
+      </main>
+    </LangCtx.Provider>
+  );
+}
+
+export default App;
