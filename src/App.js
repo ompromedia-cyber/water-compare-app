@@ -2529,6 +2529,7 @@ export default function App() {
   const [showAdmin, setShowAdmin] = useState(false);
   const [isAuthorized, setIsAuthorized] = useState(false);
   const [selectedWaterDetail, setSelectedWaterDetail] = useState(null);
+  const [hasCompared, setHasCompared] = useState(false);
 
   const t = I18N[lang];
 
@@ -2589,10 +2590,18 @@ export default function App() {
       if (prev.length >= 5) return prev;
       return [...prev, w.id];
     });
+    setHasCompared(false);
   };
 
-  const removeFromCompare = (id) => setSelectedIds((prev) => prev.filter((x) => x !== id));
-  const clear = () => setSelectedIds([]);
+  const removeFromCompare = (id) => {
+  setSelectedIds((prev) => prev.filter((x) => x !== id));
+  setHasCompared(false);
+};
+  const clear = () => {
+  setSelectedIds([]);
+  setHasCompared(false);
+  setScreen("A"); // возвращаемся на вкладку выбора
+};
   const canCompare = selected.length >= 2;
 
   const onMerge = async (incoming) => {
@@ -2731,7 +2740,7 @@ export default function App() {
                   <TabsList className="rounded-2xl bg-white/70">
                     <TabsTrigger value="A">{t.screenA}</TabsTrigger>
                     <TabsTrigger value="B" disabled={!canCompare}>{t.screenB}</TabsTrigger>
-                    <TabsTrigger value="C" disabled={!canCompare}>{t.screenC}</TabsTrigger>
+                    <TabsTrigger value="C" disabled={!canCompare || !hasCompared}>{t.screenC}</TabsTrigger>
                     <TabsTrigger value="D" disabled={!canCompare}>{t.screenD}</TabsTrigger>
                   </TabsList>
 
@@ -2804,35 +2813,45 @@ export default function App() {
 
                   {/* Сравнить — неактивна, если мы уже на вкладке B или <2 вод */}
                   <Button
-                    className={`h-9 rounded-xl text-xs sm:text-sm px-3 sm:px-4 ${
-                      canCompare && screen !== "B"
-                        ? "bg-slate-900 text-white hover:bg-slate-800"
-                        : "bg-slate-200 text-slate-400 cursor-not-allowed"
-                    }`}
-                    onClick={() => {
-                      if (canCompare && screen !== "B") setScreen("B");
-                    }}
-                    disabled={!canCompare || screen === "B"}
-                    type="button"
-                  >
-                    {screen === "B" ? `✓ ${t.actions.compare}` : t.actions.compare}
-                  </Button>
+  className={`h-9 rounded-xl text-xs sm:text-sm px-3 sm:px-4 ${
+    canCompare && screen !== "B"
+      ? "bg-slate-900 text-white hover:bg-slate-800"
+      : "bg-slate-200 text-slate-400 cursor-not-allowed"
+  }`}
+  onClick={() => {
+    if (canCompare && screen !== "B") {
+      setScreen("B");
+      setHasCompared(true); // ✅ включаем «Отчёт»
+    }
+  }}
+  disabled={!canCompare || screen === "B"}
+  type="button"
+>
+  {screen === "B" ? `✓ ${t.actions.compare}` : t.actions.compare}
+</Button>
 
                   {/* Отчёт — активна, если ≥2 вод и мы не на вкладке C */}
-                  <Button
-                    className={`h-9 rounded-xl text-xs sm:text-sm px-3 sm:px-4 ${
-                      canCompare && screen !== "C"
-                        ? "bg-slate-900 text-white hover:bg-slate-800"
-                        : "bg-slate-200 text-slate-400 cursor-not-allowed"
-                    }`}
-                    onClick={() => {
-                      if (canCompare && screen !== "C") setScreen("C");
-                    }}
-                    disabled={!canCompare || screen === "C"}
-                    type="button"
-                  >
-                    {screen === "C" ? `✓ ${t.screenC}` : `📊 ${t.screenC}`}
-                  </Button>
+                 <Button
+  className={`h-9 rounded-xl text-xs sm:text-sm px-3 sm:px-4 ${
+    hasCompared && canCompare && screen !== "C"
+      ? "bg-slate-900 text-white hover:bg-slate-800"
+      : "bg-slate-200 text-slate-400 cursor-not-allowed"
+  }`}
+  onClick={() => {
+    if (hasCompared && canCompare && screen !== "C") setScreen("C");
+  }}
+  disabled={!hasCompared || !canCompare || screen === "C"}
+  type="button"
+  title={
+    !hasCompared
+      ? (lang === "ru"
+          ? "Сначала нажмите «Сравнить»"
+          : "First click «Compare»")
+      : undefined
+  }
+>
+  {screen === "C" ? `✓ ${t.screenC}` : `📊 ${t.screenC}`}
+</Button>
 
                   <Button
                     variant="outline"
