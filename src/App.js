@@ -1144,7 +1144,7 @@ function AdminPanel({ waters, onUpdateWaters, onClose }) {
 // ============== ДЕТАЛЬНАЯ КАРТОЧКА ВОДЫ ==============
 function WaterDetailModal({ w, onClose }) {
   const lang = React.useContext(LangCtx);
-  const scoreData = { ...scoreWater(w), score: getProfileScore(w, profile) };
+  const scoreData = scoreWater(w);
   const cov = dataCoverage(w);
 
   const allMetrics = [
@@ -1407,7 +1407,7 @@ function ScoreBar({ score }) {
 // ============== КАРТОЧКИ ВОД ==============
 function WaterProfileCard({ w, profile, rank, isWinner }) {
   const lang = React.useContext(LangCtx);
-  const scoreData = scoreWater(w);
+  const scoreData = { ...scoreWater(w), score: getProfileScore(w, profile) };
   const cov = dataCoverage(w);
   const metrics = [
     { key: "ph", label: "pH", value: w.ph ?? null, digits: 1 },
