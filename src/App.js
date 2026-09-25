@@ -53,7 +53,7 @@ const GlassCard = ({ className, children, onClick, isSelected }) => (
 const TabsContext = React.createContext({});
 const Tabs = ({ value, onValueChange, children }) => (
   <TabsContext.Provider value={{ value, onValueChange }}>
-    <div className="tabs">{children}</div>
+    <div className="tabs" role="tablist">{children}</div>
   </TabsContext.Provider>
 );
 const TabsList = ({ className, children }) => (
@@ -64,9 +64,11 @@ const TabsTrigger = ({ value, disabled, children }) => {
   const isSelected = selectedValue === value;
   return (
     <button
+      role="tab"
+      aria-selected={isSelected}
       className={`px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg sm:rounded-xl text-xs sm:text-sm font-medium transition-all ${
         isSelected ? "bg-white shadow-sm" : "hover:bg-white/50"
-      } ${disabled ? "opacity-50 cursor-not-allowed" : ""}`}
+      } ${disabled ? "opacity-50 cursor-not-allowed" : ""}`
       onClick={() => !disabled && onValueChange(value)}
       disabled={disabled}
     >
@@ -328,6 +330,35 @@ function parseNumLoose(v) {
   const n = Number(s);
   return Number.isFinite(n) ? n : null;
 }
+
+function normalizeSearchText(value) {
+  return String(value ?? "")
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/ё/g, "е")
+    .replace(/[^a-zа-я0-9]+/g, "");
+}
+
+const RU_TO_LATIN = {
+  а:"a", б:"b", в:"v", г:"g", д:"d", е:"e", ё:"e", ж:"zh", з:"z", и:"i", й:"y",
+  к:"k", л:"l", м:"m", н:"n", о:"o", п:"p", р:"r", с:"s", т:"t", у:"u", ф:"f",
+  х:"h", ц:"ts", ч:"ch", ш:"sh", щ:"shch", ъ:"", ы:"y", ь:"", э:"e", ю:"yu", я:"ya"
+};
+
+function transliterateRu(value) {
+  return normalizeSearchText(value).split("").map((ch) => RU_TO_LATIN[ch] ?? ch).join("");
+}
+
+function searchMatchesWater(w, query) {
+  const q = normalizeSearchText(query);
+  if (!q) return true;
+  const brand = normalizeSearchText(w.brand_name);
+  const translit = transliterateRu(w.brand_name);
+  const qTranslit = transliterateRu(query);
+  return brand.includes(q) || brand.includes(qTranslit) || translit.includes(q) || translit.includes(qTranslit);
+}
+
 function toBoolLoose(v) {
   const s = String(v ?? "").trim().toLowerCase();
   if (!s) return null;
@@ -592,8 +623,7 @@ function pickWinnerDaily(selected, profile) {
     const scoreB = getProfileScore(b, profile);
     return scoreB - scoreA;
   });
-  const nonThera = sorted.filter((w) => computeCategory(w) !== "Therapeutic");
-  return nonThera.length > 0 ? nonThera[0] : sorted[0];
+  return sorted[0];
 }
 
 // ============== ПАРСЕРЫ ==============
@@ -1114,7 +1144,7 @@ function AdminPanel({ waters, onUpdateWaters, onClose }) {
 // ============== ДЕТАЛЬНАЯ КАРТОЧКА ВОДЫ ==============
 function WaterDetailModal({ w, onClose }) {
   const lang = React.useContext(LangCtx);
-  const scoreData = scoreWater(w);
+  const scoreData = { ...scoreWater(w), score: getProfileScore(w, profile) };
   const cov = dataCoverage(w);
 
   const allMetrics = [
@@ -1570,7 +1600,7 @@ function MetricsTable({ selected, profile, onWaterClick }) {
               </th>
               {rows.map((r) => (
                 <th key={r.key} className="w-20 px-2 py-2 border border-slate-300 font-medium text-center">
-                  {r.label}
+                  {r.label}{r.key !== "ph" ? <span className="block text-[9px] font-normal text-slate-500">мг/л</span> : null}
                 </th>
               ))}
               <th className="w-20 px-2 py-2 border border-slate-300 font-medium text-center">
@@ -1610,7 +1640,7 @@ function MetricsTable({ selected, profile, onWaterClick }) {
                     );
                   })}
                   <td className={`px-2 py-2 border border-slate-300 font-bold text-center ${isWinner ? "text-amber-600" : ""}`}>
-                    {scoreWater(w).score.toFixed(1)}
+                    {getProfileScore(w, profile).toFixed(1)}
                   </td>
                 </tr>
               );
@@ -1619,55 +1649,49 @@ function MetricsTable({ selected, profile, onWaterClick }) {
         </table>
       </div>
 
-      {/* Мобильные карточки */}
-      <div className="block sm:hidden space-y-3">
-        {sortedForProfile.map((w, idx) => {
-          const scoreData = scoreWater(w);
-          const isWinner = w.id === winnerId;
-          return (
-            <div
-              key={w.id}
-              className={`${GLASS.card} p-3 ${isWinner ? "ring-2 ring-amber-400" : ""} cursor-pointer`}
-              onClick={() => onWaterClick?.(w)}
-            >
-              <div className="flex items-center justify-between mb-2">
-                <div className="flex items-center gap-2">
-                  <span className="text-xl">{w.flag_emoji}</span>
-                  <div>
-                    <div className={`font-semibold text-sm ${isWinner ? "text-amber-600" : "text-slate-900"}`}>
-                      {w.brand_name} {isWinner && "🏆"}
-                    </div>
-                    <CategoryBadge cat={computeCategory(w)} />
-                  </div>
-                </div>
-                <div className="text-right">
-                  <div className="text-xs text-slate-600">Рейтинг</div>
-                  <div className={`text-lg font-bold ${isWinner ? "text-amber-600" : "text-slate-900"}`}>
-                    {scoreData.score.toFixed(1)}
-                  </div>
-                </div>
-              </div>
-              <div className="grid grid-cols-2 gap-1.5">
-                {rows.map((r) => {
-                  const v = r.getValue(w);
-                  const st = metricStatus(r.key, v);
-                  return (
-                    <div key={r.key} className={`${GLASS.subtle} flex items-center justify-between px-2 py-1.5`}>
-                      <span className="text-xs font-medium text-slate-700">{r.label}</span>
-                      <div className="flex items-center gap-1">
-                        <span className="text-xs font-semibold text-slate-900">
-                          {fmt(v, r.digits ?? 0)}
-                        </span>
-                        <MetricPill kind={st} />
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          );
-        })}
+      {/* Мобильная таблица: горизонтальный скролл + липкая колонка названий */}
+      <div className="block sm:hidden rounded-2xl border-2 border-slate-300 bg-white/55 overflow-x-auto">
+        <table className="min-w-[760px] w-full text-xs border-collapse">
+          <thead>
+            <tr className="bg-slate-100">
+              <th className="sticky left-0 z-20 min-w-[140px] px-2 py-2 border border-slate-300 text-left bg-slate-100">
+                {lang === "ru" ? "Название" : "Name"}
+              </th>
+              {rows.map((r) => (
+                <th key={r.key} className="min-w-[78px] px-2 py-2 border border-slate-300 text-center">
+                  {r.label}<span className="block text-[9px] font-normal text-slate-500">{r.key === "ph" ? "" : "мг/л"}</span>
+                </th>
+              ))}
+              <th className="min-w-[82px] px-2 py-2 border border-slate-300 text-center">{t.score.title}</th>
+            </tr>
+          </thead>
+          <tbody>
+            {sortedForProfile.map((w, idx) => {
+              const isWinner = w.id === winnerId;
+              return (
+                <tr key={w.id} onClick={() => onWaterClick?.(w)} className="cursor-pointer">
+                  <td className={`sticky left-0 z-10 min-w-[140px] px-2 py-2 border border-slate-300 font-medium bg-white ${isWinner ? "text-amber-600" : ""}`}>
+                    <span className="mr-1">{w.flag_emoji}</span>{w.brand_name}{isWinner && " 🏆"}
+                  </td>
+                  {rows.map((r) => {
+                    const v = r.getValue(w);
+                    return (
+                      <td key={r.key} className="px-2 py-2 border border-slate-300 text-center">
+                        <div className="font-semibold">{fmt(v, r.digits ?? 0)}</div>
+                        <MetricPill kind={metricStatus(r.key, v)} />
+                      </td>
+                    );
+                  })}
+                  <td className={`px-2 py-2 border border-slate-300 font-bold text-center ${isWinner ? "text-amber-600" : ""}`}>
+                    {getProfileScore(w, profile).toFixed(1)}
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
       </div>
+
     </div>
   );
 }
@@ -1679,7 +1703,7 @@ function WaterPicker({ waters, selectedIds, onToggle }) {
   const [query, setQuery] = useState("");
   const [group, setGroup] = useState("all");
   const [onlyVerified, setOnlyVerified] = useState(false);
-  const [tdsMax, setTdsMax] = useState(2000);
+  const [tdsMax, setTdsMax] = useState(null);
   const [selectedLetter, setSelectedLetter] = useState(null);
   const [noResultsMessage, setNoResultsMessage] = useState(null);
   const [currentPage, setCurrentPage] = useState(1);
@@ -1711,11 +1735,29 @@ function WaterPicker({ waters, selectedIds, onToggle }) {
     let result = sortedWaters
       .filter((w) => (group === "all" ? true : w.group === group))
       .filter((w) => (onlyVerified ? w.confidence_level === "high" : true))
-      .filter((w) => (w.tds_mg_l ?? 0) <= tdsMax);
-    if (q) result = result.filter((w) => w.brand_name.toLowerCase().includes(q));
+      .filter((w) => tdsMax === null || (w.tds_mg_l ?? 0) <= tdsMax);
+    if (q) result = result.filter((w) => searchMatchesWater(w, q));
     else if (selectedLetter) result = result.filter((w) => w.brand_name.charAt(0).toUpperCase() === selectedLetter);
     return result;
   }, [sortedWaters, query, group, onlyVerified, tdsMax, selectedLetter]);
+
+  const queryMatchesBeforeFilters = useMemo(() => {
+    const q = query.trim();
+    if (!q) return [];
+    return sortedWaters.filter((w) => searchMatchesWater(w, q));
+  }, [sortedWaters, query]);
+
+  const hasActiveFilters =
+    group !== "all" || onlyVerified || tdsMax !== null || Boolean(selectedLetter);
+
+  const resetAllFilters = () => {
+    setGroup("all");
+    setOnlyVerified(false);
+    setTdsMax(null);
+    setSelectedLetter(null);
+    setQuery("");
+    setNoResultsMessage(null);
+  };
 
   // Сброс страницы при смене фильтров
   useEffect(() => {
@@ -1740,11 +1782,7 @@ function WaterPicker({ waters, selectedIds, onToggle }) {
     setNoResultsMessage(null);
   };
 
-  const clearAllFilters = () => {
-    setSelectedLetter(null);
-    setQuery("");
-    setNoResultsMessage(null);
-  };
+  const clearAllFilters = resetAllFilters;
 
   const popularWaters = filtered.filter((w) => w.popular);
   const otherWaters = paginatedWaters.filter((w) => !w.popular);
@@ -1786,13 +1824,32 @@ function WaterPicker({ waters, selectedIds, onToggle }) {
               </DropdownMenuItem>
               <DropdownMenuSeparator />
               <div className="px-3 py-2">
-                <div className="mb-2 text-xs font-medium text-slate-600">{t.filters.tdsTo}: {tdsMax}</div>
-                <Slider value={[tdsMax]} onValueChange={(v) => setTdsMax(v[0] ?? 2000)} min={50} max={8000} step={50} />
+                <div className="mb-2 text-xs font-medium text-slate-600">{t.filters.tdsTo}: {tdsMax === null ? (lang === "ru" ? "без ограничения" : "no limit") : tdsMax}</div>
+                <Slider value={[tdsMax]} onValueChange={(v) => setTdsMax(v[0] ?? 8000)} min={50} max={8000} step={50} />
               </div>
             </DropdownMenuContent>
           </DropdownMenu>
+          {hasActiveFilters && (
+            <button
+              type="button"
+              onClick={resetAllFilters}
+              className="w-full sm:w-auto text-xs font-medium text-sky-700 bg-sky-50 border border-sky-200 rounded-xl px-3 py-2"
+            >
+              {lang === "ru" ? "Сбросить фильтры" : "Reset filters"}
+            </button>
+          )}
         </div>
       </div>
+
+      {hasActiveFilters && (
+        <div className="mt-3 flex flex-wrap items-center gap-2 text-xs text-slate-600">
+          <span className="font-medium">{lang === "ru" ? "Активные фильтры:" : "Active filters:"}</span>
+          {group !== "all" && <span className="px-2 py-1 rounded-xl border border-white/60 bg-white/60">{group}</span>}
+          {onlyVerified && <span className="px-2 py-1 rounded-xl border border-white/60 bg-white/60">Verified</span>}
+          {tdsMax !== null && <span className="px-2 py-1 rounded-xl border border-white/60 bg-white/60">TDS ≤ {tdsMax}</span>}
+          {selectedLetter && <span className="px-2 py-1 rounded-xl border border-white/60 bg-white/60">{selectedLetter}</span>}
+        </div>
+      )}
 
       {/* Алфавитная навигация */}
       {!query && (
@@ -1994,9 +2051,34 @@ function WaterPicker({ waters, selectedIds, onToggle }) {
         </div>
       )}
 
-      {filtered.length === 0 && !selectedLetter && !query && !noResultsMessage && (
-        <div className="mt-6 text-center text-sm text-slate-500 py-8">
-          Нет марок воды, соответствующих выбранным критериям
+      {filtered.length === 0 && (
+        <div className="mt-6 rounded-2xl border border-slate-200 bg-white/70 p-6 text-center">
+          <div className="font-medium text-slate-800">
+            {lang === "ru" ? "Ничего не найдено" : "Nothing found"}
+          </div>
+          {queryMatchesBeforeFilters.length > 0 ? (
+            <div className="mt-2 text-sm text-slate-600">
+              {lang === "ru"
+                ? `«${query}» есть в базе, но вода скрыта активными фильтрами.`
+                : `“${query}” exists in the database but is hidden by active filters.`}
+            </div>
+          ) : (
+            <div className="mt-2 text-sm text-slate-600">
+              {lang === "ru" ? "Измените запрос или сбросьте фильтры." : "Change the query or reset the filters."}
+            </div>
+          )}
+          <div className="mt-4 flex flex-wrap justify-center gap-2">
+            {hasActiveFilters && (
+              <Button variant="outline" onClick={resetAllFilters}>
+                {lang === "ru" ? "Сбросить фильтры" : "Reset filters"}
+              </Button>
+            )}
+            {query && (
+              <Button variant="outline" onClick={() => setQuery("")}>
+                {lang === "ru" ? "Очистить поиск" : "Clear search"}
+              </Button>
+            )}
+          </div>
         </div>
       )}
     </div>
@@ -2056,7 +2138,7 @@ function CompareChart({ selected }) {
       <div className="text-base sm:text-lg font-semibold text-slate-900 mb-3">
         {t.chart.title}
       </div>
-      <div className="h-[320px] sm:h-[440px] w-full">
+      <div className="h-[220px] sm:h-[300px] w-full">
         <ResponsiveContainer width="100%" height="100%">
           <ScatterChart margin={{ top: 20, right: 40, bottom: 20, left: 20 }}>
             <CartesianGrid strokeDasharray="3 3" />
@@ -2529,9 +2611,39 @@ export default function App() {
   const [showAdmin, setShowAdmin] = useState(false);
   const [isAuthorized, setIsAuthorized] = useState(false);
   const [selectedWaterDetail, setSelectedWaterDetail] = useState(null);
-  const [hasCompared, setHasCompared] = useState(false);
+
 
   const t = I18N[lang];
+
+  useEffect(() => {
+    try {
+      const params = new URLSearchParams(window.location.search);
+      const urlIds = (params.get("w") || "").split(",").map((x) => x.trim()).filter(Boolean);
+      const savedIds = JSON.parse(localStorage.getItem("water_selected_ids") || "[]");
+      const savedProfile = localStorage.getItem("water_profile");
+      const savedLang = localStorage.getItem("water_lang");
+      if (urlIds.length) setSelectedIds(urlIds.slice(0, 5));
+      else if (Array.isArray(savedIds)) setSelectedIds(savedIds.slice(0, 5));
+      if (["Everyday", "Sport", "Kid", "Sensitive"].includes(params.get("profile"))) setProfile(params.get("profile"));
+      else if (["Everyday", "Sport", "Kid", "Sensitive"].includes(savedProfile)) setProfile(savedProfile);
+      if (params.get("lang") === "ru" || params.get("lang") === "en") setLang(params.get("lang"));
+      else if (savedLang === "ru" || savedLang === "en") setLang(savedLang);
+    } catch (e) {}
+  }, []);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem("water_selected_ids", JSON.stringify(selectedIds));
+      localStorage.setItem("water_profile", profile);
+      localStorage.setItem("water_lang", lang);
+      const params = new URLSearchParams(window.location.search);
+      if (selectedIds.length) params.set("w", selectedIds.join(","));
+      else params.delete("w");
+      params.set("profile", profile);
+      params.set("lang", lang);
+      window.history.replaceState({}, "", `${window.location.pathname}?${params.toString()}${window.location.hash}`);
+    } catch (e) {}
+  }, [selectedIds, profile, lang]);
 
   // Загрузка с API
   useEffect(() => {
@@ -2590,7 +2702,7 @@ export default function App() {
       if (prev.length >= 5) return prev;
       return [...prev, w.id];
     });
-    setHasCompared(false);
+  
   };
 
   const removeFromCompare = (id) => {
@@ -2677,19 +2789,6 @@ export default function App() {
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
                       <Button variant="outline" className="h-9 rounded-xl bg-white/70 hover:bg-white inline-flex items-center" type="button">
-                        <Lock className="mr-2 h-4 w-4" />
-                        {t.modeLabel}: {t.modes[mode]}
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent>
-                      <DropdownMenuItem onClick={() => setMode("consumer")}>{t.modes.consumer}</DropdownMenuItem>
-                      <DropdownMenuItem onClick={() => setMode("pro")}>{t.modes.pro}</DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button variant="outline" className="h-9 rounded-xl bg-white/70 hover:bg-white inline-flex items-center" type="button">
                         <UserProfileIcon />
                         <span className="ml-2">{t.profileLabel}: {t.profiles[profile]}</span>
                       </Button>
@@ -2702,18 +2801,6 @@ export default function App() {
                       ))}
                     </DropdownMenuContent>
                   </DropdownMenu>
-
-                  <ImportDialog onMerge={onMerge} />
-                  <ScannerDialog
-                    onScanComplete={(scannedWater) => {
-                      setWaters((prev) => mergeById(prev, [scannedWater]));
-                      setSelectedIds((prev) => {
-                        if (prev.length >= 5) return prev;
-                        if (!prev.includes(scannedWater.id)) return [...prev, scannedWater.id];
-                        return prev;
-                      });
-                    }}
-                  />
 
                   <div
                     className={`ml-2 px-3 py-1 rounded-full text-xs font-medium ${
@@ -2740,7 +2827,7 @@ export default function App() {
                   <TabsList className="rounded-2xl bg-white/70">
                     <TabsTrigger value="A">{t.screenA}</TabsTrigger>
                     <TabsTrigger value="B" disabled={!canCompare}>{t.screenB}</TabsTrigger>
-                    <TabsTrigger value="C" disabled={!canCompare || !hasCompared}>{t.screenC}</TabsTrigger>
+                    <TabsTrigger value="C" disabled={!canCompare}>{t.screenC}</TabsTrigger>
                     <TabsTrigger value="D" disabled={!canCompare}>{t.screenD}</TabsTrigger>
                   </TabsList>
 
@@ -2821,7 +2908,7 @@ export default function App() {
   onClick={() => {
     if (canCompare && screen !== "B") {
       setScreen("B");
-      setHasCompared(true); // ✅ включаем «Отчёт»
+
     }
   }}
   disabled={!canCompare || screen === "B"}
@@ -2833,22 +2920,16 @@ export default function App() {
                   {/* Отчёт — активна, если ≥2 вод и мы не на вкладке C */}
                  <Button
   className={`h-9 rounded-xl text-xs sm:text-sm px-3 sm:px-4 ${
-    hasCompared && canCompare && screen !== "C"
+    canCompare && screen !== "C"
       ? "bg-slate-900 text-white hover:bg-slate-800"
       : "bg-slate-200 text-slate-400 cursor-not-allowed"
   }`}
   onClick={() => {
-    if (hasCompared && canCompare && screen !== "C") setScreen("C");
+    if (canCompare && screen !== "C") setScreen("C");
   }}
-  disabled={!hasCompared || !canCompare || screen === "C"}
+  disabled={!canCompare || screen === "C"}
   type="button"
-  title={
-    !hasCompared
-      ? (lang === "ru"
-          ? "Сначала нажмите «Сравнить»"
-          : "First click «Compare»")
-      : undefined
-  }
+  title={canCompare ? undefined : (lang === "ru" ? "Выберите минимум 2 воды" : "Select at least 2 waters")}
 >
   {screen === "C" ? `✓ ${t.screenC}` : `📊 ${t.screenC}`}
 </Button>
