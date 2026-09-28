@@ -68,7 +68,7 @@ const TabsTrigger = ({ value, disabled, children }) => {
       aria-selected={isSelected}
       className={`px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg sm:rounded-xl text-xs sm:text-sm font-medium transition-all ${
         isSelected ? "bg-white shadow-sm" : "hover:bg-white/50"
-      } ${disabled ? "opacity-50 cursor-not-allowed" : ""}`
+      } ${disabled ? "opacity-50 cursor-not-allowed" : ""}`}
       onClick={() => !disabled && onValueChange(value)}
       disabled={disabled}
     >
