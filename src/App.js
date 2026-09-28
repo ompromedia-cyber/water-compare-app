@@ -2686,13 +2686,18 @@ export default function App() {
       localStorage.setItem("water_profile", profile);
       localStorage.setItem("water_lang", lang);
       localStorage.setItem("water_screen", screen);
-      const params = new URLSearchParams(window.location.search);
-      if (selectedIds.length) params.set("w", selectedIds.join(","));
-      else params.delete("w");
-      params.set("profile", profile);
-      params.set("lang", lang);
-      params.set("screen", screen);
-      window.history.replaceState({}, "", `${window.location.pathname}?${params.toString()}${window.location.hash}`);
+      // Keep a clean homepage URL clean. Only synchronize app state into the URL
+      // when the page was opened with explicit query parameters (shared comparison link).
+      if (window.location.search) {
+        const params = new URLSearchParams(window.location.search);
+        if (selectedIds.length) params.set("w", selectedIds.join(","));
+        else params.delete("w");
+        params.set("profile", profile);
+        params.set("lang", lang);
+        params.set("screen", screen);
+        const query = params.toString();
+        window.history.replaceState({}, "", `${window.location.pathname}${query ? `?${query}` : ""}${window.location.hash}`);
+      }
     } catch (e) {}
   }, [selectedIds, profile, lang, screen]);
 
