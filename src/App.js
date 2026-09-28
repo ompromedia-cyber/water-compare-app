@@ -601,9 +601,12 @@ function getProfileScore(w, profile) {
     }
   }
 
-  if (totalWeight === 0) return baseScore - missingPenalty - sparklingPenalty - therapeuticPenalty;
+  if (totalWeight === 0) {
+    return Math.round(clamp(baseScore - missingPenalty - sparklingPenalty - therapeuticPenalty, 0, 100) * 10) / 10;
+  }
   const profileScore = weightedScore / totalWeight;
-  return baseScore * 0.3 + profileScore * 0.7 - missingPenalty - sparklingPenalty - therapeuticPenalty;
+  const finalScore = baseScore * 0.3 + profileScore * 0.7 - missingPenalty - sparklingPenalty - therapeuticPenalty;
+  return Math.round(clamp(finalScore, 0, 100) * 10) / 10;
 }
 
 function compareForRanking(a, b, profile) {
@@ -2133,14 +2136,23 @@ function CompareChart({ selected }) {
     );
   };
 
+  const tdsValues = data.map((d) => d.tds);
+  const phValues = data.map((d) => d.ph);
+  const tdsRange = `${Math.min(...tdsValues)}–${Math.max(...tdsValues)} мг/л`;
+  const phRange = `${Math.min(...phValues)}–${Math.max(...phValues)}`;
+
   return (
-    <div className={`${GLASS.card} p-3 sm:p-6`}>
-      <div className="text-base sm:text-lg font-semibold text-slate-900 mb-3">
-        {t.chart.title}
+    <div className={`${GLASS.card} p-3`}>
+      <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
+        <div className="text-sm font-semibold text-slate-900">{t.chart.title}</div>
+        <div className="flex flex-wrap gap-x-3 gap-y-1 text-xs text-slate-600">
+          <span>TDS: {tdsRange}</span>
+          <span>pH: {phRange}</span>
+        </div>
       </div>
-      <div className="h-[220px] sm:h-[300px] w-full">
+      <div className="h-[150px] sm:h-[170px] w-full">
         <ResponsiveContainer width="100%" height="100%">
-          <ScatterChart margin={{ top: 20, right: 40, bottom: 20, left: 20 }}>
+          <ScatterChart margin={{ top: 8, right: 12, bottom: 8, left: 0 }}>
             <CartesianGrid strokeDasharray="3 3" />
             <XAxis type="number" dataKey="tds" name="TDS" unit=" мг/л" tick={{ fontSize: 11 }} />
             <YAxis type="number" dataKey="ph" name="pH" domain={[4, 10]} tick={{ fontSize: 11 }} />
