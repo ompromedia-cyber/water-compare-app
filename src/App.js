@@ -350,13 +350,30 @@ function transliterateRu(value) {
   return normalizeSearchText(value).split("").map((ch) => RU_TO_LATIN[ch] ?? ch).join("");
 }
 
+const BRAND_ALIASES = {
+  borjomi: ["боржоми", "borjomi", "borzhomi", "borjomy", "боржомі"],
+  evian: ["эвиан", "evian"],
+  "san-pellegrino": ["сан пеллегрино", "санпеллегрино", "san pellegrino", "sanpellegrino"],
+  perrier: ["перье", "перрье", "perrier"],
+  vittel: ["виттель", "vittel"],
+  volvic: ["вольвик", "volvic"],
+  fiji: ["фиджи", "fiji"],
+  aquafina: ["аквафина", "aquafina"],
+  "aqua-minerale": ["аква минерале", "акваминерале", "aqua minerale"],
+};
+
 function searchMatchesWater(w, query) {
   const q = normalizeSearchText(query);
   if (!q) return true;
   const brand = normalizeSearchText(w.brand_name);
   const translit = transliterateRu(w.brand_name);
   const qTranslit = transliterateRu(query);
-  return brand.includes(q) || brand.includes(qTranslit) || translit.includes(q) || translit.includes(qTranslit);
+  const key = normalizeSearchText(w.id || w.brand_name);
+  const aliases = Object.entries(BRAND_ALIASES)
+    .filter(([aliasKey]) => key.includes(normalizeSearchText(aliasKey)) || brand.includes(normalizeSearchText(aliasKey)))
+    .flatMap(([, values]) => values)
+    .map(normalizeSearchText);
+  return brand.includes(q) || brand.includes(qTranslit) || translit.includes(q) || translit.includes(qTranslit) || aliases.some((alias) => alias.includes(q) || q.includes(alias));
 }
 
 function toBoolLoose(v) {
@@ -416,6 +433,9 @@ function computeCategory(w) {
 function metricStatus(key, value) {
   if (value === null || value === undefined) return "unknown";
 
+  // pH is not a daily intake amount and must not be multiplied by 2.
+  if (key === "ph") return value >= 6.5 && value <= 8.5 ? "daily" : "rotate";
+
   if (key === "tds") {
     if (value < 500) return "daily";
     if (value < 1500) return "rotate";
@@ -449,6 +469,9 @@ function normalizeWater(w) {
     cl_mg_l: w.cl_mg_l !== null && w.cl_mg_l !== undefined ? Number(w.cl_mg_l) : null,
     sparkling: w.sparkling === 1 || w.sparkling === true,
     source_type: w.source_type ?? "seed",
+    source_url: w.source_url ?? w.sourceUrl ?? null,
+    source_name: w.source_name ?? w.sourceName ?? null,
+    updated_at: w.updated_at ?? w.updatedAt ?? null,
     confidence_level: w.confidence_level ?? "low",
     notes: w.notes,
     popular: w.popular === 1 || w.popular === true,
@@ -517,7 +540,7 @@ function scoreWater(w) {
   else if (presentCount === 3) finalScore = Math.min(finalScore, 50);
   else if (presentCount === 4) finalScore = Math.min(finalScore, 65);
   else if (presentCount === 5) finalScore = Math.min(finalScore, 80);
-  finalScore = clamp(finalScore, 0, 100);
+  finalScore = clamp(finalScore, 1, 100);
   return {
     score: Math.round(finalScore * 10) / 10,
     category: computeCategory(w),
@@ -602,11 +625,11 @@ function getProfileScore(w, profile) {
   }
 
   if (totalWeight === 0) {
-    return Math.round(clamp(baseScore - missingPenalty - sparklingPenalty - therapeuticPenalty, 0, 100) * 10) / 10;
+    return Math.round(clamp(baseScore - missingPenalty - sparklingPenalty - therapeuticPenalty, 1, 100) * 10) / 10;
   }
   const profileScore = weightedScore / totalWeight;
   const finalScore = baseScore * 0.3 + profileScore * 0.7 - missingPenalty - sparklingPenalty - therapeuticPenalty;
-  return Math.round(clamp(finalScore, 0, 100) * 10) / 10;
+  return Math.round(clamp(finalScore, 1, 100) * 10) / 10;
 }
 
 function compareForRanking(a, b, profile) {
@@ -1758,7 +1781,7 @@ function WaterPicker({ waters, selectedIds, onToggle }) {
     setOnlyVerified(false);
     setTdsMax(null);
     setSelectedLetter(null);
-    setQuery("");
+    // Preserve the brand query while clearing other filters.
     setNoResultsMessage(null);
   };
 
@@ -2634,6 +2657,11 @@ export default function App() {
       const savedIds = JSON.parse(localStorage.getItem("water_selected_ids") || "[]");
       const savedProfile = localStorage.getItem("water_profile");
       const savedLang = localStorage.getItem("water_lang");
+      const savedScreen = localStorage.getItem("water_screen");
+      const urlScreen = params.get("screen");
+      const validScreens = ["A", "B", "C", "D"];
+      if (validScreens.includes(urlScreen)) setScreen(urlScreen);
+      else if (validScreens.includes(savedScreen)) setScreen(savedScreen);
       if (urlIds.length) setSelectedIds(urlIds.slice(0, 5));
       else if (Array.isArray(savedIds)) setSelectedIds(savedIds.slice(0, 5));
       if (["Everyday", "Sport", "Kid", "Sensitive"].includes(params.get("profile"))) setProfile(params.get("profile"));
@@ -2648,14 +2676,16 @@ export default function App() {
       localStorage.setItem("water_selected_ids", JSON.stringify(selectedIds));
       localStorage.setItem("water_profile", profile);
       localStorage.setItem("water_lang", lang);
+      localStorage.setItem("water_screen", screen);
       const params = new URLSearchParams(window.location.search);
       if (selectedIds.length) params.set("w", selectedIds.join(","));
       else params.delete("w");
       params.set("profile", profile);
       params.set("lang", lang);
+      params.set("screen", screen);
       window.history.replaceState({}, "", `${window.location.pathname}?${params.toString()}${window.location.hash}`);
     } catch (e) {}
-  }, [selectedIds, profile, lang]);
+  }, [selectedIds, profile, lang, screen]);
 
   // Загрузка с API
   useEffect(() => {
@@ -2725,6 +2755,7 @@ export default function App() {
   setScreen("A"); // возвращаемся на вкладку выбора
 };
   const canCompare = selected.length >= 2;
+  const canReport = selected.length >= 1;
 
   const onMerge = async (incoming) => {
     try {
@@ -2832,12 +2863,12 @@ export default function App() {
               </div>
 
               {/* Табы + контент */}
-              <div className="mt-4 sm:mt-5">
+              <div className="mt-4 sm:mt-5 pb-32">
                 <Tabs value={screen} onValueChange={(v) => setScreen(v)}>
                   <TabsList className="rounded-2xl bg-white/70">
                     <TabsTrigger value="A">{t.screenA}</TabsTrigger>
                     <TabsTrigger value="B" disabled={!canCompare}>{t.screenB}</TabsTrigger>
-                    <TabsTrigger value="C" disabled={!canCompare}>{t.screenC}</TabsTrigger>
+                    <TabsTrigger value="C" disabled={!canReport}>{t.screenC}</TabsTrigger>
                     <TabsTrigger value="D" disabled={!canCompare}>{t.screenD}</TabsTrigger>
                   </TabsList>
 
@@ -2927,19 +2958,19 @@ export default function App() {
   {screen === "B" ? `✓ ${t.actions.compare}` : t.actions.compare}
 </Button>
 
-                  {/* Отчёт — активна, если ≥2 вод и мы не на вкладке C */}
+                  {/* Отчёт доступен даже для одной выбранной воды. */}
                  <Button
   className={`h-9 rounded-xl text-xs sm:text-sm px-3 sm:px-4 ${
-    canCompare && screen !== "C"
+    canReport && screen !== "C"
       ? "bg-slate-900 text-white hover:bg-slate-800"
       : "bg-slate-200 text-slate-400 cursor-not-allowed"
   }`}
   onClick={() => {
-    if (canCompare && screen !== "C") setScreen("C");
+    if (canReport && screen !== "C") setScreen("C");
   }}
-  disabled={!canCompare || screen === "C"}
+  disabled={!canReport || screen === "C"}
   type="button"
-  title={canCompare ? undefined : (lang === "ru" ? "Выберите минимум 2 воды" : "Select at least 2 waters")}
+  title={canReport ? undefined : (lang === "ru" ? "Выберите хотя бы 1 воду" : "Select at least 1 water")}
 >
   {screen === "C" ? `✓ ${t.screenC}` : `📊 ${t.screenC}`}
 </Button>
