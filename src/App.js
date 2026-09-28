@@ -1239,6 +1239,13 @@ function WaterDetailModal({ w, onClose }) {
             </div>
           </div>
 
+          <div className="rounded-xl border border-sky-100 bg-sky-50/60 p-3 text-xs leading-relaxed text-slate-700">
+            <div className="font-semibold mb-1">{lang === "ru" ? "Как читать оценку" : "How to read the assessment"}</div>
+            {lang === "ru"
+              ? "Статус отдельного показателя не равен категории всей воды. Категория определяется главным образом минерализацией (TDS) и натрием; pH оценивается отдельно и сам по себе не делает воду лечебной. Рейтинг — ориентировочная сравнительная оценка по доступным показателям, с учётом их весов и полноты данных. Для минералов используется условное потребление 2 л воды в день. Это не медицинская рекомендация."
+              : "A single metric status is not the category of the whole water. The category is based mainly on TDS and sodium; pH is assessed separately and does not by itself make water therapeutic. The rating is an approximate comparison of available metrics, accounting for weights and data completeness. Mineral calculations assume 2 litres per day. This is not medical advice."}
+          </div>
+
           <div className={`${GLASS.card} p-4`}>
             <h3 className="text-sm font-semibold text-slate-900 mb-3">📊 Все показатели</h3>
             <div className="space-y-2">
@@ -1271,9 +1278,11 @@ function WaterDetailModal({ w, onClose }) {
               <span className="font-medium text-slate-700">📝 Примечание:</span> {w.notes}
             </div>
           )}
-          <div className={`${GLASS.subtle} p-3 text-xs text-slate-500`}>
-            <span className="font-medium">📌 Источник:</span> {w.source_type}
-            {w.confidence_level && <span className="ml-3">Достоверность: {w.confidence_level}</span>}
+          <div className={`${GLASS.subtle} p-3 text-xs text-slate-500 space-y-1`}>
+            <div><span className="font-medium">📌 {lang === "ru" ? "Источник данных:" : "Data source:"}</span> {w.source_name || w.source_type || (lang === "ru" ? "не указан" : "not specified")}</div>
+            {w.source_url && <div><a href={w.source_url} target="_blank" rel="noreferrer" className="text-sky-700 underline">{lang === "ru" ? "Открыть источник" : "Open source"}</a></div>}
+            <div><span className="font-medium">{lang === "ru" ? "Дата обновления:" : "Updated:"}</span> {w.updated_at ? String(w.updated_at).slice(0, 10) : (lang === "ru" ? "не указана в базе" : "not provided in database")}</div>
+            {w.confidence_level && <div><span className="font-medium">{lang === "ru" ? "Достоверность:" : "Confidence:"}</span> {w.confidence_level}</div>}
           </div>
 
           <Button onClick={onClose} className="w-full h-10 rounded-xl">
@@ -2876,13 +2885,31 @@ export default function App() {
                     <WaterPicker waters={waters} selectedIds={selectedIds} onToggle={toggleSelect} />
                   </TabsContent>
 
-                  <TabsContent value="B" className="mt-5 space-y-5">
-                    <CompareChart selected={selected} />
+                  <TabsContent value="B" className="mt-5 space-y-4 pb-32">
                     <MetricsTable
                       selected={[...selected].sort((a, b) => compareForRanking(a, b, profile))}
                       profile={profile}
                       onWaterClick={setSelectedWaterDetail}
                     />
+                    {selected.length >= 2 && (
+                      <div className={`${GLASS.card} p-3 text-sm text-slate-700`}>
+                        <div className="font-semibold mb-1">{lang === "ru" ? "Коротко о различиях" : "Key differences"}</div>
+                        {(() => {
+                          const withTds = selected.filter((w) => w.tds_mg_l !== null && w.tds_mg_l !== undefined);
+                          const withPh = selected.filter((w) => w.ph !== null && w.ph !== undefined);
+                          const minTds = withTds.length ? withTds.reduce((a, b) => a.tds_mg_l < b.tds_mg_l ? a : b) : null;
+                          const maxTds = withTds.length ? withTds.reduce((a, b) => a.tds_mg_l > b.tds_mg_l ? a : b) : null;
+                          const minPh = withPh.length ? withPh.reduce((a, b) => a.ph < b.ph ? a : b) : null;
+                          const maxPh = withPh.length ? withPh.reduce((a, b) => a.ph > b.ph ? a : b) : null;
+                          return <div className="space-y-1">
+                            {minTds && maxTds && <div>{lang === "ru" ? "TDS:" : "TDS:"} {minTds.brand_name} — {minTds.tds_mg_l} мг/л ({lang === "ru" ? "минимум" : "lowest"}); {maxTds.brand_name} — {maxTds.tds_mg_l} мг/л ({lang === "ru" ? "максимум" : "highest"}).</div>}
+                            {minPh && maxPh && <div>pH: {minPh.brand_name} — {minPh.ph}; {maxPh.brand_name} — {maxPh.ph}.</div>}
+                            <div className="text-xs text-slate-500">{lang === "ru" ? "График ниже показывает соотношение TDS и pH; точные значения — в таблице выше." : "The chart below plots TDS against pH; exact values are in the table above."}</div>
+                          </div>;
+                        })()}
+                      </div>
+                    )}
+                    <CompareChart selected={selected} />
                   </TabsContent>
 
                   <TabsContent value="C" className="mt-5 space-y-5">
