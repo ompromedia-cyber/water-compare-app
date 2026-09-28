@@ -311,7 +311,7 @@ const EDUCATION = {
   k: { titleRU: "Калий (K⁺)", titleEN: "Potassium (K⁺)", shortRU: "Для сердца", shortEN: "For heart", ref: REF.k, unitRU: "мг/сутки", unitEN: "mg/day" },
   na: { titleRU: "Натрий (Na⁺)", titleEN: "Sodium (Na⁺)", shortRU: "Влияет на давление", shortEN: "Affects pressure", ref: REF.na, unitRU: "мг/сутки", unitEN: "mg/day" },
   cl: { titleRU: "Хлориды (Cl⁻)", titleEN: "Chloride (Cl⁻)", shortRU: "Электролитный баланс", shortEN: "Electrolytes", ref: REF.cl, unitRU: "мг/сутки", unitEN: "mg/day" },
-  ph: { titleRU: "pH", titleEN: "pH", shortRU: "Кислотность", shortEN: "Acidity", ref: REF.ph, unitRU: "", unitEN: "" },
+  ph: { titleRU: "pH", titleEN: "pH", shortRU: "Показывает кислотность или щёлочность воды. Эталон 7,4 — ориентир для сравнения, а не медицинская норма. pH оценивается отдельно и сам по себе не определяет категорию воды; около 6,5–8,5 в приложении считается обычным диапазоном.", shortEN: "Indicates how acidic or alkaline the water is. The 7.4 reference is a comparison point, not a medical standard. pH is assessed separately and does not determine the water category by itself; this app treats roughly 6.5–8.5 as a typical range.", ref: REF.ph, unitRU: "", unitEN: "" },
   tds: { titleRU: "Минерализация", titleEN: "TDS", shortRU: "Сумма веществ", shortEN: "Dissolved solids", ref: REF.tds, unitRU: "мг/л", unitEN: "mg/L" },
 };
 
