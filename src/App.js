@@ -2707,11 +2707,9 @@ export default function App() {
 
   const removeFromCompare = (id) => {
   setSelectedIds((prev) => prev.filter((x) => x !== id));
-  setHasCompared(false);
 };
   const clear = () => {
   setSelectedIds([]);
-  setHasCompared(false);
   setScreen("A"); // возвращаемся на вкладку выбора
 };
   const canCompare = selected.length >= 2;
