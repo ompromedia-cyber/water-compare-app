@@ -350,30 +350,51 @@ function transliterateRu(value) {
   return normalizeSearchText(value).split("").map((ch) => RU_TO_LATIN[ch] ?? ch).join("");
 }
 
-const BRAND_ALIASES = {
-  borjomi: ["боржоми", "borjomi", "borzhomi", "borjomy", "боржомі"],
-  evian: ["эвиан", "evian"],
-  "san-pellegrino": ["сан пеллегрино", "санпеллегрино", "san pellegrino", "sanpellegrino"],
-  perrier: ["перье", "перрье", "perrier"],
-  vittel: ["виттель", "vittel"],
-  volvic: ["вольвик", "volvic"],
-  fiji: ["фиджи", "fiji"],
-  aquafina: ["аквафина", "aquafina"],
-  "aqua-minerale": ["аква минерале", "акваминерале", "aqua minerale"],
-};
+const BRAND_ALIASES = [
+  ["Evian", ["evian", "эвиан", "эвианн"]],
+  ["Baikal", ["baikal", "байкал", "байкал 430", "baikal 430", "baikal pearl", "жемчужина байкала", "baikal reserve", "байкал резерв", "legend of baikal", "легенда байкала"]],
+  ["San Pellegrino", ["san pellegrino", "sanpellegrino", "s pellegrino", "s.pellegrino", "сан пеллегрино", "санпеллегрино", "сан-пеллегрино", "с пеллегрино"]],
+  ["Volvic", ["volvic", "вольвик", "волвик"]],
+  ["Acqua Panna", ["acqua panna", "acquapanna", "аква панна", "аквапанна", "аква-панна"]],
+  ["Aqua Minerale", ["aqua minerale", "aquaminerale", "аква минерале", "акваминерале", "аква-минерале"]],
+  ["Bonaqua", ["bonaqua", "bon aqua", "bon-aqua", "bonakva", "бонаква", "бон аква", "бон-аква", "бон аква"]],
+  ["Borjomi", ["borjomi", "borzhomi", "borjomy", "боржоми", "боржомі"]],
+  ["Perrier", ["perrier", "перье", "перрье", "перие"]],
+  ["Vittel", ["vittel", "виттель", "витель"]],
+  ["Fiji", ["fiji", "фиджи", "фиджи"]],
+  ["Aqua Russa", ["aqua russa", "aquarussa", "аква русса", "акварусса"]],
+  ["Voss", ["voss", "восс"]],
+  ["Nabeghlavi", ["nabeghlavi", "nabeglavi", "наბеглави", "набеглави", "набеғлави"]],
+  ["Essentuki", ["essentuki", "ессентуки", "ессентуки 4", "ессентуки 17"]],
+  ["Arkhyz", ["arkhyz", "arkhiz", "архыз", "архиз"]],
+  ["Narzan", ["narzan", "нарзан"]],
+  ["Donat Mg", ["donat mg", "donat", "донат мг", "донат магний", "донат"]],
+];
 
 function searchMatchesWater(w, query) {
   const q = normalizeSearchText(query);
   if (!q) return true;
-  const brand = normalizeSearchText(w.brand_name);
-  const translit = transliterateRu(w.brand_name);
-  const qTranslit = transliterateRu(query);
-  const key = normalizeSearchText(w.id || w.brand_name);
-  const aliases = Object.entries(BRAND_ALIASES)
-    .filter(([aliasKey]) => key.includes(normalizeSearchText(aliasKey)) || brand.includes(normalizeSearchText(aliasKey)))
-    .flatMap(([, values]) => values)
+
+  // Search across all common identifying fields, not only the displayed brand name.
+  const fields = [w.brand_name, w.name, w.id, w.brand, w.aliases]
+    .flatMap((value) => Array.isArray(value) ? value : [value])
+    .filter(Boolean)
     .map(normalizeSearchText);
-  return brand.includes(q) || brand.includes(qTranslit) || translit.includes(q) || translit.includes(qTranslit) || aliases.some((alias) => alias.includes(q) || q.includes(alias));
+  const queryLatin = transliterateRu(query);
+  const queryVariants = [q, queryLatin].filter(Boolean);
+
+  const matchingAliases = BRAND_ALIASES
+    .filter(([, aliases]) => {
+      const normalizedAliases = aliases.map(normalizeSearchText);
+      return fields.some((field) => normalizedAliases.some((alias) => field.includes(alias) || alias.includes(field)));
+    })
+    .flatMap(([, aliases]) => aliases)
+    .map(normalizeSearchText);
+
+  const searchable = [...fields, ...matchingAliases];
+  return searchable.some((field) => queryVariants.some((variant) =>
+    field.includes(variant) || variant.includes(field)
+  ));
 }
 
 function toBoolLoose(v) {
