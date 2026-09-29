@@ -375,28 +375,29 @@ function searchMatchesWater(w, query) {
   const q = normalizeSearchText(query);
   if (!q) return true;
 
-  // Search across all common identifying fields, not only the displayed brand name.
+  const queryVariants = [...new Set([q, transliterateRu(q)])];
   const fields = [w.brand_name, w.name, w.id, w.brand, w.aliases]
     .flatMap((value) => Array.isArray(value) ? value : [value])
     .filter(Boolean)
     .map(normalizeSearchText);
-  const queryLatin = transliterateRu(query);
-  const queryVariants = [q, queryLatin].filter(Boolean);
 
-  const matchingAliases = BRAND_ALIASES
-    .filter(([, aliases]) => {
-      const normalizedAliases = aliases.map(normalizeSearchText);
-      return fields.some((field) => normalizedAliases.some((alias) => field.includes(alias) || alias.includes(field)));
-    })
-    .flatMap(([, aliases]) => aliases)
-    .map(normalizeSearchText);
+  // Resolve aliases by stable water ID first. This avoids relying on the
+  // displayed brand name, which may be localized or supplied by an API.
+  const id = normalizeSearchText(w.id);
+  const brand = normalizeSearchText(w.brand_name);
+  const aliasEntry = BRAND_ALIASES.find(([canonical, aliases]) => {
+    const canonicalKey = normalizeSearchText(canonical);
+    return id === canonicalKey || id.includes(canonicalKey) ||
+      brand === canonicalKey || brand.includes(canonicalKey) ||
+      aliases.some((alias) => normalizeSearchText(alias) === id || normalizeSearchText(alias) === brand);
+  });
+  const aliases = aliasEntry ? aliasEntry[1].map(normalizeSearchText) : [];
+  const searchable = [...fields, ...aliases];
 
-  const searchable = [...fields, ...matchingAliases];
   return searchable.some((field) => queryVariants.some((variant) =>
-    field.includes(variant) || variant.includes(field)
+    field === variant || field.includes(variant) || variant.includes(field)
   ));
 }
-
 function toBoolLoose(v) {
   const s = String(v ?? "").trim().toLowerCase();
   if (!s) return null;
