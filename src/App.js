@@ -376,8 +376,8 @@ function searchMatchesWater(w, query) {
   if (!q) return true;
 
   const queryVariants = [...new Set([q, transliterateRu(q)])];
-  const fields = [w.brand_name, w.name, w.id, w.brand, w.aliases]
-    .flatMap((value) => Array.isArray(value) ? value : [value])
+  const fields = [w.brand_name, w.name, w.id, w.brand, w.aliases, w.search_aliases, w.searchAliases]
+    .flatMap((value) => Array.isArray(value) ? value : typeof value === "string" ? value.split(/[|,;]/) : [value])
     .filter(Boolean)
     .map(normalizeSearchText);
 
@@ -478,6 +478,11 @@ function normalizeWater(w) {
   const base = {
     id: w.id,
     brand_name: w.brand_name,
+    // Preserve API search fields; dropping these here made aliases from the
+    // database unavailable to the catalogue search.
+    name: w.name ?? w.brand_name ?? "",
+    brand: w.brand ?? w.brand_name ?? "",
+    aliases: w.aliases ?? w.search_aliases ?? w.searchAliases ?? [],
     country_code: w.country_code,
     flag_emoji: w.flag_emoji ?? safeCountryFlag(w.country_code),
     group: w.group ?? "Europe",
