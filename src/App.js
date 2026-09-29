@@ -1859,7 +1859,11 @@ function WaterPicker({ waters, selectedIds, onToggle }) {
   const clearAllFilters = resetAllFilters;
 
   const popularWaters = filtered.filter((w) => w.popular);
-  const otherWaters = paginatedWaters.filter((w) => !w.popular);
+  // Popular waters are shown in their own section only when the search is empty.
+  // During a search they must remain in the normal results list.
+  const otherWaters = query.trim()
+    ? paginatedWaters
+    : paginatedWaters.filter((w) => !w.popular);
 
   return (
     <div className={`${GLASS.card} p-3 sm:p-6`}>
