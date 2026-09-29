@@ -873,6 +873,18 @@ const SEED = [
   // Саудовская Аравия
   normalizeWater({ id: "hada", brand_name: "Hada", country_code: "SA", group: "Europe", ph: 7.5, tds_mg_l: 200, ca_mg_l: 35, mg_mg_l: 15, na_mg_l: 12, k_mg_l: 4, cl_mg_l: 14, sparkling: false, confidence_level: "medium" }),
 ];
+
+/**
+ * API data is the primary catalogue, but keep bundled waters available when
+ * the database does not contain them yet. Merge by normalized ID to avoid duplicates.
+ */
+function mergeWithSeedWaters(rows) {
+  const apiWaters = (Array.isArray(rows) ? rows : []).map(normalizeWater);
+  const existingIds = new Set(apiWaters.map((w) => normalizeSearchText(w.id)));
+  const missingSeedWaters = SEED.filter((w) => !existingIds.has(normalizeSearchText(w.id)));
+  return [...apiWaters, ...missingSeedWaters];
+}
+
 // ============== ЛОГИН ДЛЯ АДМИНКИ ==============
 function AdminLogin({ onLogin }) {
   const lang = React.useContext(LangCtx);
@@ -2728,12 +2740,12 @@ export default function App() {
     let active = true;
     fetchWaters()
       .then((rows) => {
-        if (active) setWaters(rows.map(normalizeWater));
+        if (active) setWaters(mergeWithSeedWaters(rows));
       })
       .catch(() => {
         if (active) {
           setError(lang === "ru" ? "Не удалось загрузить воды из базы" : "Failed to load waters");
-          setWaters(SEED);
+          setWaters(mergeWithSeedWaters([]));
         }
       })
       .finally(() => {
@@ -2797,7 +2809,7 @@ export default function App() {
     try {
       await importWaters(incoming);
       const fresh = await fetchWaters();
-      setWaters(fresh.map(normalizeWater));
+      setWaters(mergeWithSeedWaters(fresh));
     } catch {
       alert(lang === "ru" ? "Не удалось импортировать" : "Import failed");
     }
