@@ -1206,6 +1206,50 @@ function AdminPanel({ waters, onUpdateWaters, onClose }) {
   );
 }
 
+// Единое пояснение рейтинга используется в карточках, сравнении и отчёте.
+function ScoreMethodology({ lang = "ru", profile = null }) {
+  const ru = lang === "ru";
+  return (
+    <details className="rounded-2xl border border-sky-200 bg-sky-50/70 p-3 sm:p-4 text-xs sm:text-sm text-slate-700">
+      <summary className="cursor-pointer list-none flex items-center justify-between gap-3 font-semibold text-sky-950">
+        <span>{ru ? "Как рассчитывается рейтинг и что он означает" : "How the score is calculated and what it means"}</span>
+        <span className="shrink-0 text-sky-700">ⓘ {ru ? "Подробнее" : "Details"}</span>
+      </summary>
+      <div className="mt-3 space-y-3 leading-relaxed">
+        <p>{ru
+          ? "Шкала — от 1 до 100 баллов; 100 — максимальный результат по модели Water Expert. Это сравнительный индекс соответствия выбранным ориентирам, а не официальный рейтинг качества, сертификат безопасности или медицинская оценка. Более высокий балл означает, что известные характеристики воды ближе к ориентирам, заложенным в приложении."
+          : "The scale runs from 1 to 100; 100 is the maximum under the Water Expert model. This is a comparative index against the app's reference values, not an official quality ranking, safety certification, or medical assessment. A higher score means the available characteristics are closer to the app's chosen references."}</p>
+        <div>
+          <div className="font-semibold text-slate-900">{ru ? "Что влияет на базовый рейтинг" : "What affects the base score"}</div>
+          <ul className="mt-1 list-disc pl-5 space-y-1">
+            <li>{ru ? "Кальций и магний — вес каждого показателя 2,0." : "Calcium and magnesium — weight 2.0 each."}</li>
+            <li>{ru ? "Натрий — 1,5; калий и хлориды — по 1,2." : "Sodium — 1.5; potassium and chloride — 1.2 each."}</li>
+            <li>{ru ? "Минерализация TDS — 1,0; pH — 0,8." : "TDS — 1.0; pH — 0.8."}</li>
+            <li>{ru ? "Каждый показатель оценивается по близости к внутреннему ориентиру. Для минералов условно учитывается 2 л воды в день; TDS и pH сравниваются как измеренные значения." : "Each metric is scored by its proximity to an internal reference. Mineral contribution assumes 2 L of water per day; TDS and pH are compared as measured values."}</li>
+          </ul>
+        </div>
+        <div>
+          <div className="font-semibold text-slate-900">{ru ? "Почему рейтинг может быть ниже" : "Why the score may be lower"}</div>
+          <ul className="mt-1 list-disc pl-5 space-y-1">
+            <li>{ru ? "За каждый отсутствующий показатель базовая модель вычитает 10 баллов; если нет данных по кальцию или магнию, применяется дополнительное снижение на 20 баллов." : "The base model subtracts 10 points for each missing metric and an additional 20 points if calcium or magnesium data is missing."}</li>
+            <li>{ru ? "При неполных данных действует ограничение максимального балла: 2 показателя или меньше — до 30; 3 — до 50; 4 — до 65; 5 — до 80." : "Incomplete data caps the score: 2 metrics or fewer — at 30; 3 — at 50; 4 — at 65; 5 — at 80."}</li>
+          </ul>
+        </div>
+        <div>
+          <div className="font-semibold text-slate-900">{ru ? "Если выбран профиль" : "When a profile is selected"}</div>
+          <p>{ru
+            ? "Оценка для профиля пересчитывается отдельно: 30% составляет базовый рейтинг, 70% — профильная оценка с другими весами показателей. Также могут применяться штрафы за неполные данные, газированность и категорию «Лечебная» в зависимости от профиля. Поэтому балл в отчёте может отличаться от базового балла в карточке подробностей."
+            : "A profile score is calculated separately: 30% comes from the base score and 70% from a profile-specific score with different metric weights. Penalties may also apply for missing data, carbonation, and the 'Therapeutic' category depending on the profile. Therefore, a report score may differ from the base score in the detail view."}</p>
+          {profile && <p className="mt-1">{ru ? "Сейчас выбран профиль: " : "Current profile: "}<strong>{profile}</strong>.</p>}
+        </div>
+        <p className="border-t border-sky-200 pt-2 text-slate-600">{ru
+          ? "Важно: ориентиры и веса — правила сравнительной модели приложения, а не универсальные медицинские нормы. Высокий балл сам по себе не подтверждает микробиологическую или химическую безопасность воды и не означает, что она подходит каждому человеку. Для оценки безопасности нужны актуальные лабораторные данные и сведения о загрязнителях."
+          : "Important: the references and weights are rules of this app's comparison model, not universal medical standards. A high score alone does not establish microbiological or chemical safety or mean the water is suitable for everyone. Safety assessment requires current laboratory data, including contaminant testing."}</p>
+      </div>
+    </details>
+  );
+}
+
 // ============== ДЕТАЛЬНАЯ КАРТОЧКА ВОДЫ ==============
 function WaterDetailModal({ w, onClose }) {
   const lang = React.useContext(LangCtx);
@@ -1262,7 +1306,7 @@ function WaterDetailModal({ w, onClose }) {
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
             <div className={`${GLASS.subtle} p-3 text-center`}>
               <div className="text-2xl font-bold text-slate-900">{scoreData.score.toFixed(1)}</div>
-              <div className="text-xs text-slate-500">Рейтинг</div>
+              <div className="text-xs text-slate-500">Рейтинг / 100</div>
             </div>
             <div className={`${GLASS.subtle} p-3 text-center`}>
               <div className="text-2xl font-bold text-slate-900">{cov.count}/{cov.total}</div>
@@ -1278,12 +1322,12 @@ function WaterDetailModal({ w, onClose }) {
             </div>
           </div>
 
-          <div className="rounded-xl border border-sky-100 bg-sky-50/60 p-3 text-xs leading-relaxed text-slate-700">
-            <div className="font-semibold mb-1">{lang === "ru" ? "Как читать оценку" : "How to read the assessment"}</div>
+          <div className="rounded-xl border border-slate-200 bg-slate-50 p-3 text-xs leading-relaxed text-slate-700">
             {lang === "ru"
-              ? "Статус отдельного показателя не равен категории всей воды. Категория определяется главным образом минерализацией (TDS) и натрием; pH оценивается отдельно и сам по себе не делает воду лечебной. Рейтинг — ориентировочная сравнительная оценка по доступным показателям, с учётом их весов и полноты данных. Для минералов используется условное потребление 2 л воды в день. Это не медицинская рекомендация."
-              : "A single metric status is not the category of the whole water. The category is based mainly on TDS and sodium; pH is assessed separately and does not by itself make water therapeutic. The rating is an approximate comparison of available metrics, accounting for weights and data completeness. Mineral calculations assume 2 litres per day. This is not medical advice."}
+              ? "Категория воды и рейтинг — разные вещи. Категория рассчитывается по правилам приложения на основе минерализации (TDS) и натрия; pH оценивается отдельно. Ни категория, ни рейтинг не подтверждают безопасность воды."
+              : "Water category and score are different. The app assigns the category mainly from TDS and sodium; pH is assessed separately. Neither category nor score certifies water safety."}
           </div>
+          <ScoreMethodology lang={lang} />
 
           <div className={`${GLASS.card} p-4`}>
             <h3 className="text-sm font-semibold text-slate-900 mb-3">📊 Все показатели</h3>
@@ -1515,8 +1559,9 @@ function WaterProfileCard({ w, profile, rank, isWinner }) {
           </div>
           <div className="mt-1 flex items-end justify-between">
             <div className="text-xl sm:text-2xl font-semibold text-slate-900">#{rank}</div>
-            <div className="text-[10px] sm:text-xs text-slate-600">
-              {cov.count}/{cov.total}
+            <div className="text-right">
+              <div className="text-xs sm:text-sm font-semibold text-slate-900">{scoreData.score.toFixed(1)}<span className="text-[10px] font-normal text-slate-500">/100</span></div>
+              <div className="text-[10px] sm:text-xs text-slate-600">{lang === "ru" ? "Рейтинг" : "Score"} · {cov.count}/{cov.total}</div>
             </div>
           </div>
           <div className="mt-1 sm:mt-2">
@@ -1603,7 +1648,7 @@ function WaterProfileCompactRow({ w, rank }) {
             <div className="text-xs font-semibold text-slate-900">{fmt(w.ca_mg_l, 0)}</div>
           </div>
           <div className={`${GLASS.subtle} px-2 py-1.5`}>
-            <div className="text-[10px] text-slate-600">Рейтинг</div>
+            <div className="text-[10px] text-slate-600">Рейтинг / 100</div>
             <div className="text-xs font-semibold text-slate-900">{scoreData.score.toFixed(1)}</div>
           </div>
         </div>
@@ -1650,6 +1695,7 @@ function MetricsTable({ selected, profile, onWaterClick }) {
 
   return (
     <div className={`${GLASS.card} p-3 sm:p-6`}>
+      <ScoreMethodology lang={lang} profile={t.profiles[profile]} />
       {/* ФИКС #6: баннер активного профиля */}
       <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
         <div className="text-base sm:text-lg font-semibold text-slate-900">
@@ -2309,6 +2355,7 @@ function ReportAccordion({ selected, profile, compact, onToggleCompact }) {
 
       {isOpen && (
         <div className="mt-4 space-y-5">
+          <ScoreMethodology lang={lang} profile={t.profiles[profile]} />
           {winner && (
             <div>
               <div className="text-sm font-medium text-slate-600 mb-2">
