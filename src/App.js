@@ -266,7 +266,7 @@ const I18N = {
     misc: { dataCoverage: "Данные", empty: "Ничего не выбрано", max5: "Макс 5", notEnough: "Выберите минимум 2 воды", openPicker: "Выбрать бренды", missingMin: "Нет минимальных показателей", okMin: "Минимум OK" },
     table: { title: "Таблица показателей", metric: "Показатель", ref: "Эталон", unit: "Ед." },
     import: { title: "Импорт базы", hint: "Вставьте CSV или JSON", placeholder: "Вставьте данные…", parse: "Импортировать", bad: "Ошибка формата", done: "Импорт завершён" },
-    score: { title: "Рейтинг", coverage: "Заполненность" },
+    score: { title: "Рейтинг / 100", coverage: "Заполненность" },
     metricBands: { daily: "Близко к эталону", rotate: "Заметное отклонение", therapeutic: "Сильное отклонение", unknown: "Нет данных" },
     pagination: { back: "← Назад", next: "Вперёд →", page: "Страница" },
     profileBanner: "Профиль",
@@ -294,7 +294,7 @@ const I18N = {
     misc: { dataCoverage: "Coverage", empty: "Nothing selected", max5: "Max 5", notEnough: "Select at least 2 waters", openPicker: "Open picker", missingMin: "Missing metrics", okMin: "Minimum OK" },
     table: { title: "Metrics table", metric: "Metric", ref: "Reference", unit: "Unit" },
     import: { title: "Import dataset", hint: "Paste CSV or JSON", placeholder: "Paste data…", parse: "Import", bad: "Bad format", done: "Import complete" },
-    score: { title: "Score", coverage: "Coverage" },
+    score: { title: "Score / 100", coverage: "Coverage" },
     metricBands: { daily: "Close to reference", rotate: "Noticeable deviation", therapeutic: "Strong deviation", unknown: "No data" },
     pagination: { back: "← Back", next: "Next →", page: "Page" },
     profileBanner: "Profile",
@@ -1306,7 +1306,7 @@ function WaterDetailModal({ w, onClose }) {
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
             <div className={`${GLASS.subtle} p-3 text-center`}>
               <div className="text-2xl font-bold text-slate-900">{scoreData.score.toFixed(1)}</div>
-              <div className="text-xs text-slate-500">Рейтинг / 100</div>
+              <div className="text-xs text-slate-500">{lang === "ru" ? "Рейтинг / 100" : "Score / 100"}</div>
             </div>
             <div className={`${GLASS.subtle} p-3 text-center`}>
               <div className="text-2xl font-bold text-slate-900">{cov.count}/{cov.total}</div>
@@ -1648,7 +1648,7 @@ function WaterProfileCompactRow({ w, rank }) {
             <div className="text-xs font-semibold text-slate-900">{fmt(w.ca_mg_l, 0)}</div>
           </div>
           <div className={`${GLASS.subtle} px-2 py-1.5`}>
-            <div className="text-[10px] text-slate-600">Рейтинг / 100</div>
+            <div className="text-[10px] text-slate-600">{lang === "ru" ? "Рейтинг / 100" : "Score / 100"}</div>
             <div className="text-xs font-semibold text-slate-900">{scoreData.score.toFixed(1)}</div>
           </div>
         </div>
